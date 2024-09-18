@@ -7,6 +7,7 @@ import copy
 import math
 from forestlib.bnbpy import BranchAndBound
 
+neginf = float("-Inf")
 
 class Knapsack(BranchAndBound):
 
@@ -64,11 +65,11 @@ class Knapsack(BranchAndBound):
         capacity=0.0
         with open(filename, 'r') as INPUT:
             tmp = INPUT.readline()
-            capacity = float(tmp.strip())
+            capacity = int(tmp.strip())
             for line in INPUT.readlines():
                 tokens = re.split('[ ]+', line.strip())
                 names.append(tokens[0])
-                weights.append(float(tokens[1]))
+                weights.append(int(tokens[1]))
                 values.append(int(tokens[2]))
         return (capacity, names, weights, values)
 
@@ -81,7 +82,7 @@ class Knapsack(BranchAndBound):
             cvalue += self.context.values[self.context.order[i]]
             cweight += self.context.weights[self.context.order[i]]
         if cweight > self.context.capacity:
-            self.bound = float("-Inf")
+            self.bound = neginf
             return self.bound
         #
         self.last = None
