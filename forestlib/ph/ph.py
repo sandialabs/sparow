@@ -1,5 +1,5 @@
 
-class ProgressiveHedgingSolve(object):
+class ProgressiveHedgingSolver(object):
 
     def create_subproblem(self, args):
         pass
@@ -93,18 +93,55 @@ class ProgressiveHedgingSolve(object):
         pass
             
             
-class ProgressiveHedgingSolve_Pyomo(ProgressiveHedgingSolver):
+class ProgressiveHedgingSolver_Pyomo(ProgressiveHedgingSolver):
 
-    def get_variable_value(self, v, M):
-        pass
+    def __init__(self, first_stage_variables):
+        #
+        # A list of string names of variables, such as:
+        #   [ "x", "b.y", "b[*].z[*,*]" ]
+        #
+        self.first_stage_variables = first_stage_variables
+        self.varcuid_to_int = []
+
+    def initialize_varmap(self, b, M):
+        if len(self.varcuid_to_int) == 0:
+            #
+            # self.varcuid_to_int maps the cuids for variables to unique integers (starting with 0).
+            #   The variable cuids indexed here are specified by the list self.first_stage_variables.
+            #
+            self.varcuid_to_int = []
+            #for var in M.component_map(Var).values():
+            for varname in first_stage_variables:
+                cuid = ComponentUID(varname)
+                comp = cuid.find_component_on(M)
+                assert comp is not None, "Pyomo error: Unknown variable '%s'" % varname
+                if comp.ctype is IndexedComponent:
+                    for var in comp.values():    
+                        self.varcuid_to_int[ pyo.ComponentUID(var) ] = len(self.varcuid_to_int)
+                elif comp.ctype is Var:
+                    self.varcuid_to_int[ pyo.ComponentUID(comp) ] = len(self.varcuid_to_int)
+                else:
+                    raise RuntimeError("Pyomo error: Component '%s' is not a variable" % varname)
+
+        #
+        # self.int_to_var maps the tuple (b,vid) to a Pyomo Var object, where b is a bundle ID and vid
+        #   is an integer variable id (0..N-1) that is associated with the variables specified in
+        #   self.first_stage_variables.
+        #
+        for cuid,vid in self.varcuid_to_int.items():
+            self.int_to_var[b, vid] = cuid.find_component_on(M)
+
+    def get_variable_value(self, b, v):
+        return pyo.value(self.int_to_var[b, v])
             
 
-class Farmer(ProgressiveHedgingSolve_Pyomo):
+class Farmer(ProgressiveHedgingSolver_Pyomo):
 
     def __init__(self, data):
         self.data = data
 
     def initialize(self):
+        self.initialize_varmap()
         self.first_stage_variables = []
 
     def create_EF(self, * b, w=None, x_bar=None, rho=None):
