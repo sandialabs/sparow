@@ -7,14 +7,13 @@ class ProgressiveHedgingSolver(object):
     def solve(self):
         solver = SolverFactory(self.solver_name)
 
-        self.initialize()
-
         # Step 2
         results = {}
         M = {}
         for b in self.bundles:
             M[b] = self.create_EF(b)
             results[b] = solver.solve(M[b], solver_options=self.solver_options)
+            self.initialize_varmap(b, M[b]):
 
         # Step 3
         x_bar = {}
@@ -95,7 +94,7 @@ class ProgressiveHedgingSolver(object):
             
 class ProgressiveHedgingSolver_Pyomo(ProgressiveHedgingSolver):
 
-    def __init__(self, first_stage_variables):
+    def __init__(self, *, first_stage_variables):
         #
         # A list of string names of variables, such as:
         #   [ "x", "b.y", "b[*].z[*,*]" ]
@@ -138,11 +137,8 @@ class ProgressiveHedgingSolver_Pyomo(ProgressiveHedgingSolver):
 class Farmer(ProgressiveHedgingSolver_Pyomo):
 
     def __init__(self, data):
+        ProgressiveHedgingSolver_Pyomo.__init__(self, first_stage_variables=["DevotedAcreage[*]"])
         self.data = data
-
-    def initialize(self):
-        self.initialize_varmap()
-        self.first_stage_variables = []
 
     def create_EF(self, * b, w=None, x_bar=None, rho=None):
         pass
