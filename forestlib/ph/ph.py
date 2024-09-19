@@ -1,3 +1,5 @@
+import pyomo.core.base.indexed_component
+import pyomo.environ as pyo
 
 class ProgressiveHedgingSolver(object):
 
@@ -12,8 +14,8 @@ class ProgressiveHedgingSolver(object):
         M = {}
         for b in self.bundles:
             M[b] = self.create_EF(b)
+            self.initialize_varmap(b=b, M=M[b])
             results[b] = solver.solve(M[b], solver_options=self.solver_options)
-            self.initialize_varmap(b, M[b]):
 
         # Step 3
         x_bar = {}
@@ -40,6 +42,7 @@ class ProgressiveHedgingSolver(object):
             M = {}
             for b in self.bundles:
                 M[b] = self.create_EF(b=b, w=w_prev, x_bar=x_bar_prev, rho=self.rho)
+                self.initialize_varmap(b=b, M=M[b])
                 results[b] = solver.solve(M[b], solver_options=self.solver_options)
                 #self.save_results(k, s, results[s], M[s])
 
@@ -102,22 +105,22 @@ class ProgressiveHedgingSolver_Pyomo(ProgressiveHedgingSolver):
         self.first_stage_variables = first_stage_variables
         self.varcuid_to_int = []
 
-    def initialize_varmap(self, b, M):
+    def initialize_varmap(self, *, b, M):
         if len(self.varcuid_to_int) == 0:
             #
             # self.varcuid_to_int maps the cuids for variables to unique integers (starting with 0).
             #   The variable cuids indexed here are specified by the list self.first_stage_variables.
             #
-            self.varcuid_to_int = []
+            self.varcuid_to_int = {}
             #for var in M.component_map(Var).values():
-            for varname in first_stage_variables:
-                cuid = ComponentUID(varname)
+            for varname in self.first_stage_variables:
+                cuid = pyo.ComponentUID(varname)
                 comp = cuid.find_component_on(M)
                 assert comp is not None, "Pyomo error: Unknown variable '%s'" % varname
-                if comp.ctype is IndexedComponent:
+                if comp.ctype is pyomo.core.base.indexed_component.IndexedComponent:
                     for var in comp.values():    
                         self.varcuid_to_int[ pyo.ComponentUID(var) ] = len(self.varcuid_to_int)
-                elif comp.ctype is Var:
+                elif comp.ctype is pyo.Var:
                     self.varcuid_to_int[ pyo.ComponentUID(comp) ] = len(self.varcuid_to_int)
                 else:
                     raise RuntimeError("Pyomo error: Component '%s' is not a variable" % varname)
@@ -127,6 +130,7 @@ class ProgressiveHedgingSolver_Pyomo(ProgressiveHedgingSolver):
         #   is an integer variable id (0..N-1) that is associated with the variables specified in
         #   self.first_stage_variables.
         #
+        self.int_to_var = {}
         for cuid,vid in self.varcuid_to_int.items():
             self.int_to_var[b, vid] = cuid.find_component_on(M)
 

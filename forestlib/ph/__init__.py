@@ -1,3 +1,3 @@
 # forestlib.ph
 
-import .ph
+from . import ph
