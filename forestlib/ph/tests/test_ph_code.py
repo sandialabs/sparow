@@ -1,6 +1,19 @@
-from ph import Farmer
 import mpisppy.utils.sputils as sputils
 import pyomo.environ as pyo
+from forestlib.ph import StochasticProgram_Pyomo
+
+
+class Farmer(StochasticProgram_Pyomo):
+
+    def __init__(self, data):
+        ProgressiveHedgingSolver_Pyomo.__init__(self, first_stage_variables=["DevotedAcreage[*]"])
+        self.data = data
+
+    def create_EF(self, * b, w=None, x_bar=None, rho=None):
+        pass
+
+    def store_results(self, *, x_bar, w, g):
+        pass
 
 def build_model(yields):
     model = pyo.ConcreteModel()
@@ -67,4 +80,4 @@ results = ef.solve_extensive_form()
 objval = ef.get_objective_value()
 print(f"{objval:.1f}")
 
-farmer=Farmer(data,rho,)
+#farmer=Farmer(,rho,)

@@ -1,37 +1,57 @@
-import pyomo.core.base.indexed_component
-import pyomo.environ as pyo
 
 class ProgressiveHedgingSolver(object):
 
-    def create_subproblem(self, args):
-        pass
-
-    def solve(self):
-        solver = SolverFactory(self.solver_name)
+    def __init__(self):
+        self.rho = 1.5
+        self.max_iterations = 100
+        # The StochProgram object manages the sub-solver interface.  By default, we assume
+        #   the user has initialized the sub-solver within the SP object.
+        self.solver_name = None
+        self.solver_options = {}
+        
+    def solve(self, sp, *, rho=None, max_iterations=None, solver=None, solver_options=None):
+        #
+        # Misc configuration
+        #
+        if rho:
+            self.rho = rho
+        if max_iterations:
+            self.max_iterations = max_iterations
+        if solver:
+            self.solver_name = solver
+        if solver_options:
+            self.solver_options = solver_options
+        if self.solver_name:
+            sp.set_solver(self.solver_name)
 
         # Step 2
         results = {}
         M = {}
-        for b in self.bundles:
-            M[b] = self.create_EF(b)
-            self.initialize_varmap(b=b, M=M[b])
-            results[b] = solver.solve(M[b], solver_options=self.solver_options)
+        for b in sp.bundles:
+            M[b] = sp.create_subproblem(b)
+            results[b] = sp.solve(M[b], solver_options=self.solver_options)
+
+        #
+        # This is a list of shared first-stage variables amongst all bundles.
+        # Note: we need to initialize this after we create our initial sub-problems.
+        #
+        sfs_variables = sp.shared_variables()
 
         # Step 3
         x_bar = {}
-        for x in self.first_stage_variables:
+        for x in sfs_variables:
             x_bar[x] = 0.0
-            for b in self.bundles:
-                x_bar[x] += self.bundle_probability[b] * self.get_variable_value(M[b], x)
+            for b in sp.bundles:
+                x_bar[x] += sp.bundle_probability[b] * sp.get_variable_value(M[b], x)
 
         # Step 4
         w = {}
-        for b in self.bundles:
+        for b in sp.bundles:
             w[b] = {}
-            for x in self.first_stage_variables:
-                w[b][x] = self.rho * (self.get_variable_value(M[b], x) - x_bar[x])
+            for x in sfs_variables:
+                w[b][x] = self.rho * (sp.get_variable_value(M[b], x) - x_bar[x])
 
-        while k < max_iterations:
+        while k < self.max_iterations:
             # Step 5
             k += 1
             x_bar_prev = x_bar
@@ -40,30 +60,28 @@ class ProgressiveHedgingSolver(object):
             # Step 6
             results = {}
             M = {}
-            for b in self.bundles:
-                M[b] = self.create_EF(b=b, w=w_prev, x_bar=x_bar_prev, rho=self.rho)
-                self.initialize_varmap(b=b, M=M[b])
-                results[b] = solver.solve(M[b], solver_options=self.solver_options)
+            for b in sp.bundles:
+                M[b] = sp.create_subproblem(b=b, w=w_prev, x_bar=x_bar_prev, rho=self.rho)
                 #self.save_results(k, s, results[s], M[s])
 
             # Step 7
             x_bar = {}
-            for x in self.first_stage_variables:
+            for x in sfs_variables:
                 x_bar[x] = 0.0
-                for b in self.bundles:
-                    x_bar[x] += data[b].probability * self.get_variable_value(x,M[b])
+                for b in sp.bundles:
+                    x_bar[x] += sp.bundle_probability(b) * sp.get_variable_value(x,M[b])
 
             # Step 8
             w = {}
-            for b in self.bundles:
+            for b in sp.bundles:
                 w[b] = {}
-                for x in self.first_stage_variables:
-                    w[b][x] = w_prev[b][x] + self.rho * (self.get_variable_value(x,M[b]) - x_bar[x])
+                for x in sfs_variables:
+                    w[b][x] = w_prev[b][x] + self.rho * (sp.get_variable_value(x,M[b]) - x_bar[x])
 
             # Step 9
             g = 0.0
-            for b in self.bundles:
-                g += data[b].probability * self.norm(self.get_variable_value(x,M[b]) - x_bar[x] for x in self.first_stage_variables)
+            for b in sp.bundles:
+                g += sp.bundle_probability(b) * self.norm(sp.get_variable_value(x,M[b]) - x_bar[x] for x in sfs_variables)
 
             # Step 10
             if g < self.convergence_tolerance:
@@ -73,80 +91,10 @@ class ProgressiveHedgingSolver(object):
 
         self.store_results(x_bar=x_bar, w=w, g=g)
             
-    def initialize_bundles(self, arg):
-        # Setup self.bundles based on the args tne the user data
-        # TODO HERE
-        pass
-
     def update_rho(self):
         # TODO HERE
         pass
 
-    def get_variable_value(self, v, M):
-        # Abstract
-        pass
-
-    def create_EF(self, * b, w=None, x_bar=None, rho=None):
-        # Abstract
-        pass
-
     def store_results(self, *, x_bar, w, g):
         # Abstract
         pass
-            
-            
-class ProgressiveHedgingSolver_Pyomo(ProgressiveHedgingSolver):
-
-    def __init__(self, *, first_stage_variables):
-        #
-        # A list of string names of variables, such as:
-        #   [ "x", "b.y", "b[*].z[*,*]" ]
-        #
-        self.first_stage_variables = first_stage_variables
-        self.varcuid_to_int = []
-
-    def initialize_varmap(self, *, b, M):
-        if len(self.varcuid_to_int) == 0:
-            #
-            # self.varcuid_to_int maps the cuids for variables to unique integers (starting with 0).
-            #   The variable cuids indexed here are specified by the list self.first_stage_variables.
-            #
-            self.varcuid_to_int = {}
-            #for var in M.component_map(Var).values():
-            for varname in self.first_stage_variables:
-                cuid = pyo.ComponentUID(varname)
-                comp = cuid.find_component_on(M)
-                assert comp is not None, "Pyomo error: Unknown variable '%s'" % varname
-                if comp.ctype is pyomo.core.base.indexed_component.IndexedComponent:
-                    for var in comp.values():    
-                        self.varcuid_to_int[ pyo.ComponentUID(var) ] = len(self.varcuid_to_int)
-                elif comp.ctype is pyo.Var:
-                    self.varcuid_to_int[ pyo.ComponentUID(comp) ] = len(self.varcuid_to_int)
-                else:
-                    raise RuntimeError("Pyomo error: Component '%s' is not a variable" % varname)
-
-        #
-        # self.int_to_var maps the tuple (b,vid) to a Pyomo Var object, where b is a bundle ID and vid
-        #   is an integer variable id (0..N-1) that is associated with the variables specified in
-        #   self.first_stage_variables.
-        #
-        self.int_to_var = {}
-        for cuid,vid in self.varcuid_to_int.items():
-            self.int_to_var[b, vid] = cuid.find_component_on(M)
-
-    def get_variable_value(self, b, v):
-        return pyo.value(self.int_to_var[b, v])
-            
-
-class Farmer(ProgressiveHedgingSolver_Pyomo):
-
-    def __init__(self, data):
-        ProgressiveHedgingSolver_Pyomo.__init__(self, first_stage_variables=["DevotedAcreage[*]"])
-        self.data = data
-
-    def create_EF(self, * b, w=None, x_bar=None, rho=None):
-        pass
-
-    def store_results(self, *, x_bar, w, g):
-        pass
-            
