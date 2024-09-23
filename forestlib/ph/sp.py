@@ -89,7 +89,7 @@ class StochasticProgram_Pyomo(StochasticProgram):
         if solver_options:
             self.solver_options = solver_options
         if self.pyo_solver is None:
-            self.pyo_solver = pyo.SolverFactor(self.solver)
+            self.pyo_solver = pyo.SolverFactory(self.solver)
 
-        res = self.pyo_solver.solve(M, solver_options=self.solver_options, tee=tee)
+        res = self.pyo_solver.solve(M, options=self.solver_options, tee=tee)
         return res
