@@ -49,7 +49,6 @@ class StochasticProgram_Pyomo(StochasticProgram):
         self.varcuid_to_int = []
         self.int_to_var = {}
         self.solver_options = {}
-        self.pyo_solver = None
 
     def initialize_varmap(self, *, b, M):
         if len(self.varcuid_to_int) == 0:
