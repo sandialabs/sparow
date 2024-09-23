@@ -59,3 +59,9 @@ p={'good':0.5,'bad':0.5}
 S_EF=Stochastic_Working_EF(first_stage_variables=first_stage_vars)
 EF_model=S_EF.create_EF(scenarios,p)
 res=S_EF.solve(EF_model,tee=True)
+bundles={'bundle_0':{'ID':['good','bad'],'Probability':[0.5,0.5]},'bundle_1':{'ID':['good','bad'],'Probability':[0.5,0.5]}}
+for b in bundles.keys():
+    S_EF=Stochastic_Working_EF(first_stage_variables=first_stage_vars)
+    print(b)
+    EF_model=S_EF.create_EF(bundles[b]['ID'],dict(zip(bundles[b]['ID'],bundles[b]['Probability'])))
+    res=S_EF.solve(EF_model,tee=True)
