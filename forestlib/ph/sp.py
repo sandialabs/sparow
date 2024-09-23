@@ -1,20 +1,28 @@
 import pyomo.core.base.indexed_component
 import pyomo.environ as pyo
-
+import scentobund
 
 class StochasticProgram(object):
 
     def __init__(self):
         self.solver = "gurobi"
-        self.bundles = []
+        self.bundles = {}
+        self.bundle_probability = {}
+        self.scenarios_in_bundle = {}
 
-    def initialize_bundles(self, arg):
-        # Setup self.bundles based on the args tne the user data
-        # TODO HERE
-        pass
+    def initialize_bundles(self, args): # need to think about user args
+        # returns bundles, probabilities, and list of scenarios in each bundle
+        self.bundles = scentobund.bundle_scheme(scentobund.data, scentobund.scheme)
+        
+        for key in self.bundles:
+            self.bundle_probability = self.bundles[key]['Probability']
+            self.scenarios_in_bundle = self.bundles[key]['IDs']
+            
+        return self.bundles, self.bundle_probability, self.scenarios_in_bundle
 
-    def bundle_probability(self, index):
-        pass
+    #def bundle_probability(self, bund_name):
+    #    return self.bundles[bund_name]['Probability']
+
 
     def initialize_varmap(self, *, b, M):
         pass
