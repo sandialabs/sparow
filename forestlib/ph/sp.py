@@ -40,6 +40,7 @@ class StochasticProgram(object):
 class StochasticProgram_Pyomo(StochasticProgram):
 
     def __init__(self, *, first_stage_variables):
+        StochasticProgram.__init__(self)
         #
         # A list of string names of variables, such as:
         #   [ "x", "b.y", "b[*].z[*,*]" ]
