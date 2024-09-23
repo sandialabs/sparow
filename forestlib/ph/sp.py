@@ -15,8 +15,8 @@ class StochasticProgram(object):
         self.bundles = scentobund.bundle_scheme(scentobund.data, scentobund.scheme)
         
         for key in self.bundles:
-            self.bundle_probability = self.bundles[key]['Probability']
-            self.scenarios_in_bundle = self.bundles[key]['IDs']
+            self.bundle_probability[key] = self.bundles[key]['Probability']
+            self.scenarios_in_bundle[key] = self.bundles[key]['IDs']
             
         return self.bundles, self.bundle_probability, self.scenarios_in_bundle
 
