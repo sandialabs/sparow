@@ -47,13 +47,14 @@ class StochasticProgram(object):
             
 class StochasticProgram_Pyomo(StochasticProgram):
 
-    def __init__(self, *, first_stage_variables):
+    def __init__(self, *, first_stage_variables,model_builder):
         StochasticProgram.__init__(self)
         #
         # A list of string names of variables, such as:
         #   [ "x", "b.y", "b[*].z[*,*]" ]
         #
         self.first_stage_variables = first_stage_variables
+        self.model_builder=model_builder
         self.varcuid_to_int = []
         self.int_to_var = {}
         self.solver_options = {}
@@ -87,6 +88,41 @@ class StochasticProgram_Pyomo(StochasticProgram):
         for cuid,vid in self.varcuid_to_int.items():
             self.int_to_var[b][vid] = cuid.find_component_on(M)
 
+    def create_EF(self,scenarios,p):
+        #
+        # scenarios: A list of string names of scenario IDs, such as:
+        #       [ "high_yield", "low_yield" ]
+        # p: A dict mapping scenario IDs to their probability, such as:
+        #       {'high_yield':0.5,'low_yield':0.5} 
+        
+        #1) create scenario dictionary
+        scen_dict={}
+        for scen in scenarios:
+            scenario_model=self.create_scenario(scen)
+            scen_dict[scen]=scenario_model
+        #2) Loop through scenario dictionary, add block, deactivate Obj
+        EF_model=pyo.ConcreteModel()
+        EF_model.s=pyo.Block(scenarios)
+        for scen in scen_dict.keys():
+            EF_model.s[scen].transfer_attributes_from(scen_dict[scen])
+            EF_model.s[scen].obj.deactivate()
+        #3)Create Obj:sum of scenario obj * probability
+        EF_model.obj=pyo.Objective(expr=sum(p[s]*EF_model.s[s].obj.expr  for s in scenarios))
+        #4)Create First Stage Variables, Constrain value to be equal under all scenarios
+        EF_model.non_ant_cons=pyo.ConstraintList()
+        for x in self.first_stage_variables:
+            EF_model.add_component(x, pyo.Var())
+            for s in scenarios:
+                EF_model.non_ant_cons.add(expr=EF_model.find_component(x)==EF_model.s[s].find_component(x))
+    
+        return EF_model
+    
+    def create_scenario(self,scen):
+        # scen: single-element in scenario list:
+        #       "low_yield" 
+        model= self.model_builder(scen)
+        return model
+    
     def get_variable_value(self, b, v):
         return pyo.value(self.int_to_var[b][v])
             
