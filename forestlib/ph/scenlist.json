@@ -2,72 +2,61 @@
     { "ID": 3,
         "Fidelity": "HF",
         "Demand": 2.1,
-        "Time": 2, 
         "Weight": 1,
         "Probability": 0.1
     },
     { "ID": 0,
         "Fidelity": "HF",
         "Demand": 1.2,
-        "Time": 2,
         "Weight": 1,
         "Probability": 0.1
     },
     { "ID": 5,
         "Fidelity": "HF",
         "Demand": 2.8,
-        "Time": 2, 
         "Weight": 1,
         "Probability": 0.1
     },
     { "ID": 1,
         "Fidelity": "HF",
         "Demand": 1.6,
-        "Time": 2, 
         "Weight": 1,
         "Probability": 0.1
     },
     { "ID": 2,
         "Fidelity": "HF",
         "Demand": 1.9,
-        "Time": 2, 
         "Weight": 1,
         "Probability": 0.1
     },
     { "ID": 4,
         "Fidelity": "HF",
         "Demand": 2.7,
-        "Time": 2, 
         "Weight": 1,
         "Probability": 0.1
     },
     { "ID": 6,
         "Fidelity": "LF",
         "Demand": 1,
-        "Time": 2, 
         "Weight": 1,
         "Probability": 0.1
     },
     { "ID": 7,
         "Fidelity": "LF",
         "Demand": 2,
-        "Time": 2, 
         "Weight": 1,
         "Probability": 0.1
     },
     { "ID": 8,
         "Fidelity": "LF",
         "Demand": 3,
-        "Time": 2, 
         "Weight": 1,
         "Probability": 0.1
     },
     { "ID": 9,
         "Fidelity": "LF",
         "Demand": 4,
-        "Time": 2, 
         "Weight": 1,
         "Probability": 0.1
     }
 ]}
-
