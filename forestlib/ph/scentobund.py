@@ -1,3 +1,5 @@
+import math
+
 # function that returns scenario data from json file - may add additional file formats later
 def scenlist_json():
     import json
@@ -57,45 +59,63 @@ def bundle_multifid(data):  # still needs some work
 
 
 def bundle_similar_partition(data): # bundle similar scenarios together; each scenario appears in exactly one bundle
+    '''
+    DETERMINE NUMBER OF BUNDLES
+    '''
     # lower/upper bounds on the number of bundles
-    min_num_buns = 4    # using min/max values from escudero paper
-    max_num_buns = 8
+    min_num_buns = 1
+    max_num_buns = 3    # difference between min and max should be at least 1
 
     list_scens = data['scenarios']
 
-    list_buns = {}
-    bun_mean = [ [] for i in range(max_num_buns - min_num_buns + 1)]
+    list_buns = {0: [[[0,1,2]]], 1: [[[0,1], [2]], [[0,2], [1]], [[1,2], [0]]], 2: [[[0]], [[1]], [[2]]]} ### need to think about how to generalize this
+    bun_err = []
     for i in range(max_num_buns - min_num_buns + 1):
-        list_buns[i] = "temporary placeholder - dictionary of bundles" ### need to think about how to generalize this
-        for j in range(len(list_buns)):
-            bun_mean_inner = ["temporary placeholder - calculate bundle means"]
-            bun_mean[i].append(bun_mean_inner) 
-            
-        # assign each scenario to closest bundle
-        temp_dict = {}
-        if all(q == bun_mean_inner[0] for q in bun_mean_inner): # skip bundle reassignment if all bundle means are the same
-            temp_dict = "temporary placeholder - dictionary matching each scen to a bund"
-        else:
-            for k, scen in enumerate(list_scens):
-                dist_scen_to_bun = [abs(scen[k]['Demand'] - bun_mean[i][j]) for j in range(len(list_buns))] 
-                min_dist = min(dist_scen_to_bun) # double check index is correct here
-                temp_dict[dist_scen_to_bun.index(min_dist)].append(scen)
+        bun_mean = []
         
-        # calculate bundling error -  
-        '''
-        the rest of this function is pseudocode
-        for j in range(len(list_buns)):
-            err[i,new_bun] = sum(abs(k - bun_mean[i][new_bun]) for k in enumerate(list_scens))
+        # assign each scenario to closest bundle
+        for j in range(len(list_buns[i])):
+            bun_mean.append([(sum(list_buns[i][j][m])/len(list_buns[i][j][m])) for m in range(len(list_buns[i][j]))])
+
+            temp_dict = {m: [] for m in range(len(list_buns[i][j]))}
+            temp_bun_err = []
+            #if all(q == bun_mean[0] for q in bun_mean): # need to add if statement to eliminate redundant bundle means / skip bundle reassignment if all bundle means are the same
+            for k, scen in enumerate(list_scens):
+                dist_scen_to_bun = [abs(scen['Demand'] - bun_mean[j][m]) for m in range(len(list_buns[i][j]))]
+                min_dist = min(dist_scen_to_bun)
+                temp_dict[dist_scen_to_bun.index(min_dist)].append(scen)
+                temp_bun_err.append(abs(bun_mean[j][dist_scen_to_bun.index(min_dist)] - scen['Demand']))
+
+            # calculate bundling error 
+            bun_err.append(sum(temp_bun_err)) ######### start debugging here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     
-        num_buns = argmax(sum(total_error[i,j] for j) - sum(total_error[i-1,j] for j)) ## need if condition for single bundle case
-        '''
+    total_bun_err = [abs(bun_err[i] - bun_err[i-1]) for i in range(1, max_num_buns - min_num_buns + 2)]
+    max_total_bun_err = max(total_bun_err)
+    num_buns = total_bun_err.index(max_total_bun_err) + min_num_buns - 1
 
-
+    '''
+    CREATE BUNDLES WITH num_buns
+    '''
     core_scenarios = {} # core scenarios are LF (can change depending on the problem)
     for i in range(len(data['scenarios'])):
         if data['scenarios'][i]['Fidelity'] == 'LF':
-            core_scenarios.append(data['scenarios'][i])
+            core_scenarios.update({data['scenarios'][i]['ID']: data['scenarios'][i]['Demand']})
+            #core_scenarios.append(data['scenarios'][i])
 
+    # if num core_scens > num_buns, remove last scenario
+
+    for s in core_scenarios.keys():
+        bundle[s] = []
+
+    for k, scen in enumerate(list_scens):
+        dist_to_cores = []
+        for s in core_scenarios.keys():
+            dist_to_cores[s] = abs(scen[k]['Demand'] - core_scenarios[s])
+            
+        closest_core = min(dist_to_cores) 
+        bundle[dist_to_cores.index(closest_core)].append(scen)
+        
+    # add if statement here to eliminate cores that have no associated scenarios
 
     return bundle 
 
