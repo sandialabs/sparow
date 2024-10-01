@@ -1,6 +1,6 @@
 import pyomo.core.base.indexed_component
 import pyomo.environ as pyo
-import scentobund
+from . import scentobund
 
 class StochasticProgram(object):
 
