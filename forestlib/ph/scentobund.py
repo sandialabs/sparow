@@ -1,24 +1,21 @@
-import math
-
-# function that returns scenario data from json file - may add additional file formats later
-def scenlist_json():
-    import json
-    with open('scenlist.json', 'r') as file:
-        data = json.load(file)
-    
-    return data
-
-data = scenlist_json()  # scenario data
-    
 '''
 bundle is a dictionary of dictionaries
     - keys are names of bundles
     - for each dictionary in bundle, keys are 'IDs' (i.e., which scenarios are in the bundle) and 'Probability'
 
-specify which bundling scheme (function) is used via "scheme" and bundling_scheme function
+specify which bundling scheme (function) is used via "bundle_scheme" in sp.py
 '''
 
+scheme = {'bundle_by_fidelity':       bundle_by_fidelity,
+          'bundle_multifid':          bundle_multifid, 
+          'bundle_similar_partition': bundle_similar_partition,
+          'single_scenario':          single_scenario}
+
+def bundle_scheme(data, scheme_str):
+        return scheme[scheme_str](data)
+
 ###################################################################################################################
+
 bundle = {}
 
 def bundle_by_fidelity(data):
@@ -120,15 +117,17 @@ def bundle_similar_partition(data): # bundle similar scenarios together; each sc
     return bundle 
 
 
+def single_scenario(data):
+    for scen in data['scenarios']:
+        bundle[str(scen['ID'])] = {'IDs': [scen['ID']], 'Probability': scen['Probability']}
+
+    return bundle
+
+
 def bundle_similar_cover(data): # bundle similar scenarios together; each scenario appears in two bundles
     pass 
 
 
 def bundle_random_partition(data): # random bundling
     pass
-###################################################################################################################
 
-
-scheme = bundle_multifid
-def bundle_scheme(data, scheme):
-        return scheme(data)

@@ -1,6 +1,7 @@
 import pyomo.core.base.indexed_component
 import pyomo.environ as pyo
 from . import scentobund
+import json
 
 class StochasticProgram(object):
 
@@ -9,16 +10,20 @@ class StochasticProgram(object):
         self.bundles = {}
         self.bundle_probability = {}
         self.scenarios_in_bundle = {}
+        self.bundle_scheme = "single_scenario"
+        self.json_data = {}
 
-    def initialize_bundles(self, args): # need to think about user args
+    def initialize_bundles(self, filename):
         # returns bundles, probabilities, and list of scenarios in each bundle
-        self.bundles = scentobund.bundle_scheme(scentobund.data, scentobund.scheme)
+        with open(f'{filename}.json', 'r') as file:
+            self.json_data = json.load(file)
+    
+        self.bundles = scentobund.bundle_scheme(self.json_data, self.bundle_scheme)
         
         for key in self.bundles:
             self.bundle_probability[key] = self.bundles[key]['Probability']
             self.scenarios_in_bundle[key] = self.bundles[key]['IDs']
             
-        return self.bundles, self.bundle_probability, self.scenarios_in_bundle
 
     #def bundle_probability(self, bund_name):
     #    return self.bundles[bund_name]['Probability']
