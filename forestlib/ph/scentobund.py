@@ -84,7 +84,7 @@ def bundle_similar_partition(data): # bundle similar scenarios together; each sc
                 temp_bun_err.append(abs(bun_mean[j][dist_scen_to_bun.index(min_dist)] - scen['Demand']))
 
             # calculate bundling error 
-            bun_err.append(sum(temp_bun_err)) ######### start debugging here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            bun_err.append(sum(temp_bun_err))
     
     total_bun_err = [abs(bun_err[i] - bun_err[i-1]) for i in range(1, max_num_buns - min_num_buns + 2)]
     max_total_bun_err = max(total_bun_err)
@@ -96,28 +96,37 @@ def bundle_similar_partition(data): # bundle similar scenarios together; each sc
     core_scenarios = {} # core scenarios are LF (can change depending on the problem)
     for i in range(len(data['scenarios'])):
         if data['scenarios'][i]['Fidelity'] == 'LF':
-            core_scenarios.update({data['scenarios'][i]['ID']: data['scenarios'][i]['Demand']})
+            core_scenarios.update({f'{data['scenarios'][i]['ID']}': data['scenarios'][i]['Demand']})
             #core_scenarios.append(data['scenarios'][i])
 
     # if num core_scens > num_buns, remove last scenario
 
     for s in core_scenarios.keys():
-        bundle[s] = []
+        bundle[s] = {'IDs': [], 'Probability': []}
 
-    for k, scen in enumerate(list_scens):
-        dist_to_cores = []
-        for s in core_scenarios.keys():
-            dist_to_cores[s] = abs(scen[k]['Demand'] - core_scenarios[s])
+    not_core_scenarios = {}
+    for i in range(len(data['scenarios'])):
+        if data['scenarios'][i]['Fidelity'] == 'HF':
+            not_core_scenarios.update({f'{data['scenarios'][i]['ID']}': [data['scenarios'][i]['Demand'], data['scenarios'][i]['Probability']]})
+
+    dist_to_cores = [] #[ [] for k, scen in enumerate(list_scens)]
+    for k, scen in enumerate(not_core_scenarios):
+        for s, core in enumerate(core_scenarios.keys()):
+            dist_to_cores.append(abs(not_core_scenarios[scen][0] - core_scenarios[core]))
             
-        closest_core = min(dist_to_cores) 
-        bundle[dist_to_cores.index(closest_core)].append(scen)
+        min_dist = min(dist_to_cores)
+        closest_core = list(core_scenarios.items())[dist_to_cores.index(min_dist)][0]
+        bundle[f'{closest_core}']['IDs'].append(scen)
+        bundle[f'{closest_core}']['Probability'].append(not_core_scenarios[scen][1])
+        dist_to_cores = []
         
+    # TEST THE FUNCTION AGAIN!!
     # add if statement here to eliminate cores that have no associated scenarios
 
     return bundle 
 
 
-def single_scenario(data):
+def single_scenario(data): # only using HF scenarios!!
     for scen in data['scenarios']:
         bundle[str(scen['ID'])] = {'IDs': [scen['ID']], 'Probability': scen['Probability']}
 
