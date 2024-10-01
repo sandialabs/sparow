@@ -110,10 +110,19 @@ class StochasticProgram_Pyomo(StochasticProgram):
         EF_model.obj=pyo.Objective(expr=sum(p[s]*EF_model.s[s].obj.expr  for s in scenarios))
         #4)Create First Stage Variables, Constrain value to be equal under all scenarios
         EF_model.non_ant_cons=pyo.ConstraintList()
-        for x in self.first_stage_variables:
-            EF_model.add_component(x, pyo.Var())
+        #EF_model.rootx = pyo.Var(range(len(self.varcuid_to_int)))
+        EF_model.rootx = pyo.Var(list(self.varcuid_to_int.values()))
+            #add_component(x, pyo.Var())
+        for cuid,i in self.varcuid_to_int.items():
             for s in scenarios:
-                EF_model.non_ant_cons.add(expr=EF_model.find_component(x)==EF_model.s[s].find_component(x))
+                var = cuid.find_component_on(EFmodel.s[s])
+                assert var is not None, "Pyomo error: Unknown variable '%s' on scenario model '%s'" % (cuid, s)
+                EF_model.non_ant_cons.add(expr=EF_model.rootx[i] == var)
+
+        #for x in self.first_stage_variables:
+        #    for s in scenarios:
+        #        EF_model.non_ant_cons.add(expr=EF_model.find_component(x)==EF_model.s[s].find_component(x))
+        #        EF_model.non_ant_cons.add(expr=EF_model.find_component(x)==EF_model.s[s].find_component(x))
     
         return EF_model
     
