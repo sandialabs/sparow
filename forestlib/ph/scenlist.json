@@ -15,43 +15,43 @@
         "Fidelity": "HF",
         "Demand": 2.8,
         "Weight": 1,
-        "Probability": 0.1
+        "Probability": 0.2
     },
     { "ID": 1,
         "Fidelity": "HF",
         "Demand": 1.6,
         "Weight": 1,
-        "Probability": 0.1
+        "Probability": 0.2
     },
     { "ID": 2,
         "Fidelity": "HF",
         "Demand": 1.9,
         "Weight": 1,
-        "Probability": 0.1
+        "Probability": 0.2
     },
     { "ID": 4,
         "Fidelity": "HF",
         "Demand": 2.7,
         "Weight": 1,
-        "Probability": 0.1
+        "Probability": 0.2
     },
     { "ID": 6,
         "Fidelity": "LF",
         "Demand": 1,
         "Weight": 1,
-        "Probability": 0.1
+        "Probability": 0.3
     },
     { "ID": 7,
         "Fidelity": "LF",
         "Demand": 2,
         "Weight": 1,
-        "Probability": 0.1
+        "Probability": 0.3
     },
     { "ID": 8,
         "Fidelity": "LF",
         "Demand": 3,
         "Weight": 1,
-        "Probability": 0.1
+        "Probability": 0.3
     },
     { "ID": 9,
         "Fidelity": "LF",
