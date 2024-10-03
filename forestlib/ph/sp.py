@@ -64,12 +64,13 @@ class StochasticProgram(object):
             
 class StochasticProgram_Pyomo(StochasticProgram):
 
-    def __init__(self, *, first_stage_variables, model_builder):
+    def __init__(self, *, objective, first_stage_variables, model_builder):
         StochasticProgram.__init__(self)
         #
         # A list of string names of variables, such as:
         #   [ "x", "b.y", "b[*].z[*,*]" ]
         #
+        self.objective = objective
         self.first_stage_variables = first_stage_variables
         self.model_builder=model_builder
         self.varcuid_to_int = {}
@@ -120,19 +121,23 @@ class StochasticProgram_Pyomo(StochasticProgram):
         
         #1) create scenario dictionary
         scen_dict={}
-        for scen in scenarios:
-            scenario_model=self.create_scenario(self.scenario_data[scen])
-            scen_dict[scen]=scenario_model
+        for s in scenarios:
+            scenario_model=self.create_scenario(self.scenario_data[s])
+            scen_dict[s]=scenario_model
 
         #2) Loop through scenario dictionary, add block, deactivate Obj
         EF_model=pyo.ConcreteModel()
         EF_model.s=pyo.Block(scenarios)
-        for scen in scen_dict.keys():
-            EF_model.s[scen].transfer_attributes_from(scen_dict[scen])
-            EF_model.s[scen].obj.deactivate()
+        objective_cuid = pyo.ComponentUID(self.objective)
+        obj = {}
+        for s, scen_model in scen_dict.items():
+            EF_model.s[s].transfer_attributes_from(scen_model)
+            obj[s] = objective_cuid.find_component_on(EF_model.s[s])
+            assert obj[s] is not None, f"Cannot find objective '{self.objective}' on model for scenario '{s}'"
+            obj[s].deactivate()
             
         #3)Create Obj:sum of scenario obj * probability
-        obj = sum(p[s]*EF_model.s[s].obj.expr  for s in scenarios)
+        obj = sum(p[s]*obj[s].expr  for s in scenarios)
         if w is not None:
             # MORE HERE
             pass

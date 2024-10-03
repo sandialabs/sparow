@@ -148,13 +148,13 @@ def model_builder(scen, scen_args):
     def total_cost_rule(model):
         return model.FirstStageCost + model.SecondStageCost
 
-    #model.Total_Cost_Objective = pyo.Objective(rule=total_cost_rule)
-    model.obj = pyo.Objective(rule=total_cost_rule)
+    model.Total_Cost_Objective = pyo.Objective(rule=total_cost_rule)
 
     return model
 
 
 FarmerSP = StochasticProgram_Pyomo(
+    objective="Total_Cost_Objective",
     first_stage_variables=["DevotedAcreage[*]"], model_builder=model_builder
 )
 
