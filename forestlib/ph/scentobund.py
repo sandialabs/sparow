@@ -142,8 +142,6 @@ def single_scenario(data): # only using HF scenarios!!
     for scen in data['scenarios']:
         bundle[str(scen['ID'])] = {'IDs': [scen['ID']], 'Probability': scen['Probability'], 'Scenario_Probabilities':{scen['ID']:1.0}}
 
-    import pprint
-    pprint.pprint(bundle)
     return bundle
 
 

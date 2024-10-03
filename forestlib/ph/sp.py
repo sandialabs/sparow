@@ -55,7 +55,7 @@ class StochasticProgram(object):
 
     def create_subproblem(self, b, *, w=None, x_bar=None, rho=None):
         M = self.create_EF(b=b, w=w, x_bar=x_bar, rho=rho)
-        self.initialize_varmap(b=b, M=M)
+        #self._initialize_varmap(b=b, M=M)
         return M
 
     def create_EF(self, *, b, w=None, x_bar=None, rho=None):
@@ -85,19 +85,17 @@ class StochasticProgram_Pyomo(StochasticProgram):
             #
             self.varcuid_to_int = {}
             for varname in self.first_stage_variables:
-                print("HEREX", varname)
                 cuid = pyo.ComponentUID(varname)
-                print("HEREY", cuid)
                 comp = cuid.find_component_on(M)
                 assert comp is not None, "Pyomo error: Unknown variable '%s'" % varname
-                if comp.ctype is pyomo.core.base.indexed_component.IndexedComponent:
+                if comp.is_indexed():
+                #if comp.ctype is pyomo.core.base.indexed_component.IndexedComponent:
                     for var in comp.values():    
                         self.varcuid_to_int[ pyo.ComponentUID(var) ] = len(self.varcuid_to_int)
                 elif comp.ctype is pyo.Var:
                     self.varcuid_to_int[ pyo.ComponentUID(comp) ] = len(self.varcuid_to_int)
                 else:
                     raise RuntimeError("Pyomo error: Component '%s' is not a variable" % varname)
-            pprint.pprint(self.varcuid_to_int)
 
     # DEPRECATED
     def _initialize_varmap(self, *, b, M):
@@ -148,7 +146,6 @@ class StochasticProgram_Pyomo(StochasticProgram):
             #add_component(x, pyo.Var())
         self.int_to_var[b] = {}
         for cuid,i in self.varcuid_to_int.items():
-            print("HERE",cuid)
             for s in scenarios:
                 var = cuid.find_component_on(EF_model.s[s])
                 assert var is not None, "Pyomo error: Unknown variable '%s' on scenario model '%s'" % (cuid, s)
@@ -181,5 +178,16 @@ class StochasticProgram_Pyomo(StochasticProgram):
         if self.pyo_solver is None:
             self.pyo_solver = pyo.SolverFactory(self.solver)
 
-        res = self.pyo_solver.solve(M, options=self.solver_options, tee=tee)
-        return res
+        results = self.pyo_solver.solve(M, options=self.solver_options, tee=solver_options.get('tee',tee), load_solutions=False)
+        status = results.solver.status
+        if not pyo.check_optimal_termination(results):
+            condition = results.solver.termination_condition
+            raise Exception(
+                (
+                    "Error solving subproblem '{}': "
+                    "SolverStatus = {}, "
+                    "TerminationCondition = {}"
+                ).format(M.name, status.value, condition.value)
+            )
+        M.solutions.load_from(results)
+
