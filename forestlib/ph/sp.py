@@ -25,8 +25,6 @@ class StochasticProgram(object):
         elif bundle_data is not None:
             self.json_data = bundle_data
    
-        #for scen in self.json_data['scenarios']:
-        #    self.scenario_data[scen['ID']] = scen
         self.scenario_data = {scen['ID']:scen for scen in self.json_data['scenarios']}
 
         if bundle_scheme:
@@ -39,6 +37,9 @@ class StochasticProgram(object):
             self.bundle_probability[key] = self.bundles[key]['Probability']
             self.scenario_probability[key] = self.bundles[key]['Scenario_Probabilities']
             self.scenarios_in_bundle[key] = self.bundles[key]['IDs']
+
+        # TODO: Check here at that the scenario probabilities sum to 1.0
+        # TODO: Check here at that the bundle probabilities sum to 1.0
             
 
     def get_variable_value(self, v, M):
