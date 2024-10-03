@@ -6,19 +6,8 @@ bundle is a dictionary of dictionaries
 specify which bundling scheme (function) is used via "bundle_scheme" in sp.py
 '''
 
-scheme = {'bundle_by_fidelity':       bundle_by_fidelity,
-          'bundle_multifid':          bundle_multifid, 
-          'bundle_similar_partition': bundle_similar_partition,
-          'single_scenario':          single_scenario}
-
-def bundle_scheme(data, scheme_str):
-        return scheme[scheme_str](data)
-
-###################################################################################################################
-
-bundle = {}
-
 def bundle_by_fidelity(data):
+    bundle = {}
 
     bundle_names = ['HF', 'LF']
     for bund in bundle_names:
@@ -43,6 +32,7 @@ def bundle_by_fidelity(data):
 
 
 def bundle_multifid(data):  # still needs some work
+    bundle = {}
     bundle_names = ['Low', 'Medium', 'High']
 
     for bund in bundle_names:
@@ -59,6 +49,7 @@ def bundle_similar_partition(data): # bundle similar scenarios together; each sc
     '''
     DETERMINE NUMBER OF BUNDLES
     '''
+    bundle = {}
     # lower/upper bounds on the number of bundles
     min_num_buns = 1
     max_num_buns = 3    # difference between min and max should be at least 1
@@ -147,16 +138,33 @@ def bundle_similar_partition(data): # bundle similar scenarios together; each sc
 
 
 def single_scenario(data): # only using HF scenarios!!
+    bundle = {}
     for scen in data['scenarios']:
-        bundle[str(scen['ID'])] = {'IDs': [scen['ID']], 'Probability': scen['Probability']}
+        bundle[str(scen['ID'])] = {'IDs': [scen['ID']], 'Probability': scen['Probability'], 'Scenario_Probabilities':{scen['ID']:1.0}}
 
+    import pprint
+    pprint.pprint(bundle)
     return bundle
 
 
 def bundle_similar_cover(data): # bundle similar scenarios together; each scenario appears in two bundles
+    bundle = {}
     pass 
 
 
 def bundle_random_partition(data): # random bundling
+    bundle = {}
     pass
+
+###################################################################################################################
+
+
+scheme = {'bundle_by_fidelity':       bundle_by_fidelity,
+          'bundle_multifid':          bundle_multifid, 
+          'bundle_similar_partition': bundle_similar_partition,
+          'single_scenario':          single_scenario}
+
+def bundle_scheme(data, scheme_str, bundle_args=None):
+    return scheme[scheme_str](data)
+
 

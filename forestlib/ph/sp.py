@@ -1,6 +1,7 @@
+import pprint
 import pyomo.core.base.indexed_component
 import pyomo.environ as pyo
-#from . import scentobund
+from . import scentobund
 import json
 
 class StochasticProgram(object):
@@ -10,27 +11,35 @@ class StochasticProgram(object):
         self.bundles = {}
         self.bundle_probability = {}
         self.scenarios_in_bundle = {}
+        self.scenario_probability = {}
+        self.scenario_data = {}
         self.bundle_scheme = "single_scenario"
+        self.bundle_args = {}
         self.json_data = {}
 
-    def initialize_bundles(self, filename):
+    def initialize_bundles(self, *, filename=None, bundle_data=None, bundle_scheme=None, bundle_args=None):
         # returns bundles, probabilities, and list of scenarios in each bundle
-        with open(f'{filename}.json', 'r') as file:
-            self.json_data = json.load(file)
-    
-        self.bundles = scentobund.bundle_scheme(self.json_data, self.bundle_scheme)
+        if filename is not None:
+            with open(f'{filename}', 'r') as file:
+                self.json_data = json.load(file)
+        elif bundle_data is not None:
+            self.json_data = bundle_data
+   
+        #for scen in self.json_data['scenarios']:
+        #    self.scenario_data[scen['ID']] = scen
+        self.scenario_data = {scen['ID']:scen for scen in self.json_data['scenarios']}
+
+        if bundle_scheme:
+            self.bundle_scheme = bundle_scheme
+        if bundle_args:
+            self.bundle_args = bundle_args
+        self.bundles = scentobund.bundle_scheme(self.json_data, self.bundle_scheme, self.bundle_args)
         
         for key in self.bundles:
             self.bundle_probability[key] = self.bundles[key]['Probability']
+            self.scenario_probability[key] = self.bundles[key]['Scenario_Probabilities']
             self.scenarios_in_bundle[key] = self.bundles[key]['IDs']
             
-
-    #def bundle_probability(self, bund_name):
-    #    return self.bundles[bund_name]['Probability']
-
-
-    def initialize_varmap(self, *, b, M):
-        pass
 
     def get_variable_value(self, v, M):
         pass
@@ -38,21 +47,24 @@ class StochasticProgram(object):
     def shared_variables(self):
         pass
 
+    def set_solver(self, name):
+        self.solver = name
+
     def solve(self, M, *, solver_options=None):
         pass
 
-    def create_subproblem(self, * b, w=None, x_bar=None, rho=None):
+    def create_subproblem(self, b, *, w=None, x_bar=None, rho=None):
         M = self.create_EF(b=b, w=w, x_bar=x_bar, rho=rho)
         self.initialize_varmap(b=b, M=M)
         return M
 
-    def create_EF(self, * b, w=None, x_bar=None, rho=None):
+    def create_EF(self, *, b, w=None, x_bar=None, rho=None):
         pass
 
             
 class StochasticProgram_Pyomo(StochasticProgram):
 
-    def __init__(self, *, first_stage_variables,model_builder):
+    def __init__(self, *, first_stage_variables, model_builder):
         StochasticProgram.__init__(self)
         #
         # A list of string names of variables, such as:
@@ -65,7 +77,7 @@ class StochasticProgram_Pyomo(StochasticProgram):
         self.solver_options = {}
         self.pyo_solver=None
 
-    def initialize_cuid_map(self,*,M):
+    def _initialize_cuid_map(self,*,M):
         if len(self.varcuid_to_int) == 0:
             #
             # self.varcuid_to_int maps the cuids for variables to unique integers (starting with 0).
@@ -73,7 +85,9 @@ class StochasticProgram_Pyomo(StochasticProgram):
             #
             self.varcuid_to_int = {}
             for varname in self.first_stage_variables:
+                print("HEREX", varname)
                 cuid = pyo.ComponentUID(varname)
+                print("HEREY", cuid)
                 comp = cuid.find_component_on(M)
                 assert comp is not None, "Pyomo error: Unknown variable '%s'" % varname
                 if comp.ctype is pyomo.core.base.indexed_component.IndexedComponent:
@@ -83,8 +97,10 @@ class StochasticProgram_Pyomo(StochasticProgram):
                     self.varcuid_to_int[ pyo.ComponentUID(comp) ] = len(self.varcuid_to_int)
                 else:
                     raise RuntimeError("Pyomo error: Component '%s' is not a variable" % varname)
+            pprint.pprint(self.varcuid_to_int)
 
-    def initialize_varmap(self, *, b, M):
+    # DEPRECATED
+    def _initialize_varmap(self, *, b, M):
         
         #
         # self.int_to_var maps the tuple (b,vid) to a Pyomo Var object, where b is a bundle ID and vid
@@ -95,18 +111,21 @@ class StochasticProgram_Pyomo(StochasticProgram):
         for cuid,vid in self.varcuid_to_int.items():
             self.int_to_var[b][vid] = cuid.find_component_on(M.rootx[vid])
 
-    def create_EF(self,*,scenarios,p,b):
+    def create_EF(self, *, w=None, x_bar=None, rho=None, b):
         #
         # scenarios: A list of string names of scenario IDs, such as:
         #       [ "high_yield", "low_yield" ]
         # p: A dict mapping scenario IDs to their probability, such as:
         #       {'high_yield':0.5,'low_yield':0.5} 
+        scenarios = self.scenarios_in_bundle[b]
+        p = self.scenario_probability[b]
         
         #1) create scenario dictionary
         scen_dict={}
         for scen in scenarios:
-            scenario_model=self.create_scenario(scen)
+            scenario_model=self.create_scenario(self.scenario_data[scen])
             scen_dict[scen]=scenario_model
+
         #2) Loop through scenario dictionary, add block, deactivate Obj
         EF_model=pyo.ConcreteModel()
         EF_model.s=pyo.Block(scenarios)
@@ -115,7 +134,12 @@ class StochasticProgram_Pyomo(StochasticProgram):
             EF_model.s[scen].obj.deactivate()
             
         #3)Create Obj:sum of scenario obj * probability
-        EF_model.obj=pyo.Objective(expr=sum(p[s]*EF_model.s[s].obj.expr  for s in scenarios))
+        obj = sum(p[s]*EF_model.s[s].obj.expr  for s in scenarios)
+        if w is not None:
+            # MORE HERE
+            pass
+        EF_model.obj=pyo.Objective(expr=obj)
+
         #4)Create First Stage Variables, Constrain value to be equal under all scenarios
         EF_model.non_ant_cons=pyo.ConstraintList()
         
@@ -124,6 +148,7 @@ class StochasticProgram_Pyomo(StochasticProgram):
             #add_component(x, pyo.Var())
         self.int_to_var[b] = {}
         for cuid,i in self.varcuid_to_int.items():
+            print("HERE",cuid)
             for s in scenarios:
                 var = cuid.find_component_on(EF_model.s[s])
                 assert var is not None, "Pyomo error: Unknown variable '%s' on scenario model '%s'" % (cuid, s)
@@ -137,11 +162,11 @@ class StochasticProgram_Pyomo(StochasticProgram):
     
         return EF_model
     
-    def create_scenario(self,scen):
+    def create_scenario(self, scen):
         # scen: single-element in scenario list:
         #       "low_yield" 
-        model= self.model_builder(scen)
-        self.initialize_cuid_map(M=model)
+        model= self.model_builder(scen, {})
+        self._initialize_cuid_map(M=model)
         return model
     
     def get_variable_value(self, b, v):
