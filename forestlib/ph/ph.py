@@ -79,7 +79,7 @@ class ProgressiveHedgingSolver(object):
             logger.info("")
             logger.info(f"Iteration: {k}")
             logger.debug(f"x_bar:     {x_bar}")
-            logger.debug(f"rhow:      {self.rho}")
+            logger.debug(f"rho:      {self.rho}")
 
             # Step 5
             x_bar_prev = x_bar
@@ -90,7 +90,7 @@ class ProgressiveHedgingSolver(object):
             for b in sp.bundles:
                 logger.debug(f"Creating subproblem '{b}'")
                 logger.debug(f"  w: {w[b]}")
-                M[b] = sp.create_subproblem(b=b, w=w_prev, x_bar=x_bar_prev, rho=self.rho)
+                M[b] = sp.create_subproblem(b=b, w=w_prev[b], x_bar=x_bar_prev, rho=self.rho)
                 logger.debug(f"Optimizing subproblem '{b}'")
                 sp.solve(M[b], solver_options=self.solver_options)
                 logger.debug(f"Optimization Complete")

@@ -111,13 +111,7 @@ class StochasticProgram_Pyomo(StochasticProgram):
             self.int_to_var[b][vid] = cuid.find_component_on(M.rootx[vid])
 
     def create_EF(self, *, w=None, x_bar=None, rho=None, b):
-        #
-        # scenarios: A list of string names of scenario IDs, such as:
-        #       [ "high_yield", "low_yield" ]
-        # p: A dict mapping scenario IDs to their probability, such as:
-        #       {'high_yield':0.5,'low_yield':0.5} 
         scenarios = self.scenarios_in_bundle[b]
-        p = self.scenario_probability[b]
         
         #1) create scenario dictionary
         scen_dict={}
@@ -136,31 +130,24 @@ class StochasticProgram_Pyomo(StochasticProgram):
             assert obj[s] is not None, f"Cannot find objective '{self.objective}' on model for scenario '{s}'"
             obj[s].deactivate()
             
+        #2.5) Create first stage variables
+        EF_model.rootx = pyo.Var(list(self.varcuid_to_int.values()))
+        self.int_to_var[b] = {i:EF_model.rootx[i] for i in self.varcuid_to_int.values()}
+
         #3)Create Obj:sum of scenario obj * probability
-        obj = sum(p[s]*obj[s].expr  for s in scenarios)
+        obj = sum(self.scenario_probability[b][s] * obj[s].expr  for s in scenarios)
         if w is not None:
-            # MORE HERE
-            pass
+            obj = obj + sum(w[i]*x for i,x in EF_model.rootx.items()) + (rho/2.0) * sum( (x - x_bar[i])**2 for i,x in EF_model.rootx.items())
         EF_model.obj=pyo.Objective(expr=obj)
 
-        #4)Create First Stage Variables, Constrain value to be equal under all scenarios
+        #4)Constrain First Stage Variable values to be equal under all scenarios
         EF_model.non_ant_cons=pyo.ConstraintList()
         
-        #EF_model.rootx = pyo.Var(range(len(self.varcuid_to_int)))
-        EF_model.rootx = pyo.Var(list(self.varcuid_to_int.values()))
-            #add_component(x, pyo.Var())
-        self.int_to_var[b] = {}
         for cuid,i in self.varcuid_to_int.items():
             for s in scenarios:
                 var = cuid.find_component_on(EF_model.s[s])
                 assert var is not None, "Pyomo error: Unknown variable '%s' on scenario model '%s'" % (cuid, s)
                 EF_model.non_ant_cons.add(expr=EF_model.rootx[i] == var)
-            
-            self.int_to_var[b][i] = EF_model.rootx[i]
-        #for x in self.first_stage_variables:
-        #    for s in scenarios:
-        #        EF_model.non_ant_cons.add(expr=EF_model.find_component(x)==EF_model.s[s].find_component(x))
-        #        EF_model.non_ant_cons.add(expr=EF_model.find_component(x)==EF_model.s[s].find_component(x))
     
         return EF_model
     
