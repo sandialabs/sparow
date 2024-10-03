@@ -11,7 +11,7 @@ scheme = {'bundle_by_fidelity':       bundle_by_fidelity,
           'bundle_similar_partition': bundle_similar_partition,
           'single_scenario':          single_scenario}
 
-def bundle_scheme(data, scheme_str):
+def bundle_scheme(data, scheme_str, bundle_args=None):
         return scheme[scheme_str](data)
 
 ###################################################################################################################
