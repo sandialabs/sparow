@@ -4,8 +4,8 @@ from IPython import embed
 import sys
 import os
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from sp import StochasticProgram_Pyomo
+#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from forestlib.ph.sp import StochasticProgram_Pyomo
 
 def model_builder(scen):
     M = pyo.ConcreteModel()
