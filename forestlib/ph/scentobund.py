@@ -88,7 +88,7 @@ def bundle_similar_partition(data): # bundle similar scenarios together; each sc
     core_scenarios = {} # core scenarios are LF (can change depending on the problem)
     for i in range(len(data['scenarios'])):
         if data['scenarios'][i]['Fidelity'] == 'LF':
-            core_scenarios.update({f'{data['scenarios'][i]['ID']}': data['scenarios'][i]['Demand']})
+            core_scenarios.update({f"{data['scenarios'][i]['ID']}": data['scenarios'][i]['Demand']})
 
     # assert len(core_scenarios) == num_buns
 
@@ -98,7 +98,7 @@ def bundle_similar_partition(data): # bundle similar scenarios together; each sc
     not_core_scenarios = {}
     for i in range(len(data['scenarios'])):
         if data['scenarios'][i]['Fidelity'] == 'HF':
-            not_core_scenarios.update({f'{data['scenarios'][i]['ID']}': [data['scenarios'][i]['Demand'], data['scenarios'][i]['Probability']]})
+            not_core_scenarios.update({f"{data['scenarios'][i]['ID']}": [data['scenarios'][i]['Demand'], data['scenarios'][i]['Probability']]})
 
     dist_to_cores = []
     for k, scen in enumerate(not_core_scenarios):
