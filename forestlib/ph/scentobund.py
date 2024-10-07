@@ -7,45 +7,35 @@ specify which bundling scheme (function) is used via "bundle_scheme" in sp.py
 '''
 
 def bundle_by_fidelity(data):
+    ''' Scenarios are bundled according to their fidelities '''
     bundle = {}
 
     bundle_names = ['HF', 'LF']
     for bund in bundle_names:
         bundle[bund] = {}
 
-    scenID_HFlist = []
-    scenID_LFlist = []
+    HFlist = []
+    LFlist = []
     for i in range(len(data['scenarios'])):
         if data['scenarios'][i]['Fidelity'] == 'HF':
-            scenID_HFlist.append(data['scenarios'][i]['ID'])
+            HFlist.append(data['scenarios'][i])
         elif data['scenarios'][i]['Fidelity'] == 'LF':
-            scenID_LFlist.append(data['scenarios'][i]['ID'])
+            LFlist.append(data['scenarios'][i])
         else:
             raise RuntimeError (f"No fidelity specified for {i}th scenario")
-    # will sum to 1 b/c uniform distribution
-    bundle['HF'] = {'IDs':         scenID_HFlist,
-                    'Probability': sum(data['scenarios'][scenID_HFlist.index(j)]['Probability'] for j in scenID_HFlist)}
-    bundle['LF'] = {'IDs':         scenID_LFlist,
-                    'Probability': sum(data['scenarios'][scenID_LFlist.index(j)]['Probability'] for j in scenID_LFlist)}
+    
+    bundle['HF'] = {'IDs':                    [HFlist[j]['ID'] for j in range(len(HFlist))],
+                    'Probability':            1/len(bundle_names),
+                    'Scenario_Probabilities': {HFlist[j]['ID']: HFlist[j]['Probability'] for j in range(len(HFlist))}}
+    bundle['LF'] = {'IDs':                    [LFlist[k]['ID'] for k in range(len(LFlist))],
+                    'Probability':            1/len(bundle_names),
+                    'Scenario_Probabilities': {LFlist[k]['ID']: LFlist[k]['Probability'] for k in range(len(LFlist))}}
 
     return bundle
 
 
-def bundle_multifid(data):  # still needs some work
-    bundle = {}
-    bundle_names = ['Low', 'Medium', 'High']
-
-    for bund in bundle_names:
-        bundle[bund] = {}
-
-    bundle['Low']    = {'IDs': [0, 1, 6],    'Probability': 0.2}
-    bundle['Medium'] = {'IDs': [2, 3, 7, 8], 'Probability': 0.5}
-    bundle['High']   = {'IDs': [4, 5, 9],    'Probability': 0.3}
-
-    return bundle
-
-
-def bundle_similar_partition(data): # bundle similar scenarios together; each scenario appears in exactly one bundle
+def bundle_similar_partition(data): ## don't use yet!!!!!
+    # bundle similar scenarios together; each scenario appears in exactly one bundle
     '''
     DETERMINE NUMBER OF BUNDLES
     '''
@@ -138,9 +128,32 @@ def bundle_similar_partition(data): # bundle similar scenarios together; each sc
 
 
 def single_scenario(data): # only using HF scenarios!!
+    ''' Each scenario is its own bundle (i.e., no bundling) '''
     bundle = {}
-    for scen in data['scenarios']:
-        bundle[str(scen['ID'])] = {'IDs': [scen['ID']], 'Probability': scen['Probability'], 'Scenario_Probabilities':{scen['ID']:1.0}}
+    HFscens = []
+    for i in range(len(data['scenarios'])):
+        if data['scenarios'][i]['Fidelity'] == 'HF':
+            HFscens.append(data['scenarios'][i])
+            
+    for j in range(len(HFscens)):
+        bundle[str(HFscens[j]['ID'])] = {'IDs':                    [HFscens[j]['ID']], 
+                                         'Probability':            HFscens[j]['Probability'], 
+                                         'Scenario_Probabilities': {HFscens[j]['ID']:1.0}}
+
+    return bundle
+
+
+def single_bundle(data): # only using HF scenarios!!
+    ''' Every scenario in a single bundle (i.e., the subproblem is the master problem) '''
+    bundle = {}
+    HFscens = []
+    for i in range(len(data['scenarios'])):
+        if data['scenarios'][i]['Fidelity'] == 'HF':
+            HFscens.append(data['scenarios'][i])
+
+    bundle['bundle'] = {'IDs':                    [HFscens[j]['ID'] for j in range(len(HFscens))], 
+                        'Probability':            1.0, 
+                        'Scenario_Probabilities': {HFscens[j]['ID']: HFscens[j]['Probability'] for j in range(len(HFscens))}}
 
     return bundle
 
@@ -158,9 +171,9 @@ def bundle_random_partition(data): # random bundling
 
 
 scheme = {'bundle_by_fidelity':       bundle_by_fidelity,
-          'bundle_multifid':          bundle_multifid, 
           'bundle_similar_partition': bundle_similar_partition,
-          'single_scenario':          single_scenario}
+          'single_scenario':          single_scenario,
+          'single_bundle':            single_bundle}
 
 def bundle_scheme(data, scheme_str, bundle_args=None):
     return scheme[scheme_str](data)
