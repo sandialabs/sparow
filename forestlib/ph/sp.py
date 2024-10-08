@@ -3,6 +3,7 @@ import pyomo.core.base.indexed_component
 import pyomo.environ as pyo
 from . import scentobund
 import json
+import copy
 
 class StochasticProgram(object):
 
@@ -165,13 +166,16 @@ class StochasticProgram_Pyomo(StochasticProgram):
     def shared_variables(self):
         return list(range(len(self.varcuid_to_int)))
 
-    def solve(self, M, *, solver_options=None, tee=False):
+    def solve(self, M, *, solver_options=None, tee=False,solver=None):
         if solver_options:
             self.solver_options = solver_options
-        if self.pyo_solver is None:
-            self.pyo_solver = pyo.SolverFactory(self.solver)
-
-        results = self.pyo_solver.solve(M, options=self.solver_options, tee=solver_options.get('tee',tee), load_solutions=False)
+        if solver:
+            self.solver=solver
+        pyo_solver = pyo.SolverFactory(self.solver)
+        tee=solver_options.get('tee',tee)
+        solver_options_=copy.copy(self.solver_options)
+        del solver_options_['tee']
+        results = pyo_solver.solve(M, options=solver_options_, tee=tee, load_solutions=False)
         status = results.solver.status
         if not pyo.check_optimal_termination(results):
             condition = results.solver.termination_condition
