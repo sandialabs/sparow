@@ -17,7 +17,7 @@ class StochasticProgram(object):
         self.bundle_args = {}
         self.json_data = {}
 
-    def initialize_bundles(self, *, filename=None, bundle_data=None, bundle_scheme=None, bundle_args=None):
+    def initialize_bundles(self, *, filename=None, bundle_data=None, bundle_scheme=None, **kwargs):
         # returns bundles, probabilities, and list of scenarios in each bundle
         if filename is not None:
             with open(f'{filename}', 'r') as file:
@@ -29,8 +29,7 @@ class StochasticProgram(object):
 
         if bundle_scheme:
             self.bundle_scheme = bundle_scheme
-        if bundle_args:
-            self.bundle_args = bundle_args
+        self.bundle_args = kwargs
         self.bundles = scentobund.bundle_scheme(self.json_data, self.bundle_scheme, self.bundle_args)
         
         for key in self.bundles:

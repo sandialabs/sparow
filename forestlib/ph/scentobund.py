@@ -127,12 +127,16 @@ def bundle_similar_partition(data): ## don't use yet!!!!!
     return bundle 
 
 
-def single_scenario(data): # only using HF scenarios!!
+def single_scenario(data, bundle_args): # only using HF scenarios!!
     ''' Each scenario is its own bundle (i.e., no bundling) '''
     bundle = {}
     HFscens = []
-    for i in range(len(data['scenarios'])):
-        if data['scenarios'][i]['Fidelity'] == 'HF':
+    if 'fidelity' in bundle_args:
+        for i in range(len(data['scenarios'])):
+            if data['scenarios'][i]['Fidelity'] == 'HF':
+                HFscens.append(data['scenarios'][i])
+    else:
+        for i in range(len(data['scenarios'])):
             HFscens.append(data['scenarios'][i])
             
     for j in range(len(HFscens)):
@@ -143,12 +147,19 @@ def single_scenario(data): # only using HF scenarios!!
     return bundle
 
 
-def single_bundle(data): # only using HF scenarios!!
+def single_bundle(data, bundle_args): # only using HF scenarios!!
     ''' Every scenario in a single bundle (i.e., the subproblem is the master problem) '''
     bundle = {}
-    HFscens = []
-    for i in range(len(data['scenarios'])):
-        if data['scenarios'][i]['Fidelity'] == 'HF':
+
+    if 'fidelity' in bundle_args:
+        HFscens = []
+        for i in range(len(data['scenarios'])):
+            if data['scenarios'][i]['Fidelity'] == 'HF':
+                HFscens.append(data['scenarios'][i])
+    else:
+        HFscens = []
+        for i in range(len(data['scenarios'])):
+            assert 'Fidelity' not in data['scenarios'][i]
             HFscens.append(data['scenarios'][i])
 
     bundle['bundle'] = {'IDs':                    [HFscens[j]['ID'] for j in range(len(HFscens))], 
@@ -176,6 +187,6 @@ scheme = {'bundle_by_fidelity':       bundle_by_fidelity,
           'single_bundle':            single_bundle}
 
 def bundle_scheme(data, scheme_str, bundle_args=None):
-    return scheme[scheme_str](data)
+    return scheme[scheme_str](data, bundle_args)
 
 

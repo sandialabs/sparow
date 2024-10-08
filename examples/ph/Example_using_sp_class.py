@@ -1,6 +1,6 @@
 import pyomo.core.base.indexed_component
 import pyomo.environ as pyo
-from IPython import embed
+#from IPython import embed
 import sys
 import os
 
@@ -40,10 +40,10 @@ bundle_data={"scenarios": [
         "Probability": 0.5
     }]}
 
-S_EF.initialize_bundles(bundle_data=bundle_data,bundle_scheme='single_bundle')
+S_EF.initialize_bundles(bundle_data=bundle_data, bundle_scheme='single_bundle', fidelity='HF')
 EF_model=S_EF.create_EF(b=list(S_EF.scenarios_in_bundle.keys())[0])
 res=pyo.SolverFactory('ipopt').solve(EF_model,tee=True)
-embed()
+#embed()
 #res=S_EF.solve(EF_model,solver_options={'tee':True})
 #tee=solver_options.get('tee',tee)
 for b in list(S_EF.scenarios_in_bundle.keys()):
