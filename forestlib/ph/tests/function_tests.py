@@ -1,12 +1,8 @@
+import json
 import random
 
-'''
-bundle is a dictionary of dictionaries
-    - keys are names of bundles
-    - for each dictionary in bundle, keys are 'IDs' (i.e., which scenarios are in the bundle) and 'Probability'
-
-specify which bundling scheme (function) is used via "bundle_scheme" in sp.py
-'''
+with open('scenlist.json', 'r') as file:
+    data = json.load(file)
 
 def bundle_by_fidelity(data, bundle_args=None):
     ''' Scenarios are bundled according to their fidelities '''
@@ -143,8 +139,6 @@ def bundle_random_partition(data, bundle_args):
 
     return bundle
 
-###################################################################################################################
-
 
 scheme = {'bundle_by_fidelity':      bundle_by_fidelity,
           'single_scenario':         single_scenario,
@@ -166,5 +160,4 @@ def bundle_scheme(data, scheme_str, bundle_args=None):
 
     return bundle
 
-
-### TODO: add function that saves bundles to file
+bundle_scheme(data, 'bundle_by_fidelity', bundle_args=None)
