@@ -35,7 +35,7 @@ def bundle_by_fidelity(data, bundle_args=None):
     for fid in bundle_names:# each bundle assumed to have same probability 
         bun_prob = sum(temp_dict[fid][i]['Probability'] for i in range(len(temp_dict[fid])))
         bundle[f'{fid}'] = {'IDs':[temp_dict[f'{fid}'][i]['ID'] for i in range(len(temp_dict[f'{fid}']))], 
-                            'Probability': bun_prob, 
+                            'Probability': bun_prob/len(bundle_names), 
                             'Scenario_Probabilities': {temp_dict[f'{fid}'][i]['ID']: temp_dict[f'{fid}'][i]['Probability']/bun_prob for i in range(len(temp_dict[f'{fid}']))}}
 
     return bundle
