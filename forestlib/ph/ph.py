@@ -47,6 +47,7 @@ class ProgressiveHedgingSolver(object):
         for b in sp.bundles:
             logger.debug(f"Creating subproblem '{b}'")
             M[b] = sp.create_subproblem(b)
+            M[b].write(f'Iter0_PH_{b}.lp',io_options={'symbolic_solver_labels':True})
             logger.debug(f"Optimizing subproblem '{b}'")
             sp.solve(M[b], solver_options=self.solver_options)
             # TODO - show value of subproblem
@@ -112,7 +113,7 @@ class ProgressiveHedgingSolver(object):
             # Step 9
             g = 0.0
             for b in sp.bundles:
-                g += sp.bundle_probability[b] * self.norm(sp.get_variable_value(b,x) - x_bar[x] for x in sfs_variables)
+                g += sp.bundle_probability[b] * self.norm(sp.get_variable_value(b,x) - x_bar[x] for x in sfs_variables)/len(sfs_variables)
             logger.info(f"g: {g}")
 
             # Step 10
@@ -139,4 +140,4 @@ class ProgressiveHedgingSolver(object):
 
     def norm(self, values):
         v = np.array(list(values))
-        return np.linalg.norm(v, ord=2)
+        return np.linalg.norm(v, ord=1)
