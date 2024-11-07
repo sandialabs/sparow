@@ -90,7 +90,7 @@ class ProgressiveHedgingSolver(object):
             M = {}
             for b in sp.bundles:
                 logger.debug(f"Creating subproblem '{b}'")
-                logger.debug(f"  w: {w[b]}")
+                logger.debug(f"  b: {b}  w: {w[b]}")
                 M[b] = sp.create_subproblem(b=b, w=w_prev[b], x_bar=x_bar_prev, rho=self.rho)
                 logger.debug(f"Optimizing subproblem '{b}'")
                 sp.solve(M[b], solver_options=self.solver_options)
