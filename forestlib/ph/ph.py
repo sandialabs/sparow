@@ -47,7 +47,7 @@ class ProgressiveHedgingSolver(object):
         for b in sp.bundles:
             logger.debug(f"Creating subproblem '{b}'")
             M[b] = sp.create_subproblem(b)
-            M[b].write(f'Iter0_PH_{b}.lp',io_options={'symbolic_solver_labels':True})
+            #M[b].write(f'Iter0_PH_{b}.lp',io_options={'symbolic_solver_labels':True})
             logger.debug(f"Optimizing subproblem '{b}'")
             sp.solve(M[b], solver_options=self.solver_options)
             # TODO - show value of subproblem
