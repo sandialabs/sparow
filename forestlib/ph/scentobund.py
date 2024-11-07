@@ -48,7 +48,7 @@ def single_scenario(data, bundle_args):
     
     if bundle_args != None and 'fidelity' in bundle_args.keys():
         for i in range(len(data['scenarios'])):
-            if data['scenarios'][i]['Fidelity'] == f'{bundle_args['fidelity']}':
+            if data['scenarios'][i]['Fidelity'] == f'{bundle_args["fidelity"]}':
                 scens.append(data['scenarios'][i])
     else:
         assert (bundle_args == None or 'fidelity' not in bundle_args.keys())
@@ -71,7 +71,7 @@ def single_bundle(data, bundle_args):
     if bundle_args != None and 'fidelity' in bundle_args.keys():
         scens = []
         for i in range(len(data['scenarios'])):
-            if data['scenarios'][i]['Fidelity'] == f'{bundle_args['fidelity']}':
+            if data['scenarios'][i]['Fidelity'] == f'{bundle_args["fidelity"]}':
                 scens.append(data['scenarios'][i])
     else:
         assert (bundle_args == None or 'fidelity' not in bundle_args.keys())
@@ -99,7 +99,7 @@ def bundle_random_partition(data, bundle_args):
     if bundle_args != None and 'fidelity' in bundle_args.keys():
         scens = []
         for i in range(len(data['scenarios'])):
-            if data['scenarios'][i]['Fidelity'] == f'{bundle_args['fidelity']}':
+            if data['scenarios'][i]['Fidelity'] == f'{bundle_args["fidelity"]}':
                 scens.append(data['scenarios'][i])
     else:
         assert (bundle_args == None or 'fidelity' not in bundle_args.keys())
