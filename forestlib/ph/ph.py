@@ -18,9 +18,8 @@ class ProgressiveHedgingSolver(object):
         self.solver_name = None
         self.solver_options = {}
 
-    def solve(
+    def set_options(
         self,
-        sp,
         *,
         rho=None,
         max_iterations=None,
@@ -46,11 +45,6 @@ class ProgressiveHedgingSolver(object):
         if solver_options:
             self.solver_options = solver_options
 
-        # The StochProgram object manages the sub-solver interface.  By default, we assume
-        #   the user has initialized the sub-solver within the SP object.
-        if self.solver_name:
-            sp.set_solver(self.solver_name)
-
         if loglevel is not None:
             if loglevel == "DEBUG":
                 formatter = logging.Formatter(
@@ -58,6 +52,14 @@ class ProgressiveHedgingSolver(object):
                 )
                 handler.setFormatter(formatter)
             logger.setLevel(loglevel)
+
+    def solve(self, sp, **options):
+        if len(options) > 0:
+            self.set_options(**options)
+        # The StochProgram object manages the sub-solver interface.  By default, we assume
+        #   the user has initialized the sub-solver within the SP object.
+        if self.solver_name:
+            sp.set_solver(self.solver_name)
 
         logger.info("ProgressiveHendingSolver - START")
 
