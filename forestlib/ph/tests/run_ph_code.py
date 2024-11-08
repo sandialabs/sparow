@@ -1,4 +1,6 @@
 import mpisppy.utils.sputils as sputils
+from mpisppy.opt.ef import ExtensiveForm
+from mpisppy.opt.ph import PH
 import pyomo.environ as pyo
 from forestlib.ph import stochastic_program
 
@@ -8,24 +10,10 @@ import pytest
 from forestlib.ph import ProgressiveHedgingSolver
 import numpy as np
 
-
-# class Farmer(StochasticProgram_Pyomo):
-class Farmer:
-
-    def __init__(self, data):
-        ProgressiveHedgingSolver_Pyomo.__init__(
-            self, first_stage_variables=["DevotedAcreage[*]"]
-        )
-        self.data = data
-
-    def create_EF(self, *b, w=None, x_bar=None, rho=None):
-        pass
-
-    def store_results(self, *, x_bar, w, g):
-        pass
+random.seed(923874938740938740)
 
 
-def build_model(yields):
+def build_model_mpi(yields):
     model = pyo.ConcreteModel()
 
     # Variables
@@ -83,22 +71,23 @@ def scenario_creator(scenario_name):
     else:
         raise ValueError("Unrecognized scenario name")
 
-    model = build_model(yields)
+    model = build_model_mpi(yields)
     sputils.attach_root_node(model, model.PLANTING_COST, [model.X])
     model._mpisppy_probability = 1.0 / 3
     return model
 
 
-from mpisppy.opt.ef import ExtensiveForm
-from mpisppy.opt.ph import PH
+Test_MPI_EF = False
 
-# options = {"solver": "gurobi"}
-# all_scenario_names = ["good", "average", "bad"]
-# ef = ExtensiveForm(options, all_scenario_names, scenario_creator)
-# results = ef.solve_extensive_form(tee=True)
+if Test_MPI_EF:
+    options = {"solver": "gurobi"}
+    all_scenario_names = ["good", "average", "bad"]
+    ef = ExtensiveForm(options, all_scenario_names, scenario_creator)
+    results = ef.solve_extensive_form(tee=True)
 
-# objval = ef.get_objective_value()
-# print(f"{objval:.1f}")
+    objval = ef.get_objective_value()
+    print("EXTENSIVE FORM OBJECTIVE")
+    print(f"{objval:.1f}")
 
 
 options = {
@@ -118,163 +107,8 @@ ph = PH(
     all_scenario_names,
     scenario_creator,
 )
-ph.local_scenarios["good"].write(
-    "Iter0_MPI_good.lp", io_options={"symbolic_solver_labels": True}
-)
-ph.local_scenarios["average"].write(
-    "Iter0_MPI_average.lp", io_options={"symbolic_solver_labels": True}
-)
-ph.local_scenarios["bad"].write(
-    "Iter0_MPI_bad.lp", io_options={"symbolic_solver_labels": True}
-)
+
 results = ph.ph_main()
-
-random.seed(923874938740938740)
-
-
-def model_builder(scen, scen_args):
-    model = pyo.ConcreteModel(scen["ID"])
-
-    crops_multiplier = int(scen["crops_multiplier"])
-
-    def crops_init(m):
-        retval = []
-        for i in range(crops_multiplier):
-            retval.append("WHEAT" + str(i))
-            retval.append("CORN" + str(i))
-            retval.append("SUGAR_BEETS" + str(i))
-        return retval
-
-    model.CROPS = pyo.Set(initialize=crops_init)
-
-    #
-    # Parameters
-    #
-
-    model.TOTAL_ACREAGE = 500.0 * crops_multiplier
-
-    def _scale_up_data(indict):
-        outdict = {}
-        for i in range(crops_multiplier):
-            for crop in ["WHEAT", "CORN", "SUGAR_BEETS"]:
-                outdict[crop + str(i)] = indict[crop]
-        return outdict
-
-    model.PriceQuota = _scale_up_data(
-        {"WHEAT": 100000.0, "CORN": 100000.0, "SUGAR_BEETS": 6000.0}
-    )
-
-    model.SubQuotaSellingPrice = _scale_up_data(
-        {"WHEAT": 170.0, "CORN": 150.0, "SUGAR_BEETS": 36.0}
-    )
-
-    model.SuperQuotaSellingPrice = _scale_up_data(
-        {"WHEAT": 0.0, "CORN": 0.0, "SUGAR_BEETS": 10.0}
-    )
-
-    model.CattleFeedRequirement = _scale_up_data(
-        {"WHEAT": 200.0, "CORN": 240.0, "SUGAR_BEETS": 0.0}
-    )
-
-    model.PurchasePrice = _scale_up_data(
-        {"WHEAT": 238.0, "CORN": 210.0, "SUGAR_BEETS": 100000.0}
-    )
-
-    model.PlantingCostPerAcre = _scale_up_data(
-        {"WHEAT": 150.0, "CORN": 230.0, "SUGAR_BEETS": 260.0}
-    )
-
-    #
-    # Stochastic Data
-    #
-    def Yield_init(m, cropname):
-        # yield as in "crop yield"
-        crop_base_name = cropname.rstrip("0123456789")
-        return scen["Yield"][crop_base_name] + random.uniform(
-            0, 1
-        )  # farmerstream.rand()
-
-    model.Yield = pyo.Param(
-        model.CROPS, within=pyo.NonNegativeReals, initialize=Yield_init, mutable=True
-    )
-
-    #
-    # Variables
-    #
-
-    if scen_args.get("use_integer", True):
-        model.DevotedAcreage = pyo.Var(
-            model.CROPS,
-            within=pyo.NonNegativeIntegers,
-            bounds=(0.0, model.TOTAL_ACREAGE),
-        )
-    else:
-        model.DevotedAcreage = pyo.Var(model.CROPS, bounds=(0.0, model.TOTAL_ACREAGE))
-
-    model.QuantitySubQuotaSold = pyo.Var(model.CROPS, bounds=(0.0, None))
-    model.QuantitySuperQuotaSold = pyo.Var(model.CROPS, bounds=(0.0, None))
-    model.QuantityPurchased = pyo.Var(model.CROPS, bounds=(0.0, None))
-
-    #
-    # Constraints
-    #
-
-    def ConstrainTotalAcreage_rule(model):
-        return pyo.sum_product(model.DevotedAcreage) <= model.TOTAL_ACREAGE
-
-    model.ConstrainTotalAcreage = pyo.Constraint(rule=ConstrainTotalAcreage_rule)
-
-    def EnforceCattleFeedRequirement_rule(model, i):
-        return (
-            model.CattleFeedRequirement[i]
-            <= (model.Yield[i] * model.DevotedAcreage[i])
-            + model.QuantityPurchased[i]
-            - model.QuantitySubQuotaSold[i]
-            - model.QuantitySuperQuotaSold[i]
-        )
-
-    model.EnforceCattleFeedRequirement = pyo.Constraint(
-        model.CROPS, rule=EnforceCattleFeedRequirement_rule
-    )
-
-    def LimitAmountSold_rule(model, i):
-        return (
-            model.QuantitySubQuotaSold[i]
-            + model.QuantitySuperQuotaSold[i]
-            - (model.Yield[i] * model.DevotedAcreage[i])
-            <= 0.0
-        )
-
-    model.LimitAmountSold = pyo.Constraint(model.CROPS, rule=LimitAmountSold_rule)
-
-    def EnforceQuotas_rule(model, i):
-        return (0.0, model.QuantitySubQuotaSold[i], model.PriceQuota[i])
-
-    model.EnforceQuotas = pyo.Constraint(model.CROPS, rule=EnforceQuotas_rule)
-
-    # Stage-specific cost computations;
-
-    def ComputeFirstStageCost_rule(model):
-        return pyo.sum_product(model.PlantingCostPerAcre, model.DevotedAcreage)
-
-    model.FirstStageCost = pyo.Expression(rule=ComputeFirstStageCost_rule)
-
-    def ComputeSecondStageCost_rule(model):
-        expr = pyo.sum_product(model.PurchasePrice, model.QuantityPurchased)
-        expr -= pyo.sum_product(model.SubQuotaSellingPrice, model.QuantitySubQuotaSold)
-        expr -= pyo.sum_product(
-            model.SuperQuotaSellingPrice, model.QuantitySuperQuotaSold
-        )
-        return expr
-
-    model.SecondStageCost = pyo.Expression(rule=ComputeSecondStageCost_rule)
-
-    def total_cost_rule(model):
-        return model.FirstStageCost + model.SecondStageCost
-
-    model.Total_Cost_Objective = pyo.Objective(rule=total_cost_rule)
-
-    return model
 
 
 def model_builder(app_dta, scen, scen_args):
@@ -361,5 +195,3 @@ bundle_data = {
 FarmerSP.initialize_bundles(bundle_data=bundle_data, bundle_scheme="single_scenario")
 ph = ProgressiveHedgingSolver()
 ph.solve(FarmerSP, max_iterations=10, solver="gurobi", loglevel="DEBUG", rho=10)
-# embed()
-# farmer=Farmer(,rho,)
