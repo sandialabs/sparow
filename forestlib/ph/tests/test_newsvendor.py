@@ -68,7 +68,7 @@ def second_stage(M, S, app_data, scen_data, args):
 
 class TestNewsVendor:
     """
-    Test the news vendor application 
+    Test the news vendor application
 
     See https://stoprog.org/sites/default/files/SPTutorial/TutorialSP.pdf
     """

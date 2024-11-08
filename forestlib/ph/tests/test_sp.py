@@ -16,7 +16,7 @@ class TestPHPyomo(object):
             return M
 
         sp = stochastic_program(first_stage_variables=["x"], model_builder=builder)
-        sp.initialize_bundles(bundle_data=dict(scenarios=[dict(ID=1),dict(ID=2)]))
+        sp.initialize_bundles(bundle_data=dict(scenarios=[dict(ID=1), dict(ID=2)]))
         M = sp.create_subproblem("1")
 
         assert sp.varcuid_to_int == {pyo.ComponentUID("x"): 0}
@@ -32,7 +32,7 @@ class TestPHPyomo(object):
             return M
 
         sp = stochastic_program(first_stage_variables=["y", "x"], model_builder=builder)
-        sp.initialize_bundles(bundle_data=dict(scenarios=[dict(ID=1),dict(ID=2)]))
+        sp.initialize_bundles(bundle_data=dict(scenarios=[dict(ID=1), dict(ID=2)]))
         M = sp.create_subproblem("1")
 
         assert sp.varcuid_to_int == {pyo.ComponentUID("y"): 0, pyo.ComponentUID("x"): 1}
