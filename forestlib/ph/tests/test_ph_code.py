@@ -92,9 +92,7 @@ ph = PH(
     all_scenario_names,
     scenario_creator,
 )
-ph.local_scenarios['good'].write('Iter0_MPI_good.lp',io_options={'symbolic_solver_labels':True})
-ph.local_scenarios['average'].write('Iter0_MPI_average.lp',io_options={'symbolic_solver_labels':True})
-ph.local_scenarios['bad'].write('Iter0_MPI_bad.lp',io_options={'symbolic_solver_labels':True})
+
 results = ph.ph_main()
 
 random.seed(923874938740938740)
