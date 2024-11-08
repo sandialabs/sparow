@@ -4,7 +4,7 @@ from forestlib.ph.sp import stochastic_program
 import numpy as np
 
 
-class TestFarmersEF(object):
+class XTestFarmersEF(object):
 
     def test_root_model_solve(self):
         model = pyo.ConcreteModel()

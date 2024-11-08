@@ -2,12 +2,11 @@ import mpisppy.utils.sputils as sputils
 import pyomo.environ as pyo
 from forestlib.ph import stochastic_program
 
-# from forestlib.ph import StochasticProgram_Pyomo
-# from IPython import embed
-# import random
-# import pytest
-# from forestlib.ph import ProgressiveHedgingSolver
-# import numpy as np
+from IPython import embed
+import random
+import pytest
+from forestlib.ph import ProgressiveHedgingSolver
+import numpy as np
 
 
 # class Farmer(StochasticProgram_Pyomo):
@@ -278,7 +277,7 @@ def model_builder(scen, scen_args):
     return model
 
 
-def model_builder(scen, scen_args):
+def model_builder(app_dta, scen, scen_args):
     model = pyo.ConcreteModel(scen["ID"])
     if scen["ID"] == "BelowAverageScenario":
         yields = [2, 2.4, 16]
@@ -331,8 +330,8 @@ def model_builder(scen, scen_args):
     return model
 
 
-FarmerSP = StochasticProgram_Pyomo(
-    objective="OBJ", first_stage_variables=["X[*]"], model_builder=model_builder
+FarmerSP = stochastic_program(
+    first_stage_variables=["X[*]"], model_builder=model_builder
 )
 
 bundle_data = {
