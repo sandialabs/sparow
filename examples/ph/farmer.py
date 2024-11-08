@@ -1,7 +1,7 @@
 import random
 import pyomo.environ as pyo
 import pytest
-from forestlib.ph import StochasticProgram_Pyomo
+from forestlib.ph import stochastic_program
 from forestlib.ph import ProgressiveHedgingSolver
 import numpy as np
 
@@ -78,7 +78,7 @@ def model_builder(scen, scen_args):
     # Variables
     #
 
-    if scen_args.get('use_integer',True):
+    if scen_args.get("use_integer", True):
         model.DevotedAcreage = pyo.Var(
             model.CROPS,
             within=pyo.NonNegativeIntegers,
@@ -153,8 +153,7 @@ def model_builder(scen, scen_args):
     return model
 
 
-FarmerSP = StochasticProgram_Pyomo(
-    objective="Total_Cost_Objective",
+sp = stochastic_program(
     first_stage_variables=["DevotedAcreage[*]"], model_builder=model_builder
 )
 
@@ -180,8 +179,7 @@ bundle_data = {
         },
     ]
 }
-FarmerSP.initialize_bundles(bundle_data=bundle_data)
+sp.initialize_bundles(bundle_data=bundle_data)
 
 ph = ProgressiveHedgingSolver()
-ph.solve(FarmerSP, max_iterations=10, solver='gurobi', loglevel="DEBUG")
-
+ph.solve(sp, max_iterations=10, solver="gurobi", loglevel="DEBUG")
