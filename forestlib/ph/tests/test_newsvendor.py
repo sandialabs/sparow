@@ -66,7 +66,12 @@ def second_stage(M, S, app_data, scen_data, args):
     S.less = pyo.Constraint(expr=S.y >= (c + h) * M.x - h * d)
 
 
-class TestStochasticProgram:
+class TestNewsVendor:
+    """
+    Test the news vendor application 
+
+    See https://stoprog.org/sites/default/files/SPTutorial/TutorialSP.pdf
+    """
 
     def test_single_builder(self):
         sp = stochastic_program(
