@@ -15,6 +15,7 @@ class ProgressiveHedgingSolver(object):
         self.max_iterations = 100
         self.convergence_tolerance = 1e-3
         self.normalize_convergence_norm = True
+        self.convergence_norm = 1
         self.solver_name = None
         self.solver_options = {}
 
@@ -25,6 +26,7 @@ class ProgressiveHedgingSolver(object):
         max_iterations=None,
         convergence_tolerance=None,
         normalize_convergence_norm=None,
+        convergence_norm=None,
         solver=None,
         solver_options=None,
         loglevel=None,
@@ -40,6 +42,8 @@ class ProgressiveHedgingSolver(object):
             self.convergence_tolerance = convergence_tolerance
         if normalize_convergence_norm:
             self.normalize_convergence_norm = normalize_convergence_norm
+        if convergence_norm:
+            self.convergence_norm = convergence_norm
         if solver:
             self.solver_name = solver
         if solver_options:
@@ -175,4 +179,4 @@ class ProgressiveHedgingSolver(object):
 
     def norm(self, values):
         v = np.array(list(values))
-        return np.linalg.norm(v, ord=1)
+        return np.linalg.norm(v, ord=self.convergence_norm)
