@@ -1,4 +1,4 @@
-__all__ = ['BBSolver', 'BranchAndBound', 'SerialBBSolver']
+__all__ = ["BBSolver", "BranchAndBound", "SerialBBSolver"]
 
 import itertools
 import time
@@ -23,10 +23,10 @@ class Bunch(dict):
         self.__dict__.update(kw)
 
     def __str__(self):
-        state = ["%s=%r" % (attribute, value)
-                 for (attribute, value)
-                 in self.__dict__.items()]
-        return '\n'.join(state)
+        state = [
+            "%s=%r" % (attribute, value) for (attribute, value) in self.__dict__.items()
+        ]
+        return "\n".join(state)
 
 
 class PriorityQueue(object):
@@ -40,9 +40,9 @@ class PriorityQueue(object):
         return len(self.pq)
 
     def add(self, task, priority=None):
-        'Add a new task.  This does not update the priority of an existing task.'
+        "Add a new task.  This does not update the priority of an existing task."
         if priority is None:
-            priority = self.sense*task.bound
+            priority = self.sense * task.bound
         else:
             priority *= self.sense
         count = next(self.counter)
@@ -50,17 +50,17 @@ class PriorityQueue(object):
         heappush(self.pq, entry)
 
     def pop(self):
-        'Remove and return the lowest priority task. Raise KeyError if empty.'
+        "Remove and return the lowest priority task. Raise KeyError if empty."
         if len(self.pq) == 0:
-            raise RuntimeError('pop from an empty priority queue')
+            raise RuntimeError("pop from an empty priority queue")
         return heappop(self.pq)[2]
 
     def prune(self, cutoff):
-        val = self.sense*cutoff
+        val = self.sense * cutoff
         i = len(self.pq) - 1
-        if i<0:
+        if i < 0:
             return
-        k = (i+1)//2
+        k = (i + 1) // 2
 
         work = []
         #
@@ -70,28 +70,27 @@ class PriorityQueue(object):
             if self.pq[i][0] >= val:
                 self._remove(i)
                 # Add parents to the work list
-                work.append( (i + 1)//2 - 1 )
+                work.append((i + 1) // 2 - 1)
             i -= 1
         #
         # Check all parents
         #
 
-        while (len(work) > 0):
+        while len(work) > 0:
             i = work.pop(0)
-            if (i <= len(self.pq) - 1)  and (i >= 0) and (self.pq[i][0] >= val):
+            if (i <= len(self.pq) - 1) and (i >= 0) and (self.pq[i][0] >= val):
                 self._remove(i)
                 # Add parents to the work list
-                work.append( (i + 1)//2 - 1 )
+                work.append((i + 1) // 2 - 1)
 
     def _remove(self, k):
-        'Mark an existing task as None.  Raise KeyError if not found.'
-        if k == len(self.pq)-1:
+        "Mark an existing task as None.  Raise KeyError if not found."
+        if k == len(self.pq) - 1:
             self.pq.pop()
         else:
             self.pq[k] = self.pq.pop()
 
         heapify(self.pq)
-
 
 
 class BBSolver(object):
@@ -106,7 +105,7 @@ class BBSolver(object):
         """
         Perform BB search using keyword options.
         """
-        self.root = kwds['problem']
+        self.root = kwds["problem"]
         return self._solve()
 
     def _solve(self):
@@ -127,7 +126,7 @@ class SerialBBSolver(BBSolver):
         # Initialize priority queue
         #
         sense = self.root.sense
-        incumbent_value = sense*float('Inf')
+        incumbent_value = sense * float("Inf")
         queue = PriorityQueue(sense=sense)
         queue.add(self.root)
         abs_tol = self.root.get_abs_tol()
@@ -143,31 +142,42 @@ class SerialBBSolver(BBSolver):
             nbounded += 1
 
             if nbounded % 1000 == 0:
-                print("#" + str(nbounded) + " pool=" + str(len(queue)) + " inc=" \
-                          + str(incumbent_value) + " bnd=" + str(subproblem.bound))
+                print(
+                    "#"
+                    + str(nbounded)
+                    + " pool="
+                    + str(len(queue))
+                    + " inc="
+                    + str(incumbent_value)
+                    + " bnd="
+                    + str(subproblem.bound)
+                )
 
-            if sense*bound <= sense*incumbent_value:   # TOLERANCE
+            if sense * bound <= sense * incumbent_value:  # TOLERANCE
                 #
                 # Find new incumbent
                 #
                 (value, solution) = subproblem.get_solution()
-                if (not value is None) and (sense*value < sense*incumbent_value):
+                if (not value is None) and (sense * value < sense * incumbent_value):
                     # New solution has a better value
                     incumbent_value = value
                     incumbent_solution = solution
                     # Prune conservatively:  use an incumbent value that is slightly worse than
                     # the true incumbent
-                    queue.prune(incumbent_value - sense*abs_tol)
+                    queue.prune(incumbent_value - sense * abs_tol)
 
-                if sense*bound < sense*incumbent_value - abs_tol and not subproblem.terminal():
+                if (
+                    sense * bound < sense * incumbent_value - abs_tol
+                    and not subproblem.terminal()
+                ):
                     #
                     # Generate children
                     #
                     numchildren = subproblem.separate()
                     for i in range(numchildren):
                         child = subproblem.make_child(i)
-                        assert(not child is None)
-                        queue.add( child )
+                        assert not child is None
+                        queue.add(child)
         #
         # Save information and return
         #
@@ -182,8 +192,7 @@ class SerialBBSolver(BBSolver):
 
 class BranchAndBound(object):
 
-    __slots__ = ('sense', 'context', 'bound',
-                 'solution', 'solution_value')
+    __slots__ = ("sense", "context", "bound", "solution", "solution_value")
 
     def __init__(self, context=None, sense=1):
         self.sense = sense
@@ -191,12 +200,12 @@ class BranchAndBound(object):
             self.context = Bunch()
         else:
             self.context = context
-        self.bound = float('-Inf')
+        self.bound = float("-Inf")
         self.solution = None
         self.solution_value = None
 
     def __getstate__(self):
-        return { slot: getattr(self, slot) for slot in BranchAndBound.__slots__ }
+        return {slot: getattr(self, slot) for slot in BranchAndBound.__slots__}
 
     def __setstate__(self, d):
         for slot in d:

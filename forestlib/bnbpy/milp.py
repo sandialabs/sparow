@@ -16,13 +16,15 @@ __author__ = "Jodie Simkoff: jsimkoff@utexas.edu"
 
 class MILP(BranchAndBound):
 
-    __slots__ = ['ub', 'lb']
+    __slots__ = ["ub", "lb"]
 
     # attributes for each node are dicts containing ub and lb and their corresponding
     # index in y
 
     def __init__(self, model=None, sense=1):
-        BranchAndBound.__init__(self, sense=sense) # sense = -1 for maximization problem!
+        BranchAndBound.__init__(
+            self, sense=sense
+        )  # sense = -1 for maximization problem!
         self.context.model = model
         self.ub = {}
         self.lb = {}
@@ -39,8 +41,7 @@ class MILP(BranchAndBound):
         print("BOUND")
         print(self.bound)
         print("LAST")
-        print(getattr(self,'last',None))
-
+        print(getattr(self, "last", None))
 
     def compute_bound(self):
         global_model = self.context.model
@@ -53,15 +54,15 @@ class MILP(BranchAndBound):
             global_model.y[i].setlb(self.lb[i])
         for i in self.ub:
             global_model.y[i].setub(self.ub[i])
-        results = SolverFactory('glpk').solve(global_model, keepfiles=False, tee=False)
+        results = SolverFactory("glpk").solve(global_model, keepfiles=False, tee=False)
         # infeasible exit code
-        if str(results.solver.termination_condition) == 'infeasible':
+        if str(results.solver.termination_condition) == "infeasible":
             print("infeasible subproblem\n")
-            self.bound = self.sense*float('Inf')
+            self.bound = self.sense * float("Inf")
         # some other exit code - treating as infeasible here for now...
-        elif str(results.solver.termination_condition) != 'optimal':
+        elif str(results.solver.termination_condition) != "optimal":
             print(str(results.solver.termination_condition))
-            self.bound = self.sense*float('Inf')
+            self.bound = self.sense * float("Inf")
         # optimal solution
         else:
             self.bound = value(global_model.obj)
@@ -71,7 +72,7 @@ class MILP(BranchAndBound):
         return self.bound
 
     def make_child(self, which_child):
-        global_model = self.context.model 
+        global_model = self.context.model
 
         child = MILP(model=global_model, sense=self.sense)
         child.bound = self.bound
@@ -82,7 +83,7 @@ class MILP(BranchAndBound):
         max_frac = None
         for i in global_model.y:
             val = global_model.y[i].value
-            frac = min(val - math.floor(val) , math.ceil(val) - val)
+            frac = min(val - math.floor(val), math.ceil(val) - val)
 
             if max_frac is None or frac > max_frac:
                 max_frac = frac
@@ -123,7 +124,9 @@ class MILP(BranchAndBound):
         frac = 0
         for i in global_model.y:
             val = global_model.y[i].value
-            if min(val - math.floor(val) , math.ceil(val) - val) >= 1e-6:    # tolerance on integrality violation
+            if (
+                min(val - math.floor(val), math.ceil(val) - val) >= 1e-6
+            ):  # tolerance on integrality violation
                 frac = 1
                 break
         if frac > 0:
@@ -134,13 +137,11 @@ class MILP(BranchAndBound):
         solution.display()
 
 
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     from bnbpy import SerialBBSolver
     from example2 import m
 
-    problem = MILP(model=m, sense=-1)    # 1 to minimize, -1 to maximize
+    problem = MILP(model=m, sense=-1)  # 1 to minimize, -1 to maximize
     solver = SerialBBSolver()
     value, solution = solver.solve(problem=problem)
     print("opt value: %f\n" % value)

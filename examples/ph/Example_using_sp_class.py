@@ -1,27 +1,30 @@
 import pyomo.core.base.indexed_component
 import pyomo.environ as pyo
+<<<<<<< HEAD
 from IPython import embed
+=======
+
+# from IPython import embed
+>>>>>>> fa59edc7dd3a158a2c1bc1ed65ae88f05cd0b5ba
 import sys
 import os
 from forestlib.ph import ProgressiveHedgingSolver
 
-#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from forestlib.ph.sp import StochasticProgram_Pyomo
 
-def model_builder(scen,scen_args):
+
+def model_builder(scen, scen_args):
     M = pyo.ConcreteModel(scen["ID"])
     M.x = pyo.Var()
     M.y = pyo.Var()
-    if scen["ID"]=='good':
-        M.c=pyo.Constraint(expr=1*M.x**2==M.y)
-    elif scen["ID"]=='bad':
-        M.c=pyo.Constraint(expr=(1*M.x+1)**2==M.y)
-    M.obj=pyo.Objective(expr=M.y)
+    if scen["ID"] == "good":
+        M.c = pyo.Constraint(expr=1 * M.x**2 == M.y)
+    elif scen["ID"] == "bad":
+        M.c = pyo.Constraint(expr=(1 * M.x + 1) ** 2 == M.y)
+    M.obj = pyo.Objective(expr=M.y)
     return M
 
-first_stage_vars=['x','y']
-scenarios=['good','bad']
-p={'good':0.5,'bad':0.5}
 
 S_EF=StochasticProgram_Pyomo(objective='obj',first_stage_variables=first_stage_vars,model_builder=model_builder)
 #S_EF.pyo_solver=pyo.SolverFactory('ipopt')
