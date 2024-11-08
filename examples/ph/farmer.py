@@ -9,7 +9,7 @@ from IPython import embed
 random.seed(923874938740938740)
 
 
-def model_builder(scen, scen_args):
+def model_builder(app_dta,scen, scen_args):
     model = pyo.ConcreteModel(scen["ID"])
 
     crops_multiplier = int(scen["crops_multiplier"])
@@ -181,21 +181,23 @@ bundle_data = {
     ]
 }
 
-testEF=True
-testPH=True
+testEF = True
+testPH = True
 
 if testPH:
-    FarmerSP.initialize_bundles(bundle_data=bundle_data,bundle_scheme='single_scenario')
+    sp.initialize_bundles(
+        bundle_data=bundle_data, bundle_scheme="single_scenario"
+    )
     ph = ProgressiveHedgingSolver()
-    ph.solve(FarmerSP, max_iterations=2, solver='gurobi', loglevel="DEBUG")
+    ph.solve(sp, max_iterations=2, solver="gurobi", loglevel="DEBUG")
 
 if testEF:
-    FarmerSP.initialize_bundles(bundle_data=bundle_data,bundle_scheme='single_bundle')
-    for b in list(FarmerSP.scenarios_in_bundle.keys()):
+    sp.initialize_bundles(bundle_data=bundle_data, bundle_scheme="single_bundle")
+    for b in list(sp.scenarios_in_bundle.keys()):
         print(b)
-        EF_model=FarmerSP.create_EF(b=b)
-        res=FarmerSP.solve(EF_model,solver='gurobi',solver_options={'tee':True})
+        EF_model = sp.create_EF(b=b)
+        res = sp.solve(EF_model, solver="gurobi", solver_options={"tee": True})
 
-        for s in FarmerSP.scenarios_in_bundle[b]:
-            #print(pyo.value(EF_model.s[s].DevotedAcreage))
+        for s in sp.scenarios_in_bundle[b]:
+            # print(pyo.value(EF_model.s[s].DevotedAcreage))
             EF_model.s[s].DevotedAcreage.pprint()
