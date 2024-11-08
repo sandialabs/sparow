@@ -65,7 +65,7 @@ def single_scenario(data, bundle_args):
             if data["scenarios"][i]["Fidelity"] == f"{bundle_args['fidelity']}":
                 scens.append(data["scenarios"][i])
     else:
-        assert bundle_args == None or "fidelity" not in bundle_args:
+        assert bundle_args == None or "fidelity" not in bundle_args
         for i in range(len(data["scenarios"])):
             scens.append(data["scenarios"][i])
 
