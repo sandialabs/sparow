@@ -78,7 +78,7 @@ class TestNewsVendor:
             first_stage_variables=["x"], model_builder=model_builder
         )
         sp.initialize_application(app_data=app_data)
-        sp.initialize_bundles(app_data=app_data, bundle_data=bundle_data)
+        sp.initialize_bundles(bundle_data=bundle_data)
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
         assert sp.bundle_probability["1"] == 0.2
@@ -106,7 +106,7 @@ class TestNewsVendor:
     def test_multistage_builder(self):
         sp = stochastic_program(model_builder_list=[first_stage, second_stage])
         sp.initialize_application(app_data=app_data)
-        sp.initialize_bundles(app_data=app_data, bundle_data=bundle_data)
+        sp.initialize_bundles(bundle_data=bundle_data)
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
         assert sp.bundle_probability["1"] == 0.2
