@@ -14,8 +14,7 @@ class ProgressiveHedgingSolver(object):
         self.rho = 1.5
         self.max_iterations = 100
         self.convergence_tolerance = 1e-3
-        # The StochProgram object manages the sub-solver interface.  By default, we assume
-        #   the user has initialized the sub-solver within the SP object.
+        self.normalize_convergence_norm = True
         self.solver_name = None
         self.solver_options = {}
 
@@ -25,6 +24,8 @@ class ProgressiveHedgingSolver(object):
         *,
         rho=None,
         max_iterations=None,
+        convergence_tolerance=None,
+        normalize_convergence_norm=None,
         solver=None,
         solver_options=None,
         loglevel=None,
@@ -36,10 +37,17 @@ class ProgressiveHedgingSolver(object):
             self.rho = rho
         if max_iterations:
             self.max_iterations = max_iterations
+        if convergence_tolerance:
+            self.convergence_tolerance = convergence_tolerance
+        if normalize_convergence_norm:
+            self.normalize_convergence_norm = normalize_convergence_norm
         if solver:
             self.solver_name = solver
         if solver_options:
             self.solver_options = solver_options
+
+        # The StochProgram object manages the sub-solver interface.  By default, we assume
+        #   the user has initialized the sub-solver within the SP object.
         if self.solver_name:
             sp.set_solver(self.solver_name)
 
@@ -133,7 +141,8 @@ class ProgressiveHedgingSolver(object):
                 g += sp.bundle_probability[b] * self.norm(
                     sp.get_variable_value(b, x) - x_bar[x] for x in sfs_variables
                 )
-            g /= len(sfs_variables)
+            if self.normalize_convergence_norm:
+                g /= len(sfs_variables)
             logger.info(f"g = {g}")
 
             # Step 10
