@@ -4,10 +4,12 @@ from IPython import embed
 import sys
 import os
 from forestlib.ph import ProgressiveHedgingSolver
-from forestlib.ph.sp import StochasticProgram_Pyomo
+from forestlib.ph import stochastic_program
+from mpisppy.opt.ef import ExtensiveForm
+from mpisppy.opt.ph import PH
+import mpisppy.utils.sputils as sputils
 
-
-def model_builder(scen, scen_args):
+def model_builder(app_dta,scen, scen_args):
     M = pyo.ConcreteModel(scen["ID"])
     M.x = pyo.Var()
     M.y = pyo.Var()
@@ -18,12 +20,24 @@ def model_builder(scen, scen_args):
     M.obj = pyo.Objective(expr=M.y)
     return M
 
+def model_builder_mpi(scen, scen_args):
+    M = pyo.ConcreteModel(scen["ID"])
+    M.x = pyo.Var()
+    M.y = pyo.Var()
+    if scen["ID"] == "good":
+        M.c = pyo.Constraint(expr=1 * M.x**2 == M.y)
+    elif scen["ID"] == "bad":
+        M.c = pyo.Constraint(expr=(1 * M.x + 1) ** 2 == M.y)
+    M.obj = pyo.Objective(expr=M.y)
+    return M
 
-S_EF = StochasticProgram_Pyomo(
-    objective="obj", first_stage_variables=first_stage_vars, model_builder=model_builder
+first_stage_vars=['x','y']
+scenarios=['good','bad']
+p={'good':0.5,'bad':0.5}
+
+S_EF = stochastic_program(first_stage_variables=first_stage_vars, model_builder=model_builder
 )
-# S_EF.pyo_solver=pyo.SolverFactory('ipopt')
-# S_EF.pyo_solver='ipopt'
+
 b = "bundle_0"
 bundle_data = {
     "scenarios": [
@@ -42,11 +56,8 @@ S_EF.initialize_bundles(
     bundle_data=bundle_data, bundle_scheme="single_bundle", fidelity="HF"
 )
 EF_model = S_EF.create_EF(b=list(S_EF.scenarios_in_bundle.keys())[0])
-# res=pyo.SolverFactory('ipopt').solve(EF_model,tee=True)
-# embed()
-# res=S_EF.solve(EF_model,solver='ipopt')
-# res=S_EF.solve(EF_model,solver='ipopt',solver_options={},tee=True)
-# tee=solver_options.get('tee',tee)
+
+
 for b in list(S_EF.scenarios_in_bundle.keys()):
     print(b)
     EF_model = S_EF.create_EF(b=b)
@@ -57,24 +68,18 @@ for b in list(S_EF.scenarios_in_bundle.keys()):
         # print(pyo.value(EF_model.s[s].x))
 
 
-FarmerSP = StochasticProgram_Pyomo(
-    objective="obj", first_stage_variables=first_stage_vars, model_builder=model_builder
+FarmerSP = stochastic_program(first_stage_variables=first_stage_vars, model_builder=model_builder
 )
 FarmerSP.initialize_bundles(bundle_data=bundle_data, bundle_scheme="single_scenario")
 ph = ProgressiveHedgingSolver()
 ph.solve(FarmerSP, max_iterations=2, solver="ipopt", loglevel="DEBUG")
 
 
-from mpisppy.opt.ef import ExtensiveForm
-from mpisppy.opt.ph import PH
-import mpisppy.utils.sputils as sputils
-
-
 def scenario_creator(scenario_name):
     if scenario_name == "good":
-        model = model_builder({"ID": "good"}, {})
+        model = model_builder_mpi({"ID": "good"}, {})
     elif scenario_name == "bad":
-        model = model_builder({"ID": "bad"}, {})
+        model = model_builder_mpi({"ID": "bad"}, {})
     else:
         raise ValueError("Unrecognized scenario name")
 
