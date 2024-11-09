@@ -126,7 +126,7 @@ class StochasticProgram(object):
                     for v in self.shared_variables()
                 }
                 msg = msg + "\n\t\t".join(f"{var}:\t{tmp[var]}" for var in sorted(tmp.keys()))
-                logger.error(msg)
+                logger.debug(msg)
                 return munch.Munch(feasible=False, bundle=b)
         obj = sum(self.bundle_probability[b] * obj_value[b] for b in self.bundles)
         # Just need to get one of the bundles to collect the variables
