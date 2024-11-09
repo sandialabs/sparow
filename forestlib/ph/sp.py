@@ -2,17 +2,14 @@ import pprint
 import json
 import copy
 import munch
-import logging
 import pyomo.core.base.indexed_component
 import pyomo.environ as pyo
 import pyomo.util.vars_from_expressions as vfe
 from . import scentobund
 
-logger = logging.getLogger(__name__)
-handler = logging.StreamHandler()
-formatter = logging.Formatter("%(levelname)s - %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+import forestlib.logs
+
+logger = forestlib.logs.logger
 
 
 def find_objective(model):
@@ -125,7 +122,9 @@ class StochasticProgram(object):
                     self.get_variable_name(b, v): self.get_variable_value(b, v)
                     for v in self.shared_variables()
                 }
-                msg = msg + "\n\t\t".join(f"{var}:\t{tmp[var]}" for var in sorted(tmp.keys()))
+                msg = msg + "\n\t\t".join(
+                    f"{var}:\t{tmp[var]}" for var in sorted(tmp.keys())
+                )
                 logger.debug(msg)
                 return munch.Munch(feasible=False, bundle=b)
         obj = sum(self.bundle_probability[b] * obj_value[b] for b in self.bundles)
