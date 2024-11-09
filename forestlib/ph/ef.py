@@ -52,10 +52,11 @@ class ExtensiveFormSolver(object):
         assert len(sp.bundles) == 1, "The extensive form has a single bundle"
 
         logger.debug(f"Creating extensive form")
-        M[b] = sp.create_subproblem(sp.bundles[0])
+        b = next(iter(sp.bundles))
+        M = sp.create_subproblem(b)
 
         logger.debug(f"Optimizing extensive form")
-        sp.solve(M[b], solver_options=self.solver_options)
+        sp.solve(M, solver_options=self.solver_options)
 
         # TODO - show value of subproblem
         logger.debug(f"Optimization Complete")
