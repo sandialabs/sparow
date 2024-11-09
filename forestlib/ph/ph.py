@@ -37,6 +37,7 @@ class ProgressiveHedgingSolver(object):
         solver=None,
         solver_options=None,
         loglevel=None,
+        finalize_xbar_by_rounding=None,
     ):
         #
         # Misc configuration
@@ -55,6 +56,8 @@ class ProgressiveHedgingSolver(object):
             self.solver_name = solver
         if solver_options:
             self.solver_options = solver_options
+        if finalize_xbar_by_rounding:
+            self.finalize_xbar_by_rounding = finalize_xbar_by_rounding
 
         if loglevel is not None:
             if loglevel == "DEBUG":
