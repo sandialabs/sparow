@@ -9,10 +9,10 @@ from IPython import embed
 random.seed(923874938740938740)
 
 
-def model_builder(app_dta,scen, scen_args):
-    model = pyo.ConcreteModel(scen["ID"])
+def model_builder(app_data, scen_data, scen_args):
+    model = pyo.ConcreteModel(scen_data["ID"])
 
-    crops_multiplier = int(scen["crops_multiplier"])
+    crops_multiplier = int(app_data["crops_multiplier"])
 
     def crops_init(m):
         retval = []
@@ -67,7 +67,7 @@ def model_builder(app_dta,scen, scen_args):
     def Yield_init(m, cropname):
         # yield as in "crop yield"
         crop_base_name = cropname.rstrip("0123456789")
-        return scen["Yield"][crop_base_name] + random.uniform(
+        return scen_data["Yield"][crop_base_name] + random.uniform(
             0, 1
         )  # farmerstream.rand()
 
@@ -158,24 +158,24 @@ sp = stochastic_program(
     first_stage_variables=["DevotedAcreage[*]"], model_builder=model_builder
 )
 
+app_data = {"crops_multiplier": 1.0}
+sp.initialize_application(app_data=app_data)
+
 bundle_data = {
     "scenarios": [
         {
             "ID": "BelowAverageScenario",
             "Yield": {"WHEAT": 2.0, "CORN": 2.4, "SUGAR_BEETS": 16.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.3,
         },
         {
             "ID": "AverageScenario",
             "Yield": {"WHEAT": 2.5, "CORN": 3.0, "SUGAR_BEETS": 20.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.3,
         },
         {
             "ID": "AboveAverageScenario",
             "Yield": {"WHEAT": 3.0, "CORN": 3.6, "SUGAR_BEETS": 24.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.4,
         },
     ]
@@ -185,9 +185,7 @@ testEF = True
 testPH = True
 
 if testPH:
-    sp.initialize_bundles(
-        bundle_data=bundle_data, bundle_scheme="single_scenario"
-    )
+    sp.initialize_bundles(bundle_data=bundle_data, bundle_scheme="single_scenario")
     ph = ProgressiveHedgingSolver()
     ph.solve(sp, max_iterations=2, solver="gurobi", loglevel="DEBUG")
 

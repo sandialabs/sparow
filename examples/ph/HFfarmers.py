@@ -1,7 +1,7 @@
 import random
 import pyomo.environ as pyo
 import pytest
-from forestlib.ph import StochasticProgram_Pyomo
+from forestlib.ph import stochastic_program
 from forestlib.ph import ProgressiveHedgingSolver
 import numpy as np
 import math
@@ -15,10 +15,13 @@ The high fidelity (HF) farmers problem considers divisions of the land into indi
 (run with num_plots = 1 and num_scens = 3 for original (LF) farmers problem)
 """
 
-num_plots = 1
-num_scens = 3  ### should be >= 3
 
-if num_scens < 3:
+class GlobalData:
+    num_plots = 1
+    num_scens = 3  ### should be >= 3
+
+
+if GlobalData.num_scens < 3:
     raise RuntimeError(f"Number of scenarios must be >= 3")
 
 ### list of possible per-plot scenarios:
@@ -27,172 +30,145 @@ scendata = {
         {
             "ID": "BBB",
             "Yield": {"WHEAT": 2.0, "CORN": 2.4, "SUGAR_BEETS": 16.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.027,
         },
         {
             "ID": "VVV",
             "Yield": {"WHEAT": 2.5, "CORN": 3.0, "SUGAR_BEETS": 20.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.027,
         },
         {
             "ID": "AAA",
             "Yield": {"WHEAT": 3.0, "CORN": 3.6, "SUGAR_BEETS": 24.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.064,
         },
         {
             "ID": "BBV",
             "Yield": {"WHEAT": 2.0, "CORN": 2.4, "SUGAR_BEETS": 20.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.027,
         },
         {
             "ID": "BBA",
             "Yield": {"WHEAT": 2.0, "CORN": 2.4, "SUGAR_BEETS": 24.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.036,
         },
         {
             "ID": "BVB",
             "Yield": {"WHEAT": 2.0, "CORN": 3.0, "SUGAR_BEETS": 16.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.027,
         },
         {
             "ID": "BAB",
             "Yield": {"WHEAT": 2.0, "CORN": 3.6, "SUGAR_BEETS": 16.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.036,
         },
         {
             "ID": "VBB",
             "Yield": {"WHEAT": 2.5, "CORN": 2.4, "SUGAR_BEETS": 16.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.027,
         },
         {
             "ID": "ABB",
             "Yield": {"WHEAT": 3.0, "CORN": 2.4, "SUGAR_BEETS": 16.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.036,
         },
         {
             "ID": "BVV",
             "Yield": {"WHEAT": 2.0, "CORN": 3.0, "SUGAR_BEETS": 20.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.027,
         },
         {
             "ID": "AVV",
             "Yield": {"WHEAT": 3.0, "CORN": 3.0, "SUGAR_BEETS": 20.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.036,
         },
         {
             "ID": "VBV",
             "Yield": {"WHEAT": 2.5, "CORN": 2.4, "SUGAR_BEETS": 20.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.027,
         },
         {
             "ID": "VAV",
             "Yield": {"WHEAT": 2.5, "CORN": 3.6, "SUGAR_BEETS": 20.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.036,
         },
         {
             "ID": "VVB",
             "Yield": {"WHEAT": 2.5, "CORN": 3.0, "SUGAR_BEETS": 16.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.027,
         },
         {
             "ID": "VVA",
             "Yield": {"WHEAT": 2.5, "CORN": 3.0, "SUGAR_BEETS": 24.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.036,
         },
         {
             "ID": "AAB",
             "Yield": {"WHEAT": 3.0, "CORN": 3.6, "SUGAR_BEETS": 16.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.048,
         },
         {
             "ID": "AAV",
             "Yield": {"WHEAT": 3.0, "CORN": 3.6, "SUGAR_BEETS": 20.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.048,
         },
         {
             "ID": "ABA",
             "Yield": {"WHEAT": 3.0, "CORN": 2.4, "SUGAR_BEETS": 24.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.048,
         },
         {
             "ID": "AVA",
             "Yield": {"WHEAT": 3.0, "CORN": 3.0, "SUGAR_BEETS": 24.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.048,
         },
         {
             "ID": "BAA",
             "Yield": {"WHEAT": 2.0, "CORN": 3.6, "SUGAR_BEETS": 24.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.048,
         },
         {
             "ID": "VAA",
             "Yield": {"WHEAT": 2.5, "CORN": 3.6, "SUGAR_BEETS": 24.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.048,
         },
         {
             "ID": "BVA",
             "Yield": {"WHEAT": 2.0, "CORN": 3.0, "SUGAR_BEETS": 24.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.036,
         },
         {
             "ID": "BAV",
             "Yield": {"WHEAT": 2.0, "CORN": 3.6, "SUGAR_BEETS": 20.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.036,
         },
         {
             "ID": "VBA",
             "Yield": {"WHEAT": 2.5, "CORN": 2.4, "SUGAR_BEETS": 24.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.036,
         },
         {
             "ID": "VAB",
             "Yield": {"WHEAT": 2.5, "CORN": 3.6, "SUGAR_BEETS": 16.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.036,
         },
         {
             "ID": "AVB",
             "Yield": {"WHEAT": 3.0, "CORN": 3.0, "SUGAR_BEETS": 16.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.036,
         },
         {
             "ID": "ABV",
             "Yield": {"WHEAT": 3.0, "CORN": 2.4, "SUGAR_BEETS": 20.0},
-            "crops_multiplier": 1.0,
             "Probability": 0.036,
         },
     ]
 }
 
 
-class Scenario_dict(
-    object
-):  ### creates the bundle_data dict using per-plot scenarios (scendata)
+class Scenario_dict(object):
+    ### creates the bundle_data dict using per-plot scenarios (scendata)
+
     def __init__(self, scendata):
         self.scendata = scendata
 
@@ -217,7 +193,6 @@ class Scenario_dict(
                 {
                     "ID": "BBB",
                     "Yield": {"WHEAT": 2.0, "CORN": 2.4, "SUGAR_BEETS": 16.0},
-                    "crops_multiplier": 1.0,
                     "Probability": 0.027,
                 }
             )
@@ -227,7 +202,6 @@ class Scenario_dict(
                 {
                     "ID": "VVV",
                     "Yield": {"WHEAT": 2.5, "CORN": 3.0, "SUGAR_BEETS": 20.0},
-                    "crops_multiplier": 1.0,
                     "Probability": 0.027,
                 }
             )
@@ -237,7 +211,6 @@ class Scenario_dict(
                 {
                     "ID": "AAA",
                     "Yield": {"WHEAT": 3.0, "CORN": 3.6, "SUGAR_BEETS": 24.0},
-                    "crops_multiplier": 1.0,
                     "Probability": 0.064,
                 }
             )
@@ -295,12 +268,9 @@ class Scenario_dict(
         return self.scen_dict
 
 
-Scen_object = Scenario_dict(scendata)
-bundle_data = Scen_object.scenario_generator(num_plots, num_scens)
-
-
-def model_builder(scen, scen_args={"num_plots": num_plots}):
-    model = pyo.ConcreteModel(scen["ID"])
+def model_builder(app_data, scen_data, scen_args):
+    num_plots = app_data["num_plots"]
+    model = pyo.ConcreteModel(scen_data["ID"])
 
     # TODO: add crops_multiplier index
     # crops_multiplier = int(scen["crops_multiplier"])
@@ -361,7 +331,7 @@ def model_builder(scen, scen_args={"num_plots": num_plots}):
     #
     def Yield_init(m, cropname, plot):  ### per-plot crop yields
         crop_base_name = cropname.rstrip("0123456789")
-        return scen["list_IDs"][plot]["Yield"][crop_base_name] + random.uniform(
+        return scen_data["list_IDs"][plot]["Yield"][crop_base_name] + random.uniform(
             0, 1
         )  # farmerstream.rand()
 
@@ -477,13 +447,23 @@ def model_builder(scen, scen_args={"num_plots": num_plots}):
     return model
 
 
-FarmerSP = StochasticProgram_Pyomo(
-    objective="Total_Cost_Objective",
+sp = stochastic_program(
+    # objective="Total_Cost_Objective",
     first_stage_variables=["DevotedAcreage[*,*]"],
     model_builder=model_builder,
 )
+app_data = {"num_plots": GlobalData.num_plots}
+sp.initialize_application(app_data=app_data)
 
-FarmerSP.initialize_bundles(bundle_data=bundle_data)
+Scen_object = Scenario_dict(scendata)
+bundle_data = Scen_object.scenario_generator(GlobalData.num_plots, GlobalData.num_scens)
+import pprint
+
+print("BUNDLE_DATA")
+pprint.pprint(bundle_data)
+
+
+sp.initialize_bundles(bundle_data=bundle_data)
 
 ph = ProgressiveHedgingSolver()
-ph.solve(FarmerSP, max_iterations=10, solver="gurobi", loglevel="DEBUG")
+ph.solve(sp, max_iterations=10, solver="gurobi", loglevel="DEBUG")
