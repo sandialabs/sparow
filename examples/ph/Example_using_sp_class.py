@@ -9,7 +9,8 @@ from mpisppy.opt.ef import ExtensiveForm
 from mpisppy.opt.ph import PH
 import mpisppy.utils.sputils as sputils
 
-def model_builder(app_dta,scen, scen_args):
+
+def model_builder(app_dta, scen, scen_args):
     M = pyo.ConcreteModel(scen["ID"])
     M.x = pyo.Var()
     M.y = pyo.Var()
@@ -19,6 +20,7 @@ def model_builder(app_dta,scen, scen_args):
         M.c = pyo.Constraint(expr=(1 * M.x + 1) ** 2 == M.y)
     M.obj = pyo.Objective(expr=M.y)
     return M
+
 
 def model_builder_mpi(scen, scen_args):
     M = pyo.ConcreteModel(scen["ID"])
@@ -31,11 +33,13 @@ def model_builder_mpi(scen, scen_args):
     M.obj = pyo.Objective(expr=M.y)
     return M
 
-first_stage_vars=['x','y']
-scenarios=['good','bad']
-p={'good':0.5,'bad':0.5}
 
-S_EF = stochastic_program(first_stage_variables=first_stage_vars, model_builder=model_builder
+first_stage_vars = ["x", "y"]
+scenarios = ["good", "bad"]
+p = {"good": 0.5, "bad": 0.5}
+
+S_EF = stochastic_program(
+    first_stage_variables=first_stage_vars, model_builder=model_builder
 )
 
 b = "bundle_0"
@@ -68,7 +72,8 @@ for b in list(S_EF.scenarios_in_bundle.keys()):
         # print(pyo.value(EF_model.s[s].x))
 
 
-FarmerSP = stochastic_program(first_stage_variables=first_stage_vars, model_builder=model_builder
+FarmerSP = stochastic_program(
+    first_stage_variables=first_stage_vars, model_builder=model_builder
 )
 FarmerSP.initialize_bundles(bundle_data=bundle_data, bundle_scheme="single_scenario")
 ph = ProgressiveHedgingSolver()
