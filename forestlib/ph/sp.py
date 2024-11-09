@@ -1,10 +1,11 @@
 import pprint
+import json
+import copy
+import munch
 import pyomo.core.base.indexed_component
 import pyomo.environ as pyo
 import pyomo.util.vars_from_expressions as vfe
 from . import scentobund
-import json
-import copy
 
 
 def find_objective(model):
@@ -37,6 +38,7 @@ class StochasticProgram(object):
         self.bundle_args = {}
         self.json_data = {}
         self.app_data = {}
+        self._binary_or_integer_fsv = set()
 
     def initialize_application(self, *, filename=None, app_data=None, **kwargs):
         if filename is not None:
@@ -72,7 +74,13 @@ class StochasticProgram(object):
         # TODO: Check here at that the scenario probabilities sum to 1.0
         # TODO: Check here at that the bundle probabilities sum to 1.0
 
-    def get_variable_value(self, v, M):
+    def get_variable_value(self, b, v):
+        pass
+
+    def get_variable_name(self, b, v):
+        pass
+
+    def fix_variable(self, b, v, value):
         pass
 
     def shared_variables(self):
@@ -89,6 +97,34 @@ class StochasticProgram(object):
 
     def create_EF(self, *, b, w=None, x_bar=None, rho=None):
         pass
+
+    def evaluate(self, x, solver_options=None):
+        if solver_options is None:
+            solver_options = {}
+        obj_value = {}
+        M = {}
+        #
+        # WEH - Should we evaluate w.r.t. scenarios?  How would we reconfigure the sp
+        #           object to do that?
+        #
+        for b in self.bundles:
+            M[b] = self.create_subproblem(b)
+            for i, xval in enumerate(x):
+                self.fix_variable(b, i, xval)
+            obj_value[b] = self.solve(M[b], solver_options=solver_options)
+            if obj_value[b] is None:
+                return munch.Munch(feasible=False, bundle=b)
+        obj = sum(self.bundle_probability[b] * obj_value[b] for b in self.bundles)
+        # Just need to get one of the bundles to collect the variables
+        for b in self.bundles:
+            return munch.Munch(
+                feasible=True,
+                objective=obj,
+                variables={
+                    self.get_variable_name(b, v): self.get_variable_value(b, v)
+                    for v in self.shared_variables()
+                },
+            )
 
 
 class StochasticProgram_Pyomo_Base(StochasticProgram):
@@ -111,42 +147,40 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
             #   The variable cuids indexed here are specified by the list self.first_stage_variables.
             #
             self.varcuid_to_int = {}
-            for varname, comp in self._first_stage_variables(M=M):
-                if comp.is_indexed():
-                    for var in comp.values():
-                        self.varcuid_to_int[pyo.ComponentUID(var)] = len(
-                            self.varcuid_to_int
-                        )
-                elif comp.ctype is pyo.Var:
-                    self.varcuid_to_int[pyo.ComponentUID(comp)] = len(
-                        self.varcuid_to_int
-                    )
-                else:
-                    raise RuntimeError(
-                        "Pyomo error: Component '%s' is not a variable" % varname
-                    )
+            for varname, var in self._first_stage_variables(M=M):
+                i = len(self.varcuid_to_int)
+                self.varcuid_to_int[pyo.ComponentUID(var)] = i
+                if var.is_binary() or var.is_integer():
+                    self._binary_or_integer_fsv.add(i)
         #
         # Setup int_to_FirstStageVar
         #
         if b is not None:
             self.int_to_FirstStageVar[b] = {}
-            for varname, comp in self._first_stage_variables(M=M):
-                if comp.is_indexed():
-                    for var in comp.values():
-                        self.int_to_FirstStageVar[b][
-                            self.varcuid_to_int[pyo.ComponentUID(var)]
-                        ] = var
-                elif comp.ctype is pyo.Var:
-                    self.int_to_FirstStageVar[b][
-                        self.varcuid_to_int[pyo.ComponentUID(comp)]
-                    ] = comp
-                else:
-                    raise RuntimeError(
-                        "Pyomo error: Component '%s' is not a variable" % varname
-                    )
+            for varname, var in self._first_stage_variables(M=M):
+                self.int_to_FirstStageVar[b][
+                    self.varcuid_to_int[pyo.ComponentUID(var)]
+                ] = var
+
+    def continuous_fsv(self):
+        assert (
+            self._binary_or_integer_fsv is not None
+        ), "ERROR: cannot call continuous_fsv() until a model has been constructed"
+        return len(self._binary_or_integer_fsv) == 0
+
+    def round(self, v, value):
+        if v in self._binary_or_integer_fsv:
+            return round(value)
+        return value
+
+    def fix_variable(self, b, v, value):
+        self.int_to_FirstStageVar[b][v].fix(value)
 
     def get_variable_value(self, b, v):
         return pyo.value(self.int_to_FirstStageVar[b][v])
+
+    def get_variable_name(self, b, v):
+        return self.int_to_FirstStageVar[b][v].name
 
     def shared_variables(self):
         return list(range(len(self.varcuid_to_int)))
@@ -161,20 +195,26 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         solver_options_ = copy.copy(self.solver_options)
         if "tee" in solver_options_:
             del solver_options_["tee"]
+
         results = pyo_solver.solve(
             M, options=solver_options_, tee=tee, load_solutions=False
         )
         status = results.solver.status
         if not pyo.check_optimal_termination(results):
             condition = results.solver.termination_condition
-            raise Exception(
+            logger.warn(
                 (
                     "Error solving subproblem '{}': "
                     "SolverStatus = {}, "
                     "TerminationCondition = {}"
                 ).format(M.name, status.value, condition.value)
             )
-        M.solutions.load_from(results)
+            return None
+        else:
+            # Load the results into the model so the user can find them there
+            M.solutions.load_from(results)
+            # Return the value of the 'first' objective
+            return list(results.Solution[0].Objective.values())[0]["Value"]
 
 
 class StochasticProgram_Pyomo_SingleBuilder(StochasticProgram_Pyomo_Base):
@@ -195,7 +235,11 @@ class StochasticProgram_Pyomo_SingleBuilder(StochasticProgram_Pyomo_Base):
             cuid = pyo.ComponentUID(varname)
             comp = cuid.find_component_on(M)
             assert comp is not None, "Pyomo error: Unknown variable '%s'" % varname
-            yield varname, comp
+            if comp.is_indexed():
+                for var in comp.values():
+                    yield var.name, var
+            else:
+                yield varname, comp
 
     def _create_scenario(self, scen):
         return self.model_builder(self.app_data, scen, {})

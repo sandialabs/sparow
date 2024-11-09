@@ -120,7 +120,7 @@ def model_builder(app_dta, scen, scen_args):
     elif scen["ID"] == "AboveAverageScenario":
         yields = [3, 3.6, 24]
     # Variables
-    model.X = pyo.Var(["WHEAT", "CORN", "BEETS"], within=pyo.NonNegativeReals)
+    model.X = pyo.Var(["WHEAT", "CORN", "BEETS"], within=pyo.NonNegativeIntegers)
     model.Y = pyo.Var(["WHEAT", "CORN"], within=pyo.NonNegativeReals)
     model.W = pyo.Var(
         ["WHEAT", "CORN", "BEETS_FAVORABLE", "BEETS_UNFAVORABLE"],
