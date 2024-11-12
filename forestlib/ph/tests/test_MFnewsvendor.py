@@ -7,14 +7,26 @@ from forestlib.ph import stochastic_program
 # Data for a simple newsvendor example
 #
 app_data = dict(c=1.0, b=1.5, h=0.1)
-bundle_data = {
-    "scenarios": [
-        {"ID": 1, "d": 15},
-        {"ID": 2, "d": 60},
-        {"ID": 3, "d": 72},
-        {"ID": 4, "d": 78},
-        {"ID": 5, "d": 82},
-    ]
+model_data = {
+    "LF": {
+        "scenarios": [
+            {"ID": 1, "d": 15},
+            {"ID": 2, "d": 60},
+            {"ID": 3, "d": 72},
+            {"ID": 4, "d": 78},
+            {"ID": 5, "d": 82},
+        ]
+    },
+    "HF": {
+        "data": {"B": 0.9},
+        "scenarios": [
+            {"ID": 1, "d": 15, "C": 1.4},
+            {"ID": 2, "d": 60, "C": 1.3},
+            {"ID": 3, "d": 72, "C": 1.2},
+            {"ID": 4, "d": 78, "C": 1.1},
+            {"ID": 5, "d": 82, "C": 1.0},
+        ],
+    },
 }
 
 
@@ -22,7 +34,7 @@ bundle_data = {
 # Function that constructs a newsvendor model
 # including a single second stage
 #
-def model_builder(data, args):
+def LF_builder(data, args):
     b = data["b"]
     c = data["c"]
     h = data["h"]
@@ -41,44 +53,39 @@ def model_builder(data, args):
     return M
 
 
-#
-# Function that constructs the first stage of a
-# newsvendor model
-#
-def first_stage(M, app_data, args):
+def HF_builder(data, args):
+    b = data["b"]
+    B = data["B"]
+    c = data["c"]
+    C = data["C"]
+    h = data["h"]
+    d = data["d"]
+
+    M = pyo.ConcreteModel(data["ID"])
+
     M.x = pyo.Var(within=pyo.NonNegativeReals)
 
+    M.y = pyo.Var()
+    M.greater = pyo.Constraint(expr=M.y >= (c - b) * M.x + b * d)
+    M.greaterX = pyo.Constraint(expr=M.y >= (C - B) * M.x + B * d)
+    M.less = pyo.Constraint(expr=M.y >= (c + h) * M.x - h * d)
 
-#
-# Function that constructs the second stage of a
-# newsvendor model
-#
-def second_stage(M, S, app_data, scen_data, args):
-    b = app_data["b"]
-    c = app_data["c"]
-    h = app_data["h"]
-    d = scen_data["d"]
+    M.o = pyo.Objective(expr=M.y)
 
-    S.y = pyo.Var()
-
-    S.o = pyo.Objective(expr=S.y)
-    S.greater = pyo.Constraint(expr=S.y >= (c - b) * M.x + b * d)
-    S.less = pyo.Constraint(expr=S.y >= (c + h) * M.x - h * d)
+    return M
 
 
-class TestNewsVendor:
+class TestMFNewsVendor:
     """
-    Test the news vendor application
+    Test the multi-fidelity news vendor application
 
     See https://stoprog.org/sites/default/files/SPTutorial/TutorialSP.pdf
     """
 
-    def test_single_builder(self):
-        sp = stochastic_program(
-            first_stage_variables=["x"], model_builder=model_builder
-        )
+    def test_LF_builder(self):
+        sp = stochastic_program(first_stage_variables=["x"], model_builder=LF_builder)
         sp.initialize_application(app_data=app_data)
-        sp.initialize_bundles(bundle_data=bundle_data)
+        sp.initialize_model(model_data=model_data["LF"])
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
         assert sp.bundle_probability["1"] == 0.2
@@ -103,10 +110,10 @@ class TestNewsVendor:
         sp.solve(M2, solver="glpk")
         assert pyo.value(M2.s[2].x) == 60.0
 
-    def test_multistage_builder(self):
-        sp = stochastic_program(model_builder_list=[first_stage, second_stage])
+    def test_HF_builder(self):
+        sp = stochastic_program(first_stage_variables=["x"], model_builder=HF_builder)
         sp.initialize_application(app_data=app_data)
-        sp.initialize_bundles(bundle_data=bundle_data)
+        sp.initialize_model(model_data=model_data["HF"])
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
         assert sp.bundle_probability["1"] == 0.2
@@ -125,9 +132,8 @@ class TestNewsVendor:
         #
         # Test subproblem solver logic
         #
-        M1.pprint()
         sp.solve(M1, solver="glpk")
-        assert pyo.value(M1.x) == 15.0
+        assert pyo.value(M1.s[1].x) == 9.0
 
         sp.solve(M2, solver="glpk")
-        assert pyo.value(M2.x) == 60.0
+        assert pyo.value(M2.s[2].x) == 40.0

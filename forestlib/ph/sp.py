@@ -33,14 +33,21 @@ class StochasticProgram(object):
 
     def __init__(self):
         self.solver = "gurobi"
+
+        # BUNDLE DATA (Indexed by bundle ID)
         self.bundles = {}
         self.bundle_probability = {}
         self.scenarios_in_bundle = {}
-        self.scenario_probability = {}
-        self.scenario_data = {}
         self.bundle_scheme = "single_scenario"
         self.bundle_args = {}
         self.json_data = {}
+
+        # MODEL DATA (Indexed by model name)
+        self.scenario_probability = {}
+        self.scenario_data = {}
+        self.model_data = {}
+
+        # APPLICATION DATA
         self.app_data = {}
         self._binary_or_integer_fsv = set()
 
@@ -230,18 +237,42 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
             return list(results.Solution[0].Objective.values())[0]["Value"]
 
 
-class StochasticProgram_Pyomo_SingleBuilder(StochasticProgram_Pyomo_Base):
+class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
-    def __init__(self, *, objective=None, first_stage_variables, model_builder):
+    def __init__(
+        self,
+        *,
+        objective=None,
+        first_stage_variables,
+        model_builder=None,
+        model_builders=None,
+    ):
         super().__init__()
         #
         # A list of string names of variables, such as:
         #   [ "x", "b.y", "b[*].z[*,*]" ]
         #
-        self.objective = objective
         self.first_stage_variables = first_stage_variables
-        self.model_builder = model_builder
-        # self.ctr = 0
+        self.objective = objective
+        self.model_builder = {}
+        if model_builder is not None:
+            self.initialize_model(name=None, model_builder=model_builder)
+        if model_builders is not None:
+            for k, v in model_builders.items():
+                self.initialize_model(name=k, model_builder=v)
+
+    def initialize_model(
+        self, *, name=None, filename=None, model_data=None, model_builder=None, **kwargs
+    ):
+        if filename is not None:
+            with open(f"{filename}", "r") as file:
+                self.model_data[name] = json.load(file)
+        elif model_data is not None:
+            self.model_data[name] = model_data.get("data", {})
+        if model_builder is not None:
+            self.model_builder[name] = model_builder
+        if model_data is not None:
+            self.initialize_bundles(bundle_data=model_data)
 
     def _first_stage_variables(self, *, M):
         for varname in self.first_stage_variables:
@@ -254,8 +285,15 @@ class StochasticProgram_Pyomo_SingleBuilder(StochasticProgram_Pyomo_Base):
             else:
                 yield varname, comp
 
-    def _create_scenario(self, scen):
-        return self.model_builder(self.app_data, scen, {})
+    def _create_scenario(self, s, model_name=None):
+        data = copy.copy(self.app_data)
+        for k, v in self.model_data.get(model_name, {}).items():
+            assert v not in data, f"Model data for {k} has already been specified!"
+            data[k] = v
+        for k, v in self.scenario_data.get(s, {}).items():
+            assert v not in data, f"Scenario data for {k} has already been specified!"
+            data[k] = v
+        return self.model_builder[model_name](data, {})
 
     def create_EF(self, *, w=None, x_bar=None, rho=None, b):
         scenarios = self.scenarios_in_bundle[b]
@@ -264,12 +302,12 @@ class StochasticProgram_Pyomo_SingleBuilder(StochasticProgram_Pyomo_Base):
         scen_dict = {}
         if len(scenarios) > 1:
             for s in scenarios:
-                scenario_model = self._create_scenario(self.scenario_data[s])
+                scenario_model = self._create_scenario(s)
                 self._initialize_cuid_map(M=scenario_model)
                 scen_dict[s] = scenario_model
         else:
             s = scenarios[0]
-            scenario_model = self._create_scenario(self.scenario_data[s])
+            scenario_model = self._create_scenario(s)
             self._initialize_cuid_map(M=scenario_model, b=b)
             scen_dict[s] = scenario_model
 
@@ -407,6 +445,7 @@ def stochastic_program(
     *,
     model_builder_list=None,
     model_builder=None,
+    model_builders=None,
     first_stage_variables=None,
     aml="pyomo",
 ):
@@ -417,24 +456,40 @@ def stochastic_program(
 
     model_builder - A single function used to construct the model.
 
+    model_builders - A dictionary mapping model names to model builder functions
+
     first_stage_variables - A list of strings that denote the first-stage variables in the model.  This is only used if model_builder is specified.
     """
     if model_builder is not None:
         assert (
-            model_builder_list is None
-        ), "Cannot specify both 'model_builder_list' and 'model_builder' options"
+            model_builder_list is None and model_builders is None
+        ), "Cannot specify 'model_builder' and 'model_builder_list' or 'model_builders' options"
         assert (
             first_stage_variables is not None
         ), "Must specify 'first_stage_variables' with the 'model_builer' option"
+
+    if model_builders is not None:
+        assert (
+            model_builder_list is None and model_builder is None
+        ), "Cannot specify 'model_builders' and 'model_builder_list' or 'model_builder' options"
+        assert (
+            first_stage_variables is not None
+        ), "Must specify 'first_stage_variables' with the 'model_builer' option"
+
     if model_builder_list is not None:
         assert (
-            model_builder is None
-        ), "Cannot specify both 'model_builder_list' and 'model_builder' options"
+            model_builder is None and model_builders is None
+        ), "Cannot specify 'model_builder_list' and 'model_builder' or 'model_builders' options"
 
     if aml == "pyomo":
         if model_builder is not None:
-            return StochasticProgram_Pyomo_SingleBuilder(
+            return StochasticProgram_Pyomo_NamedBuilder(
                 model_builder=model_builder, first_stage_variables=first_stage_variables
+            )
+        elif model_builders is not None:
+            return StochasticProgram_Pyomo_NamedBuilder(
+                model_builders=model_builders,
+                first_stage_variables=first_stage_variables,
             )
         else:
             return StochasticProgram_Pyomo_MultistageBuilder(
