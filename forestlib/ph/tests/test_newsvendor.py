@@ -22,13 +22,13 @@ bundle_data = {
 # Function that constructs a newsvendor model
 # including a single second stage
 #
-def model_builder(app_data, scen_data, args):
-    b = app_data["b"]
-    c = app_data["c"]
-    h = app_data["h"]
-    d = scen_data["d"]
+def model_builder(data, args):
+    b = data["b"]
+    c = data["c"]
+    h = data["h"]
+    d = data["d"]
 
-    M = pyo.ConcreteModel(scen_data["ID"])
+    M = pyo.ConcreteModel(data["ID"])
 
     M.x = pyo.Var(within=pyo.NonNegativeReals)
 

@@ -37,15 +37,12 @@ def bundle_by_fidelity(data, bundle_args=None):
             temp_dict[fid][i]["Probability"] for i in range(len(temp_dict[fid]))
         )
         bundle[f"{fid}"] = {
-            "IDs": [
-                temp_dict[f"{fid}"][i]["ID"] for i in range(len(temp_dict[f"{fid}"]))
-            ],
-            "Probability": bun_prob / len(bundle_names),
-            "Scenario_Probabilities": {
+            "scenarios": {
                 temp_dict[f"{fid}"][i]["ID"]: temp_dict[f"{fid}"][i]["Probability"]
                 / bun_prob
                 for i in range(len(temp_dict[f"{fid}"]))
             },
+            "Probability": bun_prob / len(bundle_names)
         }
 
     return bundle
@@ -56,23 +53,23 @@ def single_scenario(data, bundle_args):
     bundle = {}
     scens = []
 
-    if bundle_args != None and "fidelity" in bundle_args.keys():
+    if bundle_args != None and "fidelity" in bundle_args:
         for i in range(len(data["scenarios"])):
             if data["scenarios"][i]["Fidelity"] == f"{bundle_args['fidelity']}":
                 scens.append(data["scenarios"][i])
     else:
-        assert bundle_args == None or "fidelity" not in bundle_args.keys()
+        assert bundle_args == None or "fidelity" not in bundle_args
         for i in range(len(data["scenarios"])):
             scens.append(data["scenarios"][i])
 
+    scen_prob = {
+        j: scens[j].get("Probability", 1.0 / len(scens)) for j in range(len(scens))
+    }
     for j in range(len(scens)):
-        bun_prob = scens[j]["Probability"]
+        bun_prob = scen_prob[j]
         bundle[str(scens[j]["ID"])] = {
-            "IDs": [scens[j]["ID"]],
-            "Probability": bun_prob,
-            "Scenario_Probabilities": {
-                scens[j]["ID"]: scens[j]["Probability"] / bun_prob
-            },
+            "scenarios": {scens[j]["ID"]: scen_prob[j] / bun_prob},
+            "Probability": bun_prob
         }
 
     return bundle
@@ -95,12 +92,11 @@ def single_bundle(data, bundle_args):
 
     bun_prob = sum(scens[j]["Probability"] for j in range(len(scens)))
     bundle["bundle"] = {
-        "IDs": [scens[j]["ID"] for j in range(len(scens))],
-        "Probability": bun_prob,
-        "Scenario_Probabilities": {
+        "scenarios": {
             scens[j]["ID"]: scens[j]["Probability"] / bun_prob
             for j in range(len(scens))
         },
+        "Probability": bun_prob
     }
 
     return bundle
@@ -109,11 +105,25 @@ def single_bundle(data, bundle_args):
 def bundle_random_partition(data, bundle_args):
     """Each scenario is randomly assigned to a single bundle"""
 
-    ## TODO: add seed to random number generator
-
     bundle = {}
 
+    # user can optionally set random seed
+    if bundle_args != None and "seed" in bundle_args.keys():
+        seed_value = bundle_args['seed']
+    else:
+        seed_value = 972819128347298
+    random.seed(seed_value)
+
     num_buns = bundle_args["num_buns"]
+
+    if num_buns > len(data["scenarios"]): # can't construct more bundles than num. of scenarios
+        raise RuntimeError(f"Number of bundles must be <= number of scenarios")
+    
+    if num_buns < 0: # number of bundles must be positive
+        raise ValueError(f"Number of bundles must be positive")
+    
+    if (int(num_buns) == num_buns) == False: # number of bundles must be integer
+        raise ValueError(f"Number of bundles must be integer")
 
     if bundle_args != None and "fidelity" in bundle_args.keys():
         scens = []
@@ -162,18 +172,14 @@ def bundle_random_partition(data, bundle_args):
             for l in range(len(temp_bundle[bun_idx]))
         )
         bundle[f"rand_{bun_idx}"] = {
-            "IDs": [
-                scens[temp_bundle[bun_idx][l]]["ID"]
-                for l in range(len(temp_bundle[bun_idx]))
-            ],
-            "Probability": bun_prob,
-            "Scenario_Probabilities": {
+            "scenarios": {
                 scens[temp_bundle[bun_idx][l]]["ID"]: scens[temp_bundle[bun_idx][l]][
                     "Probability"
                 ]
                 / bun_prob
                 for l in range(len(temp_bundle[bun_idx]))
             },
+            "Probability": bun_prob
         }
 
     return bundle
@@ -198,7 +204,7 @@ def bundle_scheme(data, scheme_str, bundle_args=None):
 
     # Return error if scenario probabilities within a bundle do not sum to 1
     for key in bundle.keys():
-        if abs(sum(bundle[key]["Scenario_Probabilities"].values()) - 1.0) > 1e-04:
+        if abs(sum(bundle[key]["scenarios"].values()) - 1.0) > 1e-04:
             raise RuntimeError(
                 f"Scenario probabilities within bundle {key} do not sum to 1"
             )
@@ -206,4 +212,5 @@ def bundle_scheme(data, scheme_str, bundle_args=None):
     return bundle
 
 
-bundle_scheme(data, "bundle_by_fidelity", bundle_args=None)
+bundle = bundle_scheme(data, "bundle_random_partition", bundle_args={'fidelity': 'LF', 'num_buns': 2})
+print(bundle)
