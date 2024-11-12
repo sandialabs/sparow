@@ -486,14 +486,14 @@ def stochastic_program(
             return StochasticProgram_Pyomo_NamedBuilder(
                 model_builder=model_builder, first_stage_variables=first_stage_variables
             )
-        elif model_builders is not None:
+        elif model_builder_list is not None:
+            return StochasticProgram_Pyomo_MultistageBuilder(
+                model_builder_list=model_builder_list
+            )
+        else:
             return StochasticProgram_Pyomo_NamedBuilder(
                 model_builders=model_builders,
                 first_stage_variables=first_stage_variables,
-            )
-        else:
-            return StochasticProgram_Pyomo_MultistageBuilder(
-                model_builder_list=model_builder_list
             )
 
     else:
