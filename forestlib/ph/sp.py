@@ -79,11 +79,9 @@ class StochasticProgram(object):
 
         for key in self.bundles:
             self.bundle_probability[key] = self.bundles[key]["Probability"]
-            self.scenario_probability[key] = self.bundles[key]["Scenario_Probabilities"]
-            self.scenarios_in_bundle[key] = self.bundles[key]["IDs"]
+            self.scenario_probability[key] = self.bundles[key]["scenarios"]
+            self.scenarios_in_bundle[key] = list(self.bundles[key]["scenarios"].keys())
 
-        # TODO: Check here at that the scenario probabilities sum to 1.0
-        # TODO: Check here at that the bundle probabilities sum to 1.0
 
     def get_variable_value(self, b, v):
         pass
