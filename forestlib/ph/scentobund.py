@@ -52,7 +52,7 @@ def bundle_by_fidelity(data, bundle_args=None):
     return bundle
 
 
-def single_scenario(data, bundle_args):
+def single_scenario(data, bundle_args=None):
     """Each scenario is its own bundle (i.e., no bundling)"""
     bundle = {}
     scens = []
@@ -79,7 +79,7 @@ def single_scenario(data, bundle_args):
     return bundle
 
 
-def single_bundle(data, bundle_args):
+def single_bundle(data, bundle_args=None):
     """Every scenario in a single bundle (i.e., the subproblem is the master problem)"""
     bundle = {}
 
