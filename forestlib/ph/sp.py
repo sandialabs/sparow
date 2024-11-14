@@ -50,7 +50,7 @@ class StochasticProgram(object):
             self.app_data = app_data
 
     def initialize_bundles(
-        self, *, filename=None, bundle_data=None, bundle_scheme=None, **kwargs
+        self, *, filename=None, bundle_data=None, bundle_scheme=None, models=None, **kwargs
     ):
         # returns bundles, probabilities, and list of scenarios in each bundle
         if filename is not None:
@@ -63,7 +63,17 @@ class StochasticProgram(object):
 
         if bundle_scheme == None:
             bundle_scheme = "single_scenario"
-        self.bundles = scentobund.BundleObj(self.json_data, bundle_scheme, kwargs)
+        if models == None:
+            models = list(sorted(self.model_data.keys())) 
+        else:
+            for name in models:
+                assert name in self.model_data
+        if len(models) == 1:
+            self.bundles = scentobund.BundleObj(self.model_scenarios[models[0]], bundle_scheme, kwargs)
+        else:
+            kwargs['models'] = models
+            self.bundles = scentobund.BundleObj(self.model_scenarios, bundle_scheme, kwargs)
+
 
 
     def get_variable_value(self, b, v):
@@ -250,10 +260,11 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 self.model_data[name] = json.load(file)
         elif model_data is not None:
             self.model_data[name] = model_data.get("data", {})
+            self.model_scenarios[name] = model_data.get("scenarios", {})
         if model_builder is not None:
             self.model_builder[name] = model_builder
         if model_data is not None:
-            self.initialize_bundles(bundle_data=model_data)
+            self.initialize_bundles(bundle_data=self.model_scenarios[name])
 
     def _first_stage_variables(self, *, M):
         for varname in self.first_stage_variables:

@@ -20,11 +20,11 @@ model_data = {
     "HF": {
         "data": {"B": 0.9},
         "scenarios": [
-            {"ID": 1, "d": 15, "C": 1.4},
-            {"ID": 2, "d": 60, "C": 1.3},
-            {"ID": 3, "d": 72, "C": 1.2},
-            {"ID": 4, "d": 78, "C": 1.1},
-            {"ID": 5, "d": 82, "C": 1.0},
+            {"ID": 11, "d": 15, "C": 1.4},
+            {"ID": 12, "d": 60, "C": 1.3},
+            {"ID": 13, "d": 72, "C": 1.2},
+            {"ID": 14, "d": 78, "C": 1.1},
+            {"ID": 15, "d": 82, "C": 1.0},
         ],
     },
 }
@@ -138,12 +138,12 @@ class TestMFNewsVendor:
         sp.solve(M2, solver="glpk")
         assert pyo.value(M2.s[2].x) == 40.0
 
-    def test_MF_builder(self):
+    def test_MF_builder1(self):
         sp = stochastic_program(first_stage_variables=["x"])
         sp.initialize_application(app_data=app_data)
         sp.initialize_model(model_data=model_data["HF"], model_builder=HF_builder)
         sp.initialize_model(model_data=model_data["LF"], model_builder=LF_builder)
-        # TODO - specify bundling logic here
+        sp.initialize_bundles(bundle_data=model_data, scheme="mf_paired", ordered_pairing=True)
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
         assert sp.bundles.probability("1") == 0.2
@@ -168,3 +168,10 @@ class TestMFNewsVendor:
 
         sp.solve(M2, solver="glpk")
         assert pyo.value(M2.s[2].x) == 60.0
+
+    def test_MF_builder21(self):
+        # MORE TESTS HERE
+        #sp.initialize_bundles(bundle_data=model_data, scheme="mf_paired", random_pairing=True, seed=837493847937)
+        #sp.initialize_bundles(bundle_data=model_data, scheme="mf_paired", ordered_pairing=True)
+
+        pass
