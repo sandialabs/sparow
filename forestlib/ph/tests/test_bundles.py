@@ -1,7 +1,7 @@
-from scentobund import bundle_by_fidelity
-from scentobund import single_scenario
-from scentobund import single_bundle
-from scentobund import bundle_random_partition
+from forestlib.ph.scentobund import bundle_by_fidelity
+from forestlib.ph.scentobund import single_scenario
+from forestlib.ph.scentobund import single_bundle
+from forestlib.ph.scentobund import bundle_random_partition
 import random
 import pytest
 import pdb
