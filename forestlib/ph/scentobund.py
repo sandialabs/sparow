@@ -233,7 +233,7 @@ class BundleObj(object):
         self.bundle_args = bundle_args
         for key in self.bundles.keys():
             self.bundle_probability[key] = self.bundles[key]["Probability"]
-            self.scenarios_in_bundle[key] = self.bundles[key]["scenarios"].keys()
+            self.scenarios_in_bundle[key] = list(self.bundles[key]["scenarios"].keys())
 
         return (
             self.bundle_probability,
