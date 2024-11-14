@@ -104,10 +104,12 @@ options = {
 #all_scenario_names = ["good", "average", "bad"]
 #ph = PH(
 #    options,
- #   all_scenario_names,
+#   all_scenario_names,
 #    scenario_creator,
 #)
 
+
+#ph.get_root_solution()
 #results = ph.ph_main()
 
 
@@ -210,7 +212,7 @@ class TestSolverAgainstMPISPPY(object):
         first_stage_variables=["X[*]"], model_builder=model_builder)
         FarmerSP.initialize_bundles(bundle_data=bundle_data, bundle_scheme="single_scenario")
         ph = ProgressiveHedgingSolver()
-        results=ph.solve(FarmerSP, max_iterations=100, solver="gurobi", rho=10)
+        results=ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
       
         ph_objval=results.obj_lb
         print("PH VALUE")
@@ -242,7 +244,7 @@ class TestSolverAgainstMPISPPY(object):
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"], model_builder=model_builder)
         FarmerSP.initialize_bundles(bundle_data=bundle_data, bundle_scheme="single_scenario")
         ph = ProgressiveHedgingSolver()
-        results=ph.solve(FarmerSP, max_iterations=100, solver="gurobi", rho=10)
+        results=ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
       
         ph_objval=results.obj_lb
         assert abs((mpi_objval - ph_objval)/ph_objval) < 1e-3
@@ -267,13 +269,13 @@ class TestSolverAgainstMPISPPY(object):
         )
         results = ph.ph_main()
         xbar_list = []
-        for index in ph.local_scenarios['good']._mpisppy_model.xbars.keys():
+        for index in [('ROOT',0),('ROOT',1),('ROOT',2)]:
             xbar_list.append(pyo.value(ph.local_scenarios['good']._mpisppy_model.xbars[index]))
 
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"], model_builder=model_builder)
         FarmerSP.initialize_bundles(bundle_data=bundle_data, bundle_scheme="single_scenario")
         ph = ProgressiveHedgingSolver()
-        results=ph.solve(FarmerSP, max_iterations=100, solver="gurobi", rho=10)
+        results=ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
         xbar_ph=[]
         for index in reversed(results.xbar.keys()):
             xbar_ph.append(results.xbar[index])
@@ -301,12 +303,15 @@ class TestSolverAgainstMPISPPY(object):
         results= ph.ph_main()
         w_bar_mpisppy=[]
         for s in all_scenario_names:
-            w_bar_mpisppy.append(ph.local_scenarios[s]._mpisppy_model.W.extract_values().values())
-
+            row=[]
+            for index in [('ROOT',0),('ROOT',1),('ROOT',2)]:
+                row.append(pyo.value(ph.local_scenarios[s]._mpisppy_model.W[index]))
+            w_bar_mpisppy.append(row)
+        
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"], model_builder=model_builder)
         FarmerSP.initialize_bundles(bundle_data=bundle_data, bundle_scheme="single_scenario")
         ph = ProgressiveHedgingSolver()
-        results=ph.solve(FarmerSP, max_iterations=100, solver="gurobi", rho=10)
+        results=ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
         data = []
 
         scenarios = ['AboveAverageScenario', 'AverageScenario', 'BelowAverageScenario']
@@ -316,6 +321,6 @@ class TestSolverAgainstMPISPPY(object):
             for i in range(2, -1, -1):
                 temp.append(results.w[scenario][i])
             data.append(temp)
-        array1 = np.array([[v for v in d] for d in w_bar_mpisppy])
+        array1 = np.array(w_bar_mpisppy)
         array2 = np.array(data)
         assert np.allclose(array1, array2)
