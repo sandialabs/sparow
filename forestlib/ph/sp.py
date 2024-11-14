@@ -286,10 +286,10 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
     def _create_scenario(self, s, model_name=None):
         data = copy.copy(self.app_data)
         for k, v in self.model_data.get(model_name, {}).items():
-            assert v not in data, f"Model data for {k} has already been specified!"
+            assert k not in data, f"Model data for {k} has already been specified!"
             data[k] = v
         for k, v in self.scenario_data.get(s, {}).items():
-            assert v not in data, f"Scenario data for {k} has already been specified!"
+            assert k not in data, f"Scenario data for {k} has already been specified!"
             data[k] = v
         return self.model_builder[model_name](data, {})
 

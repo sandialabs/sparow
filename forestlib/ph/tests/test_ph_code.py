@@ -111,7 +111,7 @@ options = {
 #results = ph.ph_main()
 
 
-def model_builder(app_dta, scen, scen_args):
+def model_builder(scen, scen_args):
     model = pyo.ConcreteModel(scen["ID"])
     if scen["ID"] == "BelowAverageScenario":
         yields = [2, 2.4, 16]

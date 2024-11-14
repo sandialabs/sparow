@@ -83,6 +83,34 @@ def SF_data():
 def nofid_scen():
     return {"scenarios": [{"ID": "nofid", "Demand": 20, "Probability": 1.0}]}
 
+@pytest.fixture
+def rand_scens():
+    return {
+        "scenarios": [
+            {
+                "ID": "rand_1",
+                "Fidelity": "HF",
+                "Demand": 3,
+                "Weight": 1,
+                "Probability": 0.5,
+            },
+            {
+                "ID": "rand_0",
+                "Fidelity": "HF",
+                "Demand": 1,
+                "Weight": 1,
+                "Probability": 0.3,
+            },
+            {
+                "ID": "rand_2",
+                "Fidelity": "LF",
+                "Demand": 4,
+                "Weight": 1,
+                "Probability": 0.2,
+            }
+        ]
+    }
+
 
 class TestBundleFunctions(object):
 
@@ -147,32 +175,32 @@ class TestBundleFunctions(object):
             SF_data, bundle_args={"some_other_arg": "arg"}
         ) == single_bundle(SF_data, bundle_args=None)
 
-    def test_bundle_random_partition(self, SF_data, MF_data):
+    def test_bundle_random_partition(self, rand_scens):
         # check that no "num_buns" in bundle args returns error
         with pytest.raises(TypeError) as excinfo:
-            bundle_random_partition(SF_data, bundle_args=None)
+            bundle_random_partition(rand_scens, bundle_args=None)
         assert excinfo.type is TypeError
 
         # check that "num_buns" larger than #scenarios returns error
         with pytest.raises(RuntimeError) as excinfo:
-            bundle_random_partition(SF_data, bundle_args={"num_buns": 5})
+            bundle_random_partition(rand_scens, bundle_args={"num_buns": 4})
         assert excinfo.type is RuntimeError
 
         # check that a non-integer/negative "num_buns" returns error
         with pytest.raises(ValueError) as excinfo:
-            bundle_random_partition(SF_data, bundle_args={"num_buns": -1})
+            bundle_random_partition(rand_scens, bundle_args={"num_buns": -1})
         assert excinfo.type is ValueError
 
         with pytest.raises(ValueError) as excinfo:
-            bundle_random_partition(SF_data, bundle_args={"num_buns": 2.4})
+            bundle_random_partition(rand_scens, bundle_args={"num_buns": 2.4})
         assert excinfo.type is ValueError
 
-        # check logic with no bundle args except seed
-        # assert bundle_random_partition(SF_data, bundle_args={'seed': 1})
+        # TODO: check logic with no bundle args except seed
+        assert bundle_random_partition(rand_scens, bundle_args={'num_buns': 3, 'seed': 1})
 
-        # check logic with 'fidelity' in bundle_args
+        # TODO: check logic with 'fidelity' in bundle_args
 
-        # check logic with bundle args in addition to fidelity and seed
+        # TODO: check logic with bundle args in addition to fidelity and seed
 
     def test_bundle_scheme(self):
         pass
