@@ -81,7 +81,7 @@ class TestNewsVendor:
         sp.initialize_bundles(bundle_data=bundle_data)
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
-        assert sp.bundle_probability["1"] == 0.2
+        assert sp.bundles.probability("1") == 0.2
 
         #
         # Testing internal data structures
@@ -109,7 +109,7 @@ class TestNewsVendor:
         sp.initialize_bundles(bundle_data=bundle_data)
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
-        assert sp.bundle_probability["1"] == 0.2
+        assert sp.bundles.probability("1") == 0.2
 
         #
         # Testing internal data structures

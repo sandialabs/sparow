@@ -88,7 +88,7 @@ class TestMFNewsVendor:
         sp.initialize_model(model_data=model_data["LF"])
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
-        assert sp.bundle_probability["1"] == 0.2
+        assert sp.bundles.probability("1") == 0.2
 
         #
         # Testing internal data structures
@@ -116,7 +116,7 @@ class TestMFNewsVendor:
         sp.initialize_model(model_data=model_data["HF"])
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
-        assert sp.bundle_probability["1"] == 0.2
+        assert sp.bundles.probability("1") == 0.2
 
         #
         # Testing internal data structures
@@ -146,7 +146,7 @@ class TestMFNewsVendor:
         # TODO - specify bundling logic here
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
-        assert sp.bundle_probability["1"] == 0.2
+        assert sp.bundles.probability("1") == 0.2
 
         #
         # Testing internal data structures

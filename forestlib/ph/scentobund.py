@@ -224,20 +224,30 @@ class BundleObj(object):
 
     def __init__(self, data, scheme_str, bundle_args):
         self.bundles = bundle_scheme(data, scheme_str, bundle_args)
-
-    def bundle_info(self, scheme_str, bundle_args):
         # BUNDLE DATA (Indexed by bundle ID)
         self.bundle_probability = {}
         self.scenarios_in_bundle = {}
-        self.bundle_scheme = scheme_str
+        self.scenario_probability = {}
+        self.bundle_scheme_str = scheme_str
         self.bundle_args = bundle_args
         for key in self.bundles.keys():
             self.bundle_probability[key] = self.bundles[key]["Probability"]
             self.scenarios_in_bundle[key] = list(self.bundles[key]["scenarios"].keys())
+            self.scenario_probability[key] = self.bundles[key]["scenarios"]
 
-        return (
-            self.bundle_probability,
-            self.scenarios_in_bundle,
-            self.bundle_args,
-            self.bundle_scheme,
-        )
+    def __contains__(self, key):
+        return key in self.bundles
+
+    def __getitem__(self, key):
+        return self.bundles[key]
+    
+    def __iter__(self):
+        for key in self.bundles:
+            yield key
+
+    def keys(self):
+        for key in self.bundles:
+            yield key
+
+    def probability(self, key):
+        return self.bundle_probability[key]
