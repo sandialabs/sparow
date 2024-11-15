@@ -9,11 +9,77 @@ specify which bundling scheme (function) is used via "bundle_scheme" in sp.py
 """
 
 
+def mf_paired(
+    data, bundle_args={"ordered": True}
+):  # ordered=False will randomize. default is True
+    """
+    Scenarios are paired according to their fidelities
+    this will only work with exactly two fidelities!!!!!!
+    """
+
+    counts = (
+        {}
+    )  # keys are fidelity, values are how many scenarios of that fidelity are in scenario list
+    for fid in list(map(lambda d: d["Fidelity"], data["scenarios"])):
+        counts[fid] = counts.get(fid, 0) + 1
+
+    fidelities = list(
+        set(map(lambda d: d["Fidelity"], data["scenarios"]))
+    )  # list of unique fidelities in scenario list
+
+    """
+        max_fid is the fidelity with the largest number of scenarios; max_fid and min_fid are arbitrarily set to the first/second
+        in the scenario list respectively if each fidelity has the same number of scenarios
+    """
+    if all(counts[fidelities[0]] == counts[fid] for fid in fidelities):
+        max_fid = fidelities[0]
+        min_fid = fidelities[1]
+    else:
+        max_fid = max(counts, key=counts.get)
+        min_fid = min(counts, key=counts.get)
+
+    bundle = {}
+
+    temp_dict = {}  # keys are fidelity, values are scenarios of that fidelity
+    for fid in fidelities:
+        temp_dict[f"{fid}"] = []
+    for i in range(len(data["scenarios"])):
+        for fid in fidelities:
+            if data["scenarios"][i]["Fidelity"] == fid:
+                temp_dict[f"{fid}"].append(data["scenarios"][i])
+
+    if (
+        bundle_args["ordered"] == True
+    ):  # scenarios from each fid are paired by order they appear in scenario list
+        for i in range(len(temp_dict[max_fid])):
+            bun_prob = (
+                temp_dict[max_fid][i]["Probability"]
+                + temp_dict[min_fid][i % counts[min_fid]]["Probability"]
+            )
+            bundle[f"ord_pair_{i}"] = {
+                "scenarios": {
+                    temp_dict[max_fid][i]["ID"]: temp_dict[max_fid][i]["Probability"]
+                    / bun_prob,
+                    temp_dict[min_fid][i % counts[min_fid]]["ID"]: temp_dict[min_fid][
+                        i % counts[min_fid]
+                    ]["Probability"]
+                    / bun_prob,
+                },
+                "Probability": bun_prob,
+            }
+        norm_factor = sum(bundle[key]["Probability"] for key in bundle.keys())
+        for key in bundle.keys():
+            bundle[key]["Probability"] /= norm_factor
+    else:  # scenarios from each fid are randomly paired
+        return RuntimeError(f"I haven't developed a non-ordered (random) method yet")
+
+    # TODO: add random method
+
+    return bundle
+
+
 def bundle_by_fidelity(data, bundle_args=None):
     """Scenarios are bundled according to their fidelities"""
-
-    if bundle_args is not None:
-        raise RuntimeError(f"bundle_args not accepted by bundle_by_fidelity scheme")
 
     if any(
         data["scenarios"][i].get("Fidelity") == None
@@ -198,6 +264,7 @@ scheme = {
     "single_scenario": single_scenario,
     "single_bundle": single_bundle,
     "bundle_random_partition": bundle_random_partition,
+    "mf_paired": mf_paired,
 }
 
 
@@ -240,7 +307,7 @@ class BundleObj(object):
 
     def __getitem__(self, key):
         return self.bundles[key]
-    
+
     def __iter__(self):
         for key in self.bundles:
             yield key
