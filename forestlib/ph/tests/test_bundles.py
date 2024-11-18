@@ -1,6 +1,13 @@
-from forestlib.ph.scentobund import bundle_by_fidelity, single_scenario, single_bundle, bundle_random_partition, mf_paired
+from forestlib.ph.scentobund import (
+    bundle_by_fidelity,
+    single_scenario,
+    single_bundle,
+    bundle_random_partition,
+    mf_paired,
+)
 import random
 import pytest
+
 
 @pytest.fixture
 def MF_data():
@@ -110,7 +117,9 @@ def rand_scens():
 
 class TestBundleFunctions(object):
 
-    @pytest.mark.skip(reason="truly no idea why mf_paired isn't importing correctly but it's working in function_tests -R")
+    @pytest.mark.skip(
+        reason="truly no idea why mf_paired isn't importing correctly but it's working in function_tests -R"
+    )
     def test_mf_paired(self, MF_data, rand_scens):
         # check bundling when #HF scenarios = #LF scenarios:
         assert mf_paired(MF_data, bundle_args={"ordered": True}) == {

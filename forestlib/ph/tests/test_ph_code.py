@@ -101,16 +101,16 @@ options = {
     "iter0_solver_options": dict(),
     "iterk_solver_options": dict(),
 }
-#all_scenario_names = ["good", "average", "bad"]
-#ph = PH(
+# all_scenario_names = ["good", "average", "bad"]
+# ph = PH(
 #    options,
 #   all_scenario_names,
 #    scenario_creator,
-#)
+# )
 
 
-#ph.get_root_solution()
-#results = ph.ph_main()
+# ph.get_root_solution()
+# results = ph.ph_main()
 
 
 def model_builder(scen, scen_args):
@@ -206,14 +206,14 @@ class TestSolverAgainstMPISPPY(object):
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results=ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
-      
-        ph_objval=results.obj_lb
+        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
+
+        ph_objval = results.obj_lb
         print("PH VALUE")
         print(ph_objval)
-        #assert abs(ef_objval - ph_objval) < 1e-5
+        # assert abs(ef_objval - ph_objval) < 1e-5
         pass
-        
+
     def test_PH_model_solve_obj(self):
         options = {
             "solver_name": "gurobi",
@@ -233,15 +233,15 @@ class TestSolverAgainstMPISPPY(object):
             scenario_creator,
         )
         results = ph.ph_main()
-        mpi_objval=ph.Eobjective()
+        mpi_objval = ph.Eobjective()
 
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results=ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
-      
-        ph_objval=results.obj_lb
-        assert abs((mpi_objval - ph_objval)/ph_objval) < 1e-3
+        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
+
+        ph_objval = results.obj_lb
+        assert abs((mpi_objval - ph_objval) / ph_objval) < 1e-3
 
     def test_PH_model_solve_xbar(self):
         options = {
@@ -263,19 +263,22 @@ class TestSolverAgainstMPISPPY(object):
         )
         results = ph.ph_main()
         xbar_list = []
-        for index in [('ROOT',0),('ROOT',1),('ROOT',2)]:
-            xbar_list.append(pyo.value(ph.local_scenarios['good']._mpisppy_model.xbars[index]))
+        for index in [("ROOT", 0), ("ROOT", 1), ("ROOT", 2)]:
+            xbar_list.append(
+                pyo.value(ph.local_scenarios["good"]._mpisppy_model.xbars[index])
+            )
 
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results=ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
-        xbar_ph=[]
+        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
+        xbar_ph = []
         for index in reversed(results.xbar.keys()):
             xbar_ph.append(results.xbar[index])
-        xbar_ph=np.array(xbar_ph)
+        xbar_ph = np.array(xbar_ph)
         xbar_mpi = np.array(xbar_list)
         assert np.allclose(xbar_ph, xbar_mpi)
+
     def test_PH_model_solve_w_scen(self):
         options = {
             "solver_name": "gurobi",
@@ -294,21 +297,21 @@ class TestSolverAgainstMPISPPY(object):
             all_scenario_names,
             scenario_creator,
         )
-        results= ph.ph_main()
-        w_bar_mpisppy=[]
+        results = ph.ph_main()
+        w_bar_mpisppy = []
         for s in all_scenario_names:
-            row=[]
-            for index in [('ROOT',0),('ROOT',1),('ROOT',2)]:
+            row = []
+            for index in [("ROOT", 0), ("ROOT", 1), ("ROOT", 2)]:
                 row.append(pyo.value(ph.local_scenarios[s]._mpisppy_model.W[index]))
             w_bar_mpisppy.append(row)
-        
+
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results=ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
+        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
         data = []
 
-        scenarios = ['AboveAverageScenario', 'AverageScenario', 'BelowAverageScenario']
+        scenarios = ["AboveAverageScenario", "AverageScenario", "BelowAverageScenario"]
 
         for scenario in scenarios:
             temp = []

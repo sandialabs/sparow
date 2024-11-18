@@ -88,7 +88,7 @@ class TestMFNewsVendor:
         sp.initialize_model(model_data=model_data["LF"])
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
-        assert sp.bundles.probability("1") == 0.2
+        assert sp.bundles["1"].probability == 0.2
 
         #
         # Testing internal data structures
@@ -116,7 +116,7 @@ class TestMFNewsVendor:
         sp.initialize_model(model_data=model_data["HF"])
 
         assert set(sp.bundles.keys()) == {"11", "12", "13", "14", "15"}
-        assert sp.bundles.probability("11") == 0.2
+        assert sp.bundles["11"].probability == 0.2
 
         #
         # Testing internal data structures
@@ -143,10 +143,12 @@ class TestMFNewsVendor:
         sp.initialize_application(app_data=app_data)
         sp.initialize_model(model_data=model_data["HF"], model_builder=HF_builder)
         sp.initialize_model(model_data=model_data["LF"], model_builder=LF_builder)
-        sp.initialize_bundles(bundle_data=model_data, scheme="mf_paired", ordered_pairing=True)
+        sp.initialize_bundles(
+            bundle_data=model_data, scheme="mf_paired", ordered_pairing=True
+        )
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
-        assert sp.bundles.probability("1") == 0.2
+        assert sp.bundles["1"].probability == 0.2
 
         #
         # Testing internal data structures
@@ -171,7 +173,7 @@ class TestMFNewsVendor:
 
     def test_MF_builder21(self):
         # MORE TESTS HERE
-        #sp.initialize_bundles(bundle_data=model_data, scheme="mf_paired", random_pairing=True, seed=837493847937)
-        #sp.initialize_bundles(bundle_data=model_data, scheme="mf_paired", ordered_pairing=True)
+        # sp.initialize_bundles(bundle_data=model_data, scheme="mf_paired", random_pairing=True, seed=837493847937)
+        # sp.initialize_bundles(bundle_data=model_data, scheme="mf_paired", ordered_pairing=True)
 
         pass

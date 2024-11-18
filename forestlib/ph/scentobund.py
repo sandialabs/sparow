@@ -1,3 +1,4 @@
+import munch
 import random
 
 """
@@ -290,29 +291,39 @@ def bundle_scheme(data, scheme_str, bundle_args=None):
 class BundleObj(object):
 
     def __init__(self, data, scheme_str, bundle_args):
-        self.bundles = bundle_scheme(data, scheme_str, bundle_args)
         self.bundle_scheme_str = scheme_str
         self.bundle_args = bundle_args
+        bundles = bundle_scheme(data, scheme_str, bundle_args)
+        self._bundles = {
+            key: munch.Munch(
+                probability=bundles[key]["Probability"],
+                scenarios=list(sorted(bundles[key]["scenarios"].keys())),
+                scenario_probability=bundles[key]["scenarios"],
+            )
+            for key in bundles
+        }
 
     def __contains__(self, key):
-        return key in self.bundles
+        return key in self._bundles
 
     def __getitem__(self, key):
-        return self.bundles[key]
+        return self._bundles[key]
 
     def __iter__(self):
-        for key in self.bundles:
+        for key in self._bundles:
             yield key
 
     def keys(self):
-        for key in self.bundles:
+        for key in self._bundles:
             yield key
 
-    def probability(self, key):
-        return self.bundles[key]['Probability'] #self.bundle_probability[key]
+    # def probability(self, key):
+    #    return self.bundles[key]['Probability'] #self.bundle_probability[key]
 
-    def scenarios(self, key):
-        return list(self.bundles[key]['scenarios'])
 
-    def scenario_probability(self, key, s):
-        return self.bundles[key]['scenarios'][s]
+#
+#    def scenarios(self, key):
+#        return list(self.bundles[key]['scenarios'])
+#
+#    def scenario_probability(self, key, s):
+#        return self.bundles[key]['scenarios'][s]

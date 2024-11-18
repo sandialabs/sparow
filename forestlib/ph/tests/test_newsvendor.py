@@ -7,15 +7,14 @@ from forestlib.ph import stochastic_program
 # Data for a simple newsvendor example
 #
 model_data = {
-    "data": {
-        "c":1.0, "b":1.5, "h":0.1},
+    "data": {"c": 1.0, "b": 1.5, "h": 0.1},
     "scenarios": [
         {"ID": 1, "d": 15},
         {"ID": 2, "d": 60},
         {"ID": 3, "d": 72},
         {"ID": 4, "d": 78},
         {"ID": 5, "d": 82},
-    ]
+    ],
 }
 
 
@@ -79,7 +78,7 @@ class TestNewsVendor:
         sp.initialize_model(model_data=model_data, model_builder=model_builder)
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
-        assert sp.bundles.probability("1") == 0.2
+        assert sp.bundles["1"].probability == 0.2
 
         #
         # Testing internal data structures
@@ -106,7 +105,7 @@ class TestNewsVendor:
         sp.initialize_model(model_data=model_data)
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
-        assert sp.bundles.probability("1") == 0.2
+        assert sp.bundles["1"].probability == 0.2
 
         #
         # Testing internal data structures

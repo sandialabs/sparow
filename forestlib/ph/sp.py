@@ -51,7 +51,13 @@ class StochasticProgram(object):
             self.app_data = app_data
 
     def initialize_bundles(
-        self, *, filename=None, bundle_data=None, bundle_scheme=None, models=None, **kwargs
+        self,
+        *,
+        filename=None,
+        bundle_data=None,
+        bundle_scheme=None,
+        models=None,
+        **kwargs,
     ):
         # returns bundles, probabilities, and list of scenarios in each bundle
         if filename is not None:
@@ -63,19 +69,21 @@ class StochasticProgram(object):
         if bundle_scheme == None:
             bundle_scheme = "single_scenario"
         if models == None:
-            models = list(sorted(self.model_scenarios.keys())) 
+            models = list(sorted(self.model_scenarios.keys()))
         else:
             for name in models:
                 assert name in self.model_scenarios
         if bundle_data is not None:
             self.bundles = scentobund.BundleObj(bundle_data, bundle_scheme, kwargs)
         elif len(models) == 1:
-            self.bundles = scentobund.BundleObj(self.model_scenarios[models[0]], bundle_scheme, kwargs)
+            self.bundles = scentobund.BundleObj(
+                self.model_scenarios[models[0]], bundle_scheme, kwargs
+            )
         else:
-            kwargs['models'] = models
-            self.bundles = scentobund.BundleObj(self.model_scenarios, bundle_scheme, kwargs)
-
-
+            kwargs["models"] = models
+            self.bundles = scentobund.BundleObj(
+                self.model_scenarios, bundle_scheme, kwargs
+            )
 
     def get_variable_value(self, b, v):
         pass
@@ -126,7 +134,7 @@ class StochasticProgram(object):
                 )
                 logger.debug(msg)
                 return munch.Munch(feasible=False, bundle=b)
-        obj = sum(self.bundles.probability(b) * obj_value[b] for b in self.bundles)
+        obj = sum(self.bundles[b].probability * obj_value[b] for b in self.bundles)
         # Just need to get one of the bundles to collect the variables
         for b in self.bundles:
             return munch.Munch(
@@ -263,12 +271,14 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         if model_data is not None:
             self.model_data[name] = model_data.get("data", {})
             self.model_scenarios[name] = model_data.get("scenarios", {})
-            #self.scenario_data = {scen["ID"]: scen for scen in bundle_data["scenarios"]}
+            # self.scenario_data = {scen["ID"]: scen for scen in bundle_data["scenarios"]}
 
         if model_builder is not None:
             self.model_builder[name] = model_builder
         if model_data is not None:
-            self.initialize_bundles(bundle_data=dict(scenarios=self.model_scenarios[name]))
+            self.initialize_bundles(
+                bundle_data=dict(scenarios=self.model_scenarios[name])
+            )
 
     def _first_stage_variables(self, *, M):
         for varname in self.first_stage_variables:
@@ -292,7 +302,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         return self.model_builder[model_name](data, {})
 
     def create_EF(self, *, w=None, x_bar=None, rho=None, b):
-        scenarios = self.bundles.scenarios(b)
+        scenarios = self.bundles[b].scenarios
 
         # 1) create scenario dictionary
         scen_dict = {}
@@ -338,7 +348,9 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             }
 
         # 3)Create Obj:sum of scenario obj * probability
-        obj = sum(self.bundles.scenario_probability(b,s) * obj[s].expr for s in scenarios)
+        obj = sum(
+            self.bundles[b].scenario_probability[s] * obj[s].expr for s in scenarios
+        )
         if w is not None:
             obj = (
                 obj
@@ -384,9 +396,7 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
         ), "WEH - This class only works for two-stages right now."
         self.model_builder_list = model_builder_list
 
-    def initialize_model(
-        self, *, name=None, filename=None, model_data=None, **kwargs
-    ):
+    def initialize_model(self, *, name=None, filename=None, model_data=None, **kwargs):
         if filename is not None:
             with open(f"{filename}", "r") as file:
                 model_data = json.load(filename)
@@ -394,10 +404,12 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
         if model_data is not None:
             self.model_data[name] = model_data.get("data", {})
             self.model_scenarios[name] = model_data.get("scenarios", {})
-            #self.scenario_data = {scen["ID"]: scen for scen in bundle_data["scenarios"]}
+            # self.scenario_data = {scen["ID"]: scen for scen in bundle_data["scenarios"]}
 
         if model_data is not None:
-            self.initialize_bundles(bundle_data=dict(scenarios=self.model_scenarios[name]))
+            self.initialize_bundles(
+                bundle_data=dict(scenarios=self.model_scenarios[name])
+            )
 
     def _first_stage_variables(self, *, M):
         for var in find_variables(M):
@@ -414,7 +426,7 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
         self.model_builder_list[1](M, M.s[s], data, {})
 
     def create_EF(self, *, w=None, x_bar=None, rho=None, b):
-        scenarios = self.bundles.scenarios(b)
+        scenarios = self.bundles[b].scenarios
 
         # 1) create EF model
         EF_model = pyo.ConcreteModel()
@@ -438,7 +450,8 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
         # 3)Create Obj: root_obj + (sum of scenario obj * probability)
         obj = 0 if root_obj is None else root_obj
         obj = obj + sum(
-            self.bundles.scenario_probability(b,s) * obj_comp[s].expr for s in scenarios
+            self.bundles[b].scenario_probability[s] * obj_comp[s].expr
+            for s in scenarios
         )
         if w is not None:
             obj = (

@@ -84,7 +84,7 @@ class ProgressiveHedgingSolver(object):
                 obj_value[b] is not None
             ), f"ERROR solving bundle {b} in initial solve"
             logger.verbose(f"Optimization Complete")
-        obj_lb = sum(sp.bundles.probability(b) * obj_value[b] for b in sp.bundles)
+        obj_lb = sum(sp.bundles[b].probability * obj_value[b] for b in sp.bundles)
 
         #
         # This is a list of shared first-stage variables amongst all bundles.
@@ -97,7 +97,7 @@ class ProgressiveHedgingSolver(object):
         for x in sfs_variables:
             xbar[x] = 0.0
             for b in sp.bundles:
-                xbar[x] += sp.bundles.probability(b) * sp.get_variable_value(b, x)
+                xbar[x] += sp.bundles[b].probability * sp.get_variable_value(b, x)
 
         # Step 4
         w = {}
@@ -135,14 +135,14 @@ class ProgressiveHedgingSolver(object):
                     obj_value[b] is not None
                 ), f"ERROR solving bundle {b} in iteration {iteration}"
                 logger.verbose(f"Optimization Complete")
-            obj_lb = sum(sp.bundles.probability(b) * obj_value[b] for b in sp.bundles)
+            obj_lb = sum(sp.bundles[b].probability * obj_value[b] for b in sp.bundles)
 
             # Step 7
             xbar = {}
             for x in sfs_variables:
                 xbar[x] = 0.0
                 for b in sp.bundles:
-                    xbar[x] += sp.bundles.probability(b) * sp.get_variable_value(b, x)
+                    xbar[x] += sp.bundles[b].probability * sp.get_variable_value(b, x)
             logger.debug(f"xbar = {xbar}")
 
             # Step 8
@@ -158,7 +158,7 @@ class ProgressiveHedgingSolver(object):
             # Step 9
             g = 0.0
             for b in sp.bundles:
-                g += sp.bundles.probability(b) * norm(
+                g += sp.bundles[b].probability * norm(
                     [sp.get_variable_value(b, x) - xbar[x] for x in sfs_variables],
                     self.convergence_norm,
                 )
