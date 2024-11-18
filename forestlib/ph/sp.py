@@ -33,14 +33,20 @@ class StochasticProgram(object):
 
     def __init__(self):
         self.solver = "gurobi"
+        self._binary_or_integer_fsv = set()
 
-        # MODEL DATA (Indexed by model name)
+        # Bundles (must be initialized later)
+        self.bundles = None
+        # Dictionary of application data
+        self.app_data = {}
+        # model_data[model_name] -> data
         self.model_data = {}
+        # scenario_data[model_name][scenario_name] -> data
         self.scenario_data = {}
 
-        # APPLICATION DATA
-        self.app_data = {}
-        self._binary_or_integer_fsv = set()
+        # The name of the default model used to evaluate
+        # solutions
+        self.default_model = None
 
     def initialize_application(self, *, filename=None, app_data=None, **kwargs):
         if filename is not None:
@@ -53,8 +59,7 @@ class StochasticProgram(object):
         self,
         *,
         filename=None,
-        bundle_data=None,
-        bundle_scheme=None,
+        scheme=None,
         models=None,
         **kwargs,
     ):
@@ -63,24 +68,24 @@ class StochasticProgram(object):
             with open(f"{filename}", "r") as file:
                 bundle_data = json.load(filename)
 
-        if bundle_scheme == None:
-            bundle_scheme = "single_scenario"
+        if scheme == None:
+            scheme = "single_scenario"
         if models == None:
             models = list(sorted(self.scenario_data.keys()))
         else:
             for name in models:
                 assert name in self.scenario_data
-        if bundle_data is not None:
-            self.bundles = scentobund.BundleObj(bundle_data, bundle_scheme, kwargs)
-        elif len(models) == 1:
+
+        assert len(models) > 0, "Cannot initialize bundles without model data"
+        if len(models) == 1:
             self.bundles = scentobund.BundleObj(
-                dict(scenarios=self.scenario_data[models[0]]), bundle_scheme, kwargs
+                dict(scenarios=list(self.scenario_data[models[0]].values())),
+                scheme,
+                kwargs,
             )
         else:
             kwargs["models"] = models
-            self.bundles = scentobund.BundleObj(
-                self.scenario_data, bundle_scheme, kwargs
-            )
+            self.bundles = scentobund.BundleObj(self.scenario_data, scheme, kwargs)
 
     def get_variable_value(self, b, v):
         pass
@@ -109,12 +114,13 @@ class StochasticProgram(object):
     def evaluate(self, x, solver_options=None):
         if solver_options is None:
             solver_options = {}
+
+        # Setup single-scenario bundles with the default model
+        _bundles = self.bundles
+        self.initialize_bundles(models=[self.default_model], scheme="single_scenario")
+
         obj_value = {}
         M = {}
-        #
-        # WEH - Should we evaluate w.r.t. scenarios?  How would we reconfigure the sp
-        #           object to do that?
-        #
         for b in self.bundles:
             M[b] = self.create_subproblem(b)
             for i, xval in enumerate(x):
@@ -133,6 +139,7 @@ class StochasticProgram(object):
                 return munch.Munch(feasible=False, bundle=b)
         obj = sum(self.bundles[b].probability * obj_value[b] for b in self.bundles)
         # Just need to get one of the bundles to collect the variables
+
         for b in self.bundles:
             return munch.Munch(
                 feasible=True,
@@ -142,6 +149,9 @@ class StochasticProgram(object):
                     for v in self.shared_variables()
                 },
             )
+
+        # Reset the bundles
+        self.bundles = _bundles
 
 
 class StochasticProgram_Pyomo_Base(StochasticProgram):
@@ -259,8 +269,18 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 self.initialize_model(name=k, model_builder=v)
 
     def initialize_model(
-        self, *, name=None, filename=None, model_data=None, model_builder=None, **kwargs
+        self,
+        *,
+        name=None,
+        filename=None,
+        model_data=None,
+        model_builder=None,
+        default=True,
+        **kwargs,
     ):
+        if default:
+            self.default_model = name
+
         if filename is not None:
             with open(f"{filename}", "r") as file:
                 model_data = json.load(filename)
@@ -270,13 +290,14 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             self.scenario_data[name] = {
                 scen["ID"]: scen for scen in model_data.get("scenarios", {})
             }
+            # WEH - Need to add this?
+            # for s in self.scenario_data[name]:
+            #    self.scenario_data[name][s]['Fidelity'] = name
 
         if model_builder is not None:
             self.model_builder[name] = model_builder
         if model_data is not None:
-            self.initialize_bundles(
-                bundle_data=dict(scenarios=list(self.scenario_data[name].values()))
-            )
+            self.initialize_bundles(models=[name])
 
     def _first_stage_variables(self, *, M):
         for varname in self.first_stage_variables:
@@ -406,9 +427,7 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
             }
 
         if model_data is not None:
-            self.initialize_bundles(
-                bundle_data=dict(scenarios=list(self.scenario_data[name].values()))
-            )
+            self.initialize_bundles(models=[name])
 
     def _first_stage_variables(self, *, M):
         for var in find_variables(M):

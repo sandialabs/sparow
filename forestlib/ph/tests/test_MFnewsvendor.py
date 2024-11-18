@@ -142,10 +142,10 @@ class TestMFNewsVendor:
         sp = stochastic_program(first_stage_variables=["x"])
         sp.initialize_application(app_data=app_data)
         sp.initialize_model(model_data=model_data["HF"], model_builder=HF_builder)
-        sp.initialize_model(model_data=model_data["LF"], model_builder=LF_builder)
-        sp.initialize_bundles(
-            bundle_data=model_data, scheme="mf_paired", ordered_pairing=True
+        sp.initialize_model(
+            model_data=model_data["LF"], model_builder=LF_builder, default=False
         )
+        sp.initialize_bundles(scheme="mf_paired", ordered_pairing=True)
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
         assert sp.bundles["1"].probability == 0.2
