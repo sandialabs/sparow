@@ -37,6 +37,7 @@ class StochasticProgram(object):
         # MODEL DATA (Indexed by model name)
         self.scenario_data = {}
         self.model_data = {}
+        self.model_scenarios = {}
 
         # APPLICATION DATA
         self.app_data = {}
@@ -55,20 +56,20 @@ class StochasticProgram(object):
         # returns bundles, probabilities, and list of scenarios in each bundle
         if filename is not None:
             with open(f"{filename}", "r") as file:
-                self.json_data = json.load(file)
-        elif bundle_data is not None:
-            self.json_data = bundle_data
+                bundle_data = json.load(file)
 
-        self.scenario_data = {scen["ID"]: scen for scen in self.json_data["scenarios"]}
+        self.scenario_data = {scen["ID"]: scen for scen in bundle_data["scenarios"]}
 
         if bundle_scheme == None:
             bundle_scheme = "single_scenario"
         if models == None:
-            models = list(sorted(self.model_data.keys())) 
+            models = list(sorted(self.model_scenarios.keys())) 
         else:
             for name in models:
-                assert name in self.model_data
-        if len(models) == 1:
+                assert name in self.model_scenarios
+        if bundle_data is not None:
+            self.bundles = scentobund.BundleObj(bundle_data, bundle_scheme, kwargs)
+        elif len(models) == 1:
             self.bundles = scentobund.BundleObj(self.model_scenarios[models[0]], bundle_scheme, kwargs)
         else:
             kwargs['models'] = models
@@ -261,10 +262,11 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         elif model_data is not None:
             self.model_data[name] = model_data.get("data", {})
             self.model_scenarios[name] = model_data.get("scenarios", {})
+            self.scenario_data = {scen["ID"]: scen for scen in bundle_data["scenarios"]}
         if model_builder is not None:
             self.model_builder[name] = model_builder
         if model_data is not None:
-            self.initialize_bundles(bundle_data=self.model_scenarios[name])
+            self.initialize_bundles(bundle_data=dict(scenarios=self.model_scenarios[name]))
 
     def _first_stage_variables(self, *, M):
         for varname in self.first_stage_variables:

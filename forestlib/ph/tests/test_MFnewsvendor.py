@@ -115,28 +115,28 @@ class TestMFNewsVendor:
         sp.initialize_application(app_data=app_data)
         sp.initialize_model(model_data=model_data["HF"])
 
-        assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
-        assert sp.bundles.probability("1") == 0.2
+        assert set(sp.bundles.keys()) == {"11", "12", "13", "14", "15"}
+        assert sp.bundles.probability("11") == 0.2
 
         #
         # Testing internal data structures
         #
-        M1 = sp.create_subproblem("1")
-        assert set(sp.int_to_FirstStageVar.keys()) == {"1"}
+        M1 = sp.create_subproblem("11")
+        assert set(sp.int_to_FirstStageVar.keys()) == {"11"}
         assert sp.varcuid_to_int == {pyo.ComponentUID("x"): 0}
 
-        M2 = sp.create_subproblem("2")
-        assert set(sp.int_to_FirstStageVar.keys()) == {"1", "2"}
+        M2 = sp.create_subproblem("12")
+        assert set(sp.int_to_FirstStageVar.keys()) == {"11", "12"}
         assert sp.varcuid_to_int == {pyo.ComponentUID("x"): 0}
 
         #
         # Test subproblem solver logic
         #
         sp.solve(M1, solver="glpk")
-        assert pyo.value(M1.s[1].x) == 9.0
+        assert pyo.value(M1.s[11].x) == 9.0
 
         sp.solve(M2, solver="glpk")
-        assert pyo.value(M2.s[2].x) == 40.0
+        assert pyo.value(M2.s[12].x) == 40.0
 
     def test_MF_builder1(self):
         sp = stochastic_program(first_stage_variables=["x"])
