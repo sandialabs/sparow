@@ -35,9 +35,8 @@ class StochasticProgram(object):
         self.solver = "gurobi"
 
         # MODEL DATA (Indexed by model name)
-        self.scenario_data = {}
         self.model_data = {}
-        self.model_scenarios = {}
+        self.scenario_data = {}
 
         # APPLICATION DATA
         self.app_data = {}
@@ -64,25 +63,23 @@ class StochasticProgram(object):
             with open(f"{filename}", "r") as file:
                 bundle_data = json.load(filename)
 
-        self.scenario_data = {scen["ID"]: scen for scen in bundle_data["scenarios"]}
-
         if bundle_scheme == None:
             bundle_scheme = "single_scenario"
         if models == None:
-            models = list(sorted(self.model_scenarios.keys()))
+            models = list(sorted(self.scenario_data.keys()))
         else:
             for name in models:
-                assert name in self.model_scenarios
+                assert name in self.scenario_data
         if bundle_data is not None:
             self.bundles = scentobund.BundleObj(bundle_data, bundle_scheme, kwargs)
         elif len(models) == 1:
             self.bundles = scentobund.BundleObj(
-                self.model_scenarios[models[0]], bundle_scheme, kwargs
+                dict(scenarios=self.scenario_data[models[0]]), bundle_scheme, kwargs
             )
         else:
             kwargs["models"] = models
             self.bundles = scentobund.BundleObj(
-                self.model_scenarios, bundle_scheme, kwargs
+                self.scenario_data, bundle_scheme, kwargs
             )
 
     def get_variable_value(self, b, v):
@@ -270,14 +267,15 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
         if model_data is not None:
             self.model_data[name] = model_data.get("data", {})
-            self.model_scenarios[name] = model_data.get("scenarios", {})
-            # self.scenario_data = {scen["ID"]: scen for scen in bundle_data["scenarios"]}
+            self.scenario_data[name] = {
+                scen["ID"]: scen for scen in model_data.get("scenarios", {})
+            }
 
         if model_builder is not None:
             self.model_builder[name] = model_builder
         if model_data is not None:
             self.initialize_bundles(
-                bundle_data=dict(scenarios=self.model_scenarios[name])
+                bundle_data=dict(scenarios=list(self.scenario_data[name].values()))
             )
 
     def _first_stage_variables(self, *, M):
@@ -296,7 +294,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         for k, v in self.model_data.get(model_name, {}).items():
             assert k not in data, f"Model data for {k} has already been specified!"
             data[k] = v
-        for k, v in self.scenario_data.get(s, {}).items():
+        for k, v in self.scenario_data[model_name].get(s, {}).items():
             assert k not in data, f"Scenario data for {k} has already been specified!"
             data[k] = v
         return self.model_builder[model_name](data, {})
@@ -403,12 +401,13 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
 
         if model_data is not None:
             self.model_data[name] = model_data.get("data", {})
-            self.model_scenarios[name] = model_data.get("scenarios", {})
-            # self.scenario_data = {scen["ID"]: scen for scen in bundle_data["scenarios"]}
+            self.scenario_data[name] = {
+                scen["ID"]: scen for scen in model_data.get("scenarios", {})
+            }
 
         if model_data is not None:
             self.initialize_bundles(
-                bundle_data=dict(scenarios=self.model_scenarios[name])
+                bundle_data=dict(scenarios=list(self.scenario_data[name].values()))
             )
 
     def _first_stage_variables(self, *, M):
@@ -420,7 +419,7 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
         for k, v in self.model_data.get(model_name, {}).items():
             assert k not in data, f"Model data for {k} has already been specified!"
             data[k] = v
-        for k, v in self.scenario_data.get(s, {}).items():
+        for k, v in self.scenario_data[model_name].get(s, {}).items():
             assert k not in data, f"Scenario data for {k} has already been specified!"
             data[k] = v
         self.model_builder_list[1](M, M.s[s], data, {})
