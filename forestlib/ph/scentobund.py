@@ -316,14 +316,3 @@ class BundleObj(object):
     def keys(self):
         for key in self._bundles:
             yield key
-
-    # def probability(self, key):
-    #    return self.bundles[key]['Probability'] #self.bundle_probability[key]
-
-
-#
-#    def scenarios(self, key):
-#        return list(self.bundles[key]['scenarios'])
-#
-#    def scenario_probability(self, key, s):
-#        return self.bundles[key]['scenarios'][s]
