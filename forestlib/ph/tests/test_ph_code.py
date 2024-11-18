@@ -170,7 +170,7 @@ FarmerSP = stochastic_program(
     first_stage_variables=["X[*]"], model_builder=model_builder
 )
 
-bundle_data = {
+model_data = {
     "scenarios": [
         {
             "ID": "BelowAverageScenario",
@@ -194,11 +194,6 @@ bundle_data = {
 }
 
 
-#FarmerSP.initialize_bundles(bundle_data=bundle_data, bundle_scheme="single_scenario")
-#ph = ProgressiveHedgingSolver()
-#results=ph.solve(FarmerSP, max_iterations=10, solver="gurobi", loglevel="DEBUG", rho=10)
-
-
 class TestSolverAgainstMPISPPY(object):
     def test_EF_model_solve(self):
         options = {"solver": "gurobi"}
@@ -208,9 +203,8 @@ class TestSolverAgainstMPISPPY(object):
         ef_objval = ef.get_objective_value()
         print("EF VALUE")
         print(ef_objval)
-        FarmerSP = stochastic_program(
-        first_stage_variables=["X[*]"], model_builder=model_builder)
-        FarmerSP.initialize_bundles(bundle_data=bundle_data, bundle_scheme="single_scenario")
+        FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
+        FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
         results=ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
       
@@ -241,8 +235,8 @@ class TestSolverAgainstMPISPPY(object):
         results = ph.ph_main()
         mpi_objval=ph.Eobjective()
 
-        FarmerSP = stochastic_program(first_stage_variables=["X[*]"], model_builder=model_builder)
-        FarmerSP.initialize_bundles(bundle_data=bundle_data, bundle_scheme="single_scenario")
+        FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
+        FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
         results=ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
       
@@ -272,8 +266,8 @@ class TestSolverAgainstMPISPPY(object):
         for index in [('ROOT',0),('ROOT',1),('ROOT',2)]:
             xbar_list.append(pyo.value(ph.local_scenarios['good']._mpisppy_model.xbars[index]))
 
-        FarmerSP = stochastic_program(first_stage_variables=["X[*]"], model_builder=model_builder)
-        FarmerSP.initialize_bundles(bundle_data=bundle_data, bundle_scheme="single_scenario")
+        FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
+        FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
         results=ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
         xbar_ph=[]
@@ -308,8 +302,8 @@ class TestSolverAgainstMPISPPY(object):
                 row.append(pyo.value(ph.local_scenarios[s]._mpisppy_model.W[index]))
             w_bar_mpisppy.append(row)
         
-        FarmerSP = stochastic_program(first_stage_variables=["X[*]"], model_builder=model_builder)
-        FarmerSP.initialize_bundles(bundle_data=bundle_data, bundle_scheme="single_scenario")
+        FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
+        FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
         results=ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
         data = []

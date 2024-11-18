@@ -6,8 +6,9 @@ from forestlib.ph import stochastic_program
 #
 # Data for a simple newsvendor example
 #
-app_data = dict(c=1.0, b=1.5, h=0.1)
-bundle_data = {
+model_data = {
+    "data": {
+        "c":1.0, "b":1.5, "h":0.1},
     "scenarios": [
         {"ID": 1, "d": 15},
         {"ID": 2, "d": 60},
@@ -45,7 +46,7 @@ def model_builder(data, args):
 # Function that constructs the first stage of a
 # newsvendor model
 #
-def first_stage(M, app_data, args):
+def first_stage(M, data, args):
     M.x = pyo.Var(within=pyo.NonNegativeReals)
 
 
@@ -53,11 +54,11 @@ def first_stage(M, app_data, args):
 # Function that constructs the second stage of a
 # newsvendor model
 #
-def second_stage(M, S, app_data, scen_data, args):
-    b = app_data["b"]
-    c = app_data["c"]
-    h = app_data["h"]
-    d = scen_data["d"]
+def second_stage(M, S, data, args):
+    b = data["b"]
+    c = data["c"]
+    h = data["h"]
+    d = data["d"]
 
     S.y = pyo.Var()
 
@@ -74,11 +75,8 @@ class TestNewsVendor:
     """
 
     def test_single_builder(self):
-        sp = stochastic_program(
-            first_stage_variables=["x"], model_builder=model_builder
-        )
-        sp.initialize_application(app_data=app_data)
-        sp.initialize_bundles(bundle_data=bundle_data)
+        sp = stochastic_program(first_stage_variables=["x"])
+        sp.initialize_model(model_data=model_data, model_builder=model_builder)
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
         assert sp.bundles.probability("1") == 0.2
@@ -105,8 +103,7 @@ class TestNewsVendor:
 
     def test_multistage_builder(self):
         sp = stochastic_program(model_builder_list=[first_stage, second_stage])
-        sp.initialize_application(app_data=app_data)
-        sp.initialize_bundles(bundle_data=bundle_data)
+        sp.initialize_model(model_data=model_data)
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
         assert sp.bundles.probability("1") == 0.2

@@ -168,7 +168,7 @@ FarmerSP = stochastic_program(
     first_stage_variables=["X[*]"], model_builder=model_builder
 )
 
-bundle_data = {
+model_data = {
     "scenarios": [
         {
             "ID": "BelowAverageScenario",
@@ -192,6 +192,6 @@ bundle_data = {
 }
 
 
-FarmerSP.initialize_bundles(bundle_data=bundle_data, bundle_scheme="single_scenario")
+FarmerSP.initialize_model(model_data=model_data)
 ph = ProgressiveHedgingSolver()
 ph.solve(FarmerSP, max_iterations=10, solver="gurobi", loglevel="DEBUG", rho=10)

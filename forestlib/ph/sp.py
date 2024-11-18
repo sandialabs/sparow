@@ -46,7 +46,7 @@ class StochasticProgram(object):
     def initialize_application(self, *, filename=None, app_data=None, **kwargs):
         if filename is not None:
             with open(f"{filename}", "r") as file:
-                self.app_data = json.load(file)
+                self.app_data = json.load(filename)
         elif app_data is not None:
             self.app_data = app_data
 
@@ -56,7 +56,7 @@ class StochasticProgram(object):
         # returns bundles, probabilities, and list of scenarios in each bundle
         if filename is not None:
             with open(f"{filename}", "r") as file:
-                bundle_data = json.load(file)
+                bundle_data = json.load(filename)
 
         self.scenario_data = {scen["ID"]: scen for scen in bundle_data["scenarios"]}
 
@@ -126,7 +126,7 @@ class StochasticProgram(object):
                 )
                 logger.debug(msg)
                 return munch.Munch(feasible=False, bundle=b)
-        obj = sum(self.bundles.bundle_probability[b] * obj_value[b] for b in self.bundles)
+        obj = sum(self.bundles.probability(b) * obj_value[b] for b in self.bundles)
         # Just need to get one of the bundles to collect the variables
         for b in self.bundles:
             return munch.Munch(
@@ -258,11 +258,13 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
     ):
         if filename is not None:
             with open(f"{filename}", "r") as file:
-                self.model_data[name] = json.load(file)
-        elif model_data is not None:
+                model_data = json.load(filename)
+
+        if model_data is not None:
             self.model_data[name] = model_data.get("data", {})
             self.model_scenarios[name] = model_data.get("scenarios", {})
-            self.scenario_data = {scen["ID"]: scen for scen in bundle_data["scenarios"]}
+            #self.scenario_data = {scen["ID"]: scen for scen in bundle_data["scenarios"]}
+
         if model_builder is not None:
             self.model_builder[name] = model_builder
         if model_data is not None:
@@ -290,7 +292,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         return self.model_builder[model_name](data, {})
 
     def create_EF(self, *, w=None, x_bar=None, rho=None, b):
-        scenarios = self.bundles.scenarios_in_bundle[b]
+        scenarios = self.bundles.scenarios(b)
 
         # 1) create scenario dictionary
         scen_dict = {}
@@ -336,7 +338,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             }
 
         # 3)Create Obj:sum of scenario obj * probability
-        obj = sum(self.bundles.scenario_probability[b][s] * obj[s].expr for s in scenarios)
+        obj = sum(self.bundles.scenario_probability(b,s) * obj[s].expr for s in scenarios)
         if w is not None:
             obj = (
                 obj
@@ -382,18 +384,37 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
         ), "WEH - This class only works for two-stages right now."
         self.model_builder_list = model_builder_list
 
+    def initialize_model(
+        self, *, name=None, filename=None, model_data=None, **kwargs
+    ):
+        if filename is not None:
+            with open(f"{filename}", "r") as file:
+                model_data = json.load(filename)
+
+        if model_data is not None:
+            self.model_data[name] = model_data.get("data", {})
+            self.model_scenarios[name] = model_data.get("scenarios", {})
+            #self.scenario_data = {scen["ID"]: scen for scen in bundle_data["scenarios"]}
+
+        if model_data is not None:
+            self.initialize_bundles(bundle_data=dict(scenarios=self.model_scenarios[name]))
+
     def _first_stage_variables(self, *, M):
         for var in find_variables(M):
             yield var.name, var
 
-    def _create_scenario(self, M, S, scen):
-        self.model_builder_list[1](M, S, self.app_data, scen, {})
-        # for fn in self.model_builder_list[1:]:
-        #    fn(M, self.app_data, scen, {})
-        # return M
+    def _create_scenario(self, M, s, model_name=None):
+        data = copy.copy(self.app_data)
+        for k, v in self.model_data.get(model_name, {}).items():
+            assert k not in data, f"Model data for {k} has already been specified!"
+            data[k] = v
+        for k, v in self.scenario_data.get(s, {}).items():
+            assert k not in data, f"Scenario data for {k} has already been specified!"
+            data[k] = v
+        self.model_builder_list[1](M, M.s[s], data, {})
 
     def create_EF(self, *, w=None, x_bar=None, rho=None, b):
-        scenarios = self.bundles.scenarios_in_bundle[b]
+        scenarios = self.bundles.scenarios(b)
 
         # 1) create EF model
         EF_model = pyo.ConcreteModel()
@@ -407,7 +428,7 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
         EF_model.s = pyo.Block(scenarios)
         obj_comp = {}
         for s in scenarios:
-            self._create_scenario(EF_model, EF_model.s[s], self.scenario_data[s])
+            self._create_scenario(EF_model, s)
             obj_comp[s] = find_objective(EF_model.s[s])
             assert (
                 obj_comp[s] is not None
@@ -417,7 +438,7 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
         # 3)Create Obj: root_obj + (sum of scenario obj * probability)
         obj = 0 if root_obj is None else root_obj
         obj = obj + sum(
-            self.bundles.scenario_probability[b][s] * obj_comp[s].expr for s in scenarios
+            self.bundles.scenario_probability(b,s) * obj_comp[s].expr for s in scenarios
         )
         if w is not None:
             obj = (
