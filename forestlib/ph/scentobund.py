@@ -10,9 +10,8 @@ specify which bundling scheme (function) is used via "bundle_scheme" in sp.py
 """
 
 
-def mf_paired(
-    data, bundle_args=None
-):  # ordered=False will randomize; default is True. assumes all scenario probs within each fidelity sum to 1!!!
+# ordered=False will randomize; default is True. assumes all scenario probs within each fidelity sum to 1!!!
+def mf_paired(data, models=None, bundle_args=None):
     """
     Scenarios are paired according to their fidelities
     this will only work with exactly two fidelities!!!!!!
@@ -69,9 +68,8 @@ def mf_paired(
     return bundle
 
 
-def bundle_by_fidelity(
-    data, bundle_args=None
-):  # assumes all scenario probs within each fidelity sum to 1!!!
+# assumes all scenario probs within each fidelity sum to 1!!!
+def bundle_by_fidelity(data, models=None, bundle_args=None):
     """Scenarios are bundled according to their fidelities"""
 
     bundle = {}
@@ -99,66 +97,71 @@ def bundle_by_fidelity(
     return bundle
 
 
-def single_scenario(
-    data, bundle_args=None
-):  # input fidelity as bundle arg if only solving one model fidelity!!!
-    """Each scenario is its own bundle (i.e., no bundling)"""
-    bundle = {}
-    scens = []
+# input fidelity as bundle arg if only solving one model fidelity!!!
+def single_scenario(data, models=None, bundle_args=None):
+    """
+    Each scenario is its own bundle (i.e., no bundling)
+    """
+    if models is None:
+        models = list(data.keys())
 
-    if bundle_args != None and "fidelity" in bundle_args.keys():
-        for i in range(len(data[bundle_args["fidelity"]]["scenarios"])):
-            scens.append(data[bundle_args["fidelity"]]["scenarios"][i])
+    if all(
+        "Probability" in sdata for model in models for sdata in data[model].values()
+    ):
+        #
+        # Probability values have been specified for all scenarios, so we use the relative weight
+        # of these probabilities
+        #
+        total_prob = sum(
+            sdata["Probability"] for model in models for sdata in data[model].values()
+        )
+        bundle = {}
+        for model in models:
+            for s, sdata in data[model].items():
+                bundle[s] = dict(
+                    scenarios={s: 1.0}, Probability=sdata["Probability"] / total_prob
+                )
     else:
-        assert bundle_args == None or "fidelity" not in bundle_args.keys()
-        for fid in data.keys():
-            for i in range(len(data[fid]["scenarios"])):
-                scens.append(data[fid]["scenarios"][i])
-
-    scen_prob = {
-        j: scens[j].get("Probability", 1.0 / len(scens)) for j in range(len(scens))
-    }
-    for j in range(len(scens)):
-        bundle[str(scens[j]["ID"])] = {
-            "scenarios": {scens[j]["ID"]: 1.0},
-            "Probability": scen_prob[j],
-        }
+        #
+        # At least some of the scenarios are missing probability values, so we just assume
+        # a uniform distribution.
+        #
+        total = sum(1 for model in models for sdata in data[model].values())
+        bundle = {}
+        for model in models:
+            for s, sdata in data[model].items():
+                bundle[s] = dict(scenarios={s: 1.0}, Probability=1.0 / total)
 
     return bundle
 
 
-def single_bundle(
-    data, bundle_args=None
-):  # input fidelity as bundle arg if only solving one model fidelity!!!
-    """Every scenario in a single bundle (i.e., the subproblem is the master problem)"""
-    bundle = {}
-    scens = []
+# input fidelity as bundle arg if only solving one model fidelity!!!
+def single_bundle(data, models=None, bundle_args=None):
+    """
+    Combine scenarios from the specified models into a single bundle (i.e., the subproblem is the master problem).
+    """
+    if models is None:
+        models = list(data.keys())
 
-    if bundle_args != None and "fidelity" in bundle_args.keys():
-        for i in range(len(data[bundle_args["fidelity"]]["scenarios"])):
-            scens.append(data[bundle_args["fidelity"]]["scenarios"][i])
-    else:
-        assert bundle_args == None or "fidelity" not in bundle_args.keys()
-        for fid in data.keys():
-            for i in range(len(data[fid]["scenarios"])):
-                scens.append(data[fid]["scenarios"][i])
+    bun_prob = 0
+    for model in models:
+        bun_prob += sum(sdata["Probability"] for sdata in data[model].values())
 
-    bun_prob = sum(scens[j]["Probability"] for j in range(len(scens)))
-    bundle["bundle"] = {
-        "scenarios": {
-            scens[j]["ID"]: scens[j]["Probability"] / bun_prob
-            for j in range(len(scens))
-        },
-        "Probability": bun_prob,
-    }
+    scenarios = {}
+    for model in models:
+        for s, sdata in data[model].items():
+            scenarios[s] = sdata["Probability"] / bun_prob
+
+    bundle = dict(bundle=dict(scenarios=scenarios, Probability=bun_prob))
 
     return bundle
 
 
-def bundle_random_partition(
-    data, bundle_args
-):  # input fidelity as bundle arg if only solving one model fidelity!!!
-    """Each scenario is randomly assigned to a single bundle"""
+# input fidelity as bundle arg if only solving one model fidelity!!!
+def bundle_random_partition(data, models=None, bundle_args=None):
+    """
+    Each scenario is randomly assigned to a single bundle
+    """
 
     bundle = {}
     scens = []
@@ -252,17 +255,17 @@ scheme = {
 }
 
 
-def bundle_scheme(data, scheme_str, bundle_args=None):
-    bundle = scheme[scheme_str](data, bundle_args)
+def bundle_scheme(data, scheme_str, models, bundle_args=None):
+    bundle = scheme[scheme_str](data, models, bundle_args)
 
     # Return error if bundle probabilities do not sum to 1
-    if abs(sum(bundle[key]["Probability"] for key in bundle.keys()) - 1.0) > 1e-04:
+    if abs(sum(b["Probability"] for b in bundle.values()) - 1.0) > 1e-04:
         raise RuntimeError(
-            f"Bundle probabilities sum to {sum(bundle[key]['Probability'] for key in bundle.keys())}"
+            f"Bundle probabilities sum to {sum(bundle[key]['Probability'] for key in bundle)}"
         )
 
     # Return error if scenario probabilities within a bundle do not sum to 1
-    for key in bundle.keys():
+    for key in bundle:
         if abs(sum(bundle[key]["scenarios"].values()) - 1.0) > 1e-04:
             raise RuntimeError(
                 f"Scenario probabilities within bundle {key} do not sum to 1"
@@ -273,10 +276,11 @@ def bundle_scheme(data, scheme_str, bundle_args=None):
 
 class BundleObj(object):
 
-    def __init__(self, data, scheme_str, bundle_args):
-        self.bundle_scheme_str = scheme_str
+    def __init__(self, *, data, scheme, models, bundle_args):
+        self.bundle_scheme_str = scheme
+        self.bundle_models = models
         self.bundle_args = bundle_args
-        bundles = bundle_scheme(data, scheme_str, bundle_args)
+        bundles = bundle_scheme(data, scheme, models, bundle_args)
         self._bundles = {
             key: munch.Munch(
                 probability=bundles[key]["Probability"],

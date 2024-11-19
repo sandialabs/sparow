@@ -77,15 +77,12 @@ class StochasticProgram(object):
                 assert name in self.scenario_data
 
         assert len(models) > 0, "Cannot initialize bundles without model data"
-        if len(models) == 1:
-            self.bundles = scentobund.BundleObj(
-                dict(scenarios=list(self.scenario_data[models[0]].values())),
-                scheme,
-                kwargs,
-            )
-        else:
-            kwargs["models"] = models
-            self.bundles = scentobund.BundleObj(self.scenario_data, scheme, kwargs)
+        self.bundles = scentobund.BundleObj(
+            data=self.scenario_data,
+            models=models,
+            scheme=scheme,
+            bundle_args=kwargs,
+        )
 
     def get_variable_value(self, b, v):
         pass
