@@ -13,32 +13,24 @@ import pytest
 def MF_data():
     return {
         "HF": {
-            "scenarios": [
-                {
-                    "ID": "scen_1",
-                    "Demand": 3,
-                    "Probability": 0.4,
-                },
-                {
-                    "ID": "scen_0",
-                    "Demand": 1,
-                    "Probability": 0.6,
-                },
-            ]
+            "scen_1": {
+                "Demand": 3,
+                "Probability": 0.4,
+            },
+            "scen_0": {
+                "Demand": 1,
+                "Probability": 0.6,
+            },
         },
         "LF": {
-            "scenarios": [
-                {
-                    "ID": "scen_3",
-                    "Demand": 4,
-                    "Probability": 0.2,
-                },
-                {
-                    "ID": "scen_2",
-                    "Demand": 2,
-                    "Probability": 0.8,
-                },
-            ]
+            "scen_3": {
+                "Demand": 4,
+                "Probability": 0.2,
+            },
+            "scen_2": {
+                "Demand": 2,
+                "Probability": 0.8,
+            },
         },
     }
 
@@ -47,32 +39,24 @@ def MF_data():
 def SF_data():
     return {
         "HF": {
-            "scenarios": [
-                {
-                    "ID": "scen_1",
-                    "Demand": 3,
-                    "Probability": 0.2,
-                },
-                {
-                    "ID": "scen_0",
-                    "Demand": 1,
-                    "Probability": 0.3,
-                },
-            ]
+            "scen_1": {
+                "Demand": 3,
+                "Probability": 0.2,
+            },
+            "scen_0": {
+                "Demand": 1,
+                "Probability": 0.3,
+            },
         },
         "LF": {
-            "scenarios": [
-                {
-                    "ID": "scen_3",
-                    "Demand": 4,
-                    "Probability": 0.1,
-                },
-                {
-                    "ID": "scen_2",
-                    "Demand": 2,
-                    "Probability": 0.4,
-                },
-            ]
+            "scen_3": {
+                "Demand": 4,
+                "Probability": 0.1,
+            },
+            "scen_2": {
+                "Demand": 2,
+                "Probability": 0.4,
+            },
         },
     }
 
@@ -81,22 +65,16 @@ def SF_data():
 def rand_data():
     return {
         "HF": {
-            "scenarios": [
-                {
-                    "ID": "scen_0",
-                    "Demand": 1,
-                    "Probability": 0.6,
-                },
-            ]
+            "scen_0": {
+                "Demand": 1,
+                "Probability": 0.6,
+            },
         },
         "LF": {
-            "scenarios": [
-                {
-                    "ID": "scen_2",
-                    "Demand": 2,
-                    "Probability": 0.4,
-                },
-            ]
+            "scen_2": {
+                "Demand": 2,
+                "Probability": 0.4,
+            },
         },
     }
 
@@ -105,22 +83,16 @@ def rand_data():
 def rand_data_MF():
     return {
         "HF": {
-            "scenarios": [
-                {
-                    "ID": "scen_0",
-                    "Demand": 1,
-                    "Probability": 1.0,
-                },
-            ]
+            "scen_0": {
+                "Demand": 1,
+                "Probability": 1.0,
+            },
         },
         "LF": {
-            "scenarios": [
-                {
-                    "ID": "scen_2",
-                    "Demand": 2,
-                    "Probability": 1.0,
-                },
-            ]
+            "scen_2": {
+                "Demand": 2,
+                "Probability": 1.0,
+            },
         },
     }
 
@@ -129,27 +101,20 @@ def rand_data_MF():
 def imbalanced_data():
     return {
         "HF": {
-            "scenarios": [
-                {
-                    "ID": "rand_1",
-                    "Demand": 3,
-                    "Probability": 0.5,
-                },
-                {
-                    "ID": "rand_0",
-                    "Demand": 1,
-                    "Probability": 0.3,
-                },
-            ]
+            "rand_1": {
+                "Demand": 3,
+                "Probability": 0.5,
+            },
+            "rand_0": {
+                "Demand": 1,
+                "Probability": 0.3,
+            },
         },
         "LF": {
-            "scenarios": [
-                {
-                    "ID": "rand_2",
-                    "Demand": 4,
-                    "Probability": 0.2,
-                },
-            ]
+            "rand_2": {
+                "Demand": 4,
+                "Probability": 0.2,
+            },
         },
     }
 
@@ -198,23 +163,23 @@ class TestBundleFunctions(object):
 
         # check that scenarios are partitioned into bundles by their fidelities
         assert bundle_by_fidelity(MF_data) == {
-            "HF": {"scenarios": {"scen_1": 0.4, "scen_0": 0.6}, "Probability": 0.5},
-            "LF": {"scenarios": {"scen_3": 0.2, "scen_2": 0.8}, "Probability": 0.5},
+            "HF": {"scenarios": {("HF","scen_1"): 0.4, ("HF","scen_0"): 0.6}, "Probability": 0.5},
+            "LF": {"scenarios": {("LF","scen_3"): 0.2, ("LF","scen_2"): 0.8}, "Probability": 0.5},
         }
 
     def test_single_scenario(self, SF_data, MF_data):
         # checking logic with no bundle_args
-        assert single_scenario(SF_data, bundle_args=None) == {
-            "scen_1": {"scenarios": {"scen_1": 1.0}, "Probability": 0.2},
-            "scen_0": {"scenarios": {"scen_0": 1.0}, "Probability": 0.3},
-            "scen_3": {"scenarios": {"scen_3": 1.0}, "Probability": 0.1},
-            "scen_2": {"scenarios": {"scen_2": 1.0}, "Probability": 0.4},
+        assert single_scenario(SF_data, models=["LF", "HF"]) == {
+            "HF_scen_1": {"scenarios": {("HF","scen_1"): 1.0}, "Probability": 0.2},
+            "HF_scen_0": {"scenarios": {("HF","scen_0"): 1.0}, "Probability": 0.3},
+            "LF_scen_3": {"scenarios": {("LF","scen_3"): 1.0}, "Probability": 0.1},
+            "LF_scen_2": {"scenarios": {("LF","scen_2"): 1.0}, "Probability": 0.4},
         }
 
         # checking logic with "fidelity" in bundle_args
-        assert single_scenario(MF_data, bundle_args={"fidelity": "HF"}) == {
-            "scen_1": {"scenarios": {"scen_1": 1.0}, "Probability": 0.4},
-            "scen_0": {"scenarios": {"scen_0": 1.0}, "Probability": 0.6},
+        assert single_scenario(MF_data, models=["HF"]) == {
+            "HF_scen_1": {"scenarios": {("HF","scen_1"): 1.0}, "Probability": 0.4},
+            "HF_scen_0": {"scenarios": {("HF","scen_0"): 1.0}, "Probability": 0.6},
         }
 
         # checking logic with bundle_args that aren't "fidelity"
@@ -224,21 +189,21 @@ class TestBundleFunctions(object):
 
     def test_single_bundle(self, SF_data, MF_data):
         # check logic with no bundle args
-        assert single_bundle(SF_data) == {
+        assert single_bundle(SF_data, models=["LF", "HF"]) == {
             "bundle": {
                 "scenarios": {
-                    "scen_1": 0.2,
-                    "scen_0": 0.3,
-                    "scen_3": 0.1,
-                    "scen_2": 0.4,
+                    ("HF","scen_1"): 0.2,
+                    ("HF","scen_0"): 0.3,
+                    ("LF","scen_3"): 0.1,
+                    ("LF","scen_2"): 0.4,
                 },
                 "Probability": 1.0,
             }
         }
 
         # check logic with 'fidelity' in bundle args
-        assert single_bundle(MF_data, bundle_args={"fidelity": "LF"}) == {
-            "bundle": {"scenarios": {"scen_3": 0.2, "scen_2": 0.8}, "Probability": 1.0}
+        assert single_bundle(MF_data, models=["LF"]) == {
+            "bundle": {"scenarios": {("LF","scen_3"): 0.2, ("LF","scen_2"): 0.8}, "Probability": 1.0}
         }
 
         # check logic with bundle args that aren't fidelity

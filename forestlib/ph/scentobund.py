@@ -9,36 +9,36 @@ bundle is a dictionary of dictionaries
 specify which bundling scheme (function) is used via "bundle_scheme" in sp.py
 """
 
+def scen_name(model, scenario):
+    if model is None:
+        return f"{scenario}"
+    return f"{model}_{scenario}"
 
-# ordered=False will randomize; default is True. assumes all scenario probs within each fidelity sum to 1!!!
+def scen_key(model, scenario):
+    return (model,scenario)
+
+# ordered=False will randomize; default is True.
+# assumes all scenario probs within each fidelity sum to 1!!!
 def mf_paired(data, models=None, bundle_args=None):
     """
-    Scenarios are paired according to their fidelities
-    this will only work with exactly two fidelities!!!!!!
+    Scenarios are paired according to their models
     """
-    counts = (
-        {}
-    )  # keys are fidelity, values are how many scenarios of that fidelity are in scenario list
-    for fid in data.keys():
-        counts[fid] = len(data[fid]["scenarios"])
+    if models is None:
+        models = list(data.keys())
+    assert len(models)>1, "Expecting multiple models for mf_paired"
 
-    fidelities = list(data.keys())
-    """
-        max_fid is the fidelity with the largest number of scenarios; max_fid and min_fid are arbitrarily set to the first/second
-        in the scenario list respectively if each fidelity has the same number of scenarios
-    """
-    if all(counts[fidelities[0]] == counts[fid] for fid in fidelities):
-        max_fid = fidelities[0]
-        min_fid = fidelities[1]
-    else:
-        max_fid = max(counts, key=counts.get)
-        min_fid = min(counts, key=counts.get)
+    # keys are model names, and values are how many scenarios for that model
+    counts = {model: len(data[model]) for model in models}
+
+    # max_fid is the first model in {models} with the largest number of scenarios.
+    max_fid = max(range(len(models)), key=lambda i: (counts[models[i]],-i))
 
     bundle = {}
 
-    if (
-        bundle_args["ordered"] == True
-    ):  # scenarios from each fid are paired by order they appear in scenario list
+    if (bundle_args["ordered"] == True):
+        #
+        # scenarios from each model are paired by order they appear in scenario list
+        #
         for i in range(len(data[max_fid]["scenarios"])):
             bun_prob = (
                 data[max_fid]["scenarios"][i]["Probability"]
@@ -68,36 +68,6 @@ def mf_paired(data, models=None, bundle_args=None):
     return bundle
 
 
-# assumes all scenario probs within each fidelity sum to 1!!!
-def bundle_by_fidelity(data, models=None, bundle_args=None):
-    """Scenarios are bundled according to their fidelities"""
-
-    bundle = {}
-    bundle_names = list(data.keys())
-
-    for fid in bundle_names:
-        bundle[fid] = {}
-
-    for fid in bundle_names:  # each bundle assumed to have same probability
-        bun_prob = sum(
-            data[fid]["scenarios"][i]["Probability"]
-            for i in range(len(data[fid]["scenarios"]))
-        )
-        bundle[f"{fid}"] = {
-            "scenarios": {
-                data[f"{fid}"]["scenarios"][i]["ID"]: data[f"{fid}"]["scenarios"][i][
-                    "Probability"
-                ]
-                / bun_prob
-                for i in range(len(data[f"{fid}"]["scenarios"]))
-            },
-            "Probability": bun_prob / len(bundle_names),
-        }
-
-    return bundle
-
-
-# input fidelity as bundle arg if only solving one model fidelity!!!
 def single_scenario(data, models=None, bundle_args=None):
     """
     Each scenario is its own bundle (i.e., no bundling)
@@ -118,8 +88,8 @@ def single_scenario(data, models=None, bundle_args=None):
         bundle = {}
         for model in models:
             for s, sdata in data[model].items():
-                bundle[s] = dict(
-                    scenarios={s: 1.0}, Probability=sdata["Probability"] / total_prob
+                bundle[scen_name(model,s)] = dict(
+                    scenarios={scen_key(model,s): 1.0}, Probability=sdata["Probability"] / total_prob
                 )
     else:
         #
@@ -130,12 +100,11 @@ def single_scenario(data, models=None, bundle_args=None):
         bundle = {}
         for model in models:
             for s, sdata in data[model].items():
-                bundle[s] = dict(scenarios={s: 1.0}, Probability=1.0 / total)
+                bundle[scen_name(model,s)] = dict(scenarios={scen_key(model,s): 1.0}, Probability=1.0 / total)
 
     return bundle
 
 
-# input fidelity as bundle arg if only solving one model fidelity!!!
 def single_bundle(data, models=None, bundle_args=None):
     """
     Combine scenarios from the specified models into a single bundle (i.e., the subproblem is the master problem).
@@ -143,35 +112,67 @@ def single_bundle(data, models=None, bundle_args=None):
     if models is None:
         models = list(data.keys())
 
-    bun_prob = 0
-    for model in models:
-        bun_prob += sum(sdata["Probability"] for sdata in data[model].values())
+    if all("Probability" in sdata for model in models for sdata in data[model].values()):
+        #
+        # Probability values have been specified for all scenarios, so we use the relative weight
+        # of these probabilities
+        #
+        bun_prob = 0
+        for model in models:
+            bun_prob += sum(sdata["Probability"] for sdata in data[model].values())
 
-    scenarios = {}
-    for model in models:
-        for s, sdata in data[model].items():
-            scenarios[s] = sdata["Probability"] / bun_prob
+        scenarios = {}
+        for model in models:
+            for s, sdata in data[model].items():
+                scenarios[scen_key(model,s)] = sdata["Probability"] / bun_prob
+    else:
+        #
+        # At least some of the scenarios are missing probability values, so we just assume
+        # a uniform distribution.
+        #
+        total = sum(1 for model in models for sdata in data[model].values())
 
-    bundle = dict(bundle=dict(scenarios=scenarios, Probability=bun_prob))
+        scenarios = {}
+        for model in models:
+            for s, sdata in data[model].items():
+                scenarios[scen_key(model,s)] = 1.0 / total
+
+    bundle = dict(bundle=dict(scenarios=scenarios, Probability=1.0))
 
     return bundle
 
 
-# input fidelity as bundle arg if only solving one model fidelity!!!
+def bundle_by_fidelity(data, models=None, bundle_args=None):
+    """
+    Scenarios are bundled according to their fidelities
+    """
+    if models is None:
+        models = list(data.keys())
+
+    bundle = {}
+    for fid in models:
+        bundle[fid] = single_bundle(data, models=[fid])['bundle']
+        # each bundle assumed to have same probability
+        bundle[fid]['Probability'] = 1.0/len(models)
+
+    return bundle
+
+
 def bundle_random_partition(data, models=None, bundle_args=None):
     """
     Each scenario is randomly assigned to a single bundle
     """
+    if models is None:
+        models = list(data.keys())
+
+    # user can optionally set random seed
+    seed_value = 972819128347298
+    if bundle_args != None:
+        seed_value = bundle_args.get('seed', seed_value)
+    random.seed(seed_value)
 
     bundle = {}
     scens = []
-
-    # user can optionally set random seed
-    if bundle_args != None and "seed" in bundle_args.keys():
-        seed_value = bundle_args["seed"]
-    else:
-        seed_value = 972819128347298
-    random.seed(seed_value)
 
     # solving model for one fidelity vs. multiple
     if bundle_args != None and "fidelity" in bundle_args.keys():
@@ -294,6 +295,7 @@ class BundleObj(object):
         return key in self._bundles
 
     def __getitem__(self, key):
+        assert key in self._bundles, f"Unexpected key {key} {type(key)}.  Valid keys: {list(self._bundles.keys())}"
         return self._bundles[key]
 
     def __iter__(self):

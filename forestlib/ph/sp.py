@@ -287,10 +287,6 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             self.scenario_data[name] = {
                 scen["ID"]: scen for scen in model_data.get("scenarios", {})
             }
-            # WEH - Need to add this?
-            # for s in self.scenario_data[name]:
-            #    self.scenario_data[name][s]['Fidelity'] = name
-
         if model_builder is not None:
             self.model_builder[name] = model_builder
         if model_data is not None:
@@ -307,12 +303,13 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             else:
                 yield varname, comp
 
-    def _create_scenario(self, s, model_name=None):
+    def _create_scenario(self, s):
+        model_name, scenario = s
         data = copy.copy(self.app_data)
         for k, v in self.model_data.get(model_name, {}).items():
             assert k not in data, f"Model data for {k} has already been specified!"
             data[k] = v
-        for k, v in self.scenario_data[model_name].get(s, {}).items():
+        for k, v in self.scenario_data[model_name].get(scenario, {}).items():
             assert k not in data, f"Scenario data for {k} has already been specified!"
             data[k] = v
         return self.model_builder[model_name](data, {})
@@ -430,12 +427,13 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
         for var in find_variables(M):
             yield var.name, var
 
-    def _create_scenario(self, M, s, model_name=None):
+    def _create_scenario(self, M, s):
+        model_name, scenario = s
         data = copy.copy(self.app_data)
         for k, v in self.model_data.get(model_name, {}).items():
             assert k not in data, f"Model data for {k} has already been specified!"
             data[k] = v
-        for k, v in self.scenario_data[model_name].get(s, {}).items():
+        for k, v in self.scenario_data[model_name].get(scenario, {}).items():
             assert k not in data, f"Scenario data for {k} has already been specified!"
             data[k] = v
         self.model_builder_list[1](M, M.s[s], data, {})

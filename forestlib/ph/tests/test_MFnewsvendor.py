@@ -83,60 +83,60 @@ class TestMFNewsVendor:
     """
 
     def test_LF_builder(self):
-        sp = stochastic_program(first_stage_variables=["x"], model_builder=LF_builder)
+        sp = stochastic_program(first_stage_variables=["x"])
         sp.initialize_application(app_data=app_data)
-        sp.initialize_model(model_data=model_data["LF"])
+        sp.initialize_model(name="LF", model_builder=LF_builder, model_data=model_data["LF"])
 
-        assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
-        assert sp.bundles["1"].probability == 0.2
+        assert set(sp.bundles.keys()) == {"LF_1", "LF_2", "LF_3", "LF_4", "LF_5"}
+        assert sp.bundles["LF_1"].probability == 0.2
 
         #
         # Testing internal data structures
         #
-        M1 = sp.create_subproblem("1")
-        assert set(sp.int_to_FirstStageVar.keys()) == {"1"}
+        M1 = sp.create_subproblem("LF_1")
+        assert set(sp.int_to_FirstStageVar.keys()) == {"LF_1"}
         assert sp.varcuid_to_int == {pyo.ComponentUID("x"): 0}
 
-        M2 = sp.create_subproblem("2")
-        assert set(sp.int_to_FirstStageVar.keys()) == {"1", "2"}
+        M2 = sp.create_subproblem("LF_2")
+        assert set(sp.int_to_FirstStageVar.keys()) == {"LF_1", "LF_2"}
         assert sp.varcuid_to_int == {pyo.ComponentUID("x"): 0}
 
         #
         # Test subproblem solver logic
         #
         sp.solve(M1, solver="glpk")
-        assert pyo.value(M1.s[1].x) == 15.0
+        assert pyo.value(M1.s["LF",1].x) == 15.0
 
         sp.solve(M2, solver="glpk")
-        assert pyo.value(M2.s[2].x) == 60.0
+        assert pyo.value(M2.s["LF",2].x) == 60.0
 
     def test_HF_builder(self):
-        sp = stochastic_program(first_stage_variables=["x"], model_builder=HF_builder)
+        sp = stochastic_program(first_stage_variables=["x"])
         sp.initialize_application(app_data=app_data)
-        sp.initialize_model(model_data=model_data["HF"])
+        sp.initialize_model(name="HF", model_builder=HF_builder, model_data=model_data["HF"])
 
-        assert set(sp.bundles.keys()) == {"11", "12", "13", "14", "15"}
-        assert sp.bundles["11"].probability == 0.2
+        assert set(sp.bundles.keys()) == {"HF_11", "HF_12", "HF_13", "HF_14", "HF_15"}
+        assert sp.bundles["HF_11"].probability == 0.2
 
         #
         # Testing internal data structures
         #
-        M1 = sp.create_subproblem("11")
-        assert set(sp.int_to_FirstStageVar.keys()) == {"11"}
+        M1 = sp.create_subproblem("HF_11")
+        assert set(sp.int_to_FirstStageVar.keys()) == {"HF_11"}
         assert sp.varcuid_to_int == {pyo.ComponentUID("x"): 0}
 
-        M2 = sp.create_subproblem("12")
-        assert set(sp.int_to_FirstStageVar.keys()) == {"11", "12"}
+        M2 = sp.create_subproblem("HF_12")
+        assert set(sp.int_to_FirstStageVar.keys()) == {"HF_11", "HF_12"}
         assert sp.varcuid_to_int == {pyo.ComponentUID("x"): 0}
 
         #
         # Test subproblem solver logic
         #
         sp.solve(M1, solver="glpk")
-        assert pyo.value(M1.s[11].x) == 9.0
+        assert pyo.value(M1.s["HF",11].x) == 9.0
 
         sp.solve(M2, solver="glpk")
-        assert pyo.value(M2.s[12].x) == 40.0
+        assert pyo.value(M2.s["HF",12].x) == 40.0
 
     def test_MF_builder1(self):
         sp = stochastic_program(first_stage_variables=["x"])
