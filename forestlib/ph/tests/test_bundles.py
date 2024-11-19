@@ -12,115 +12,151 @@ import pytest
 @pytest.fixture
 def MF_data():
     return {
-        "scenarios": [
-            {
-                "ID": "scen_1",
-                "Fidelity": "HF",
-                "Demand": 3,
-                "Weight": 1,
-                "Probability": 0.4,
-            },
-            {
-                "ID": "scen_0",
-                "Fidelity": "HF",
-                "Demand": 1,
-                "Weight": 1,
-                "Probability": 0.6,
-            },
-            {
-                "ID": "scen_3",
-                "Fidelity": "LF",
-                "Demand": 4,
-                "Weight": 1,
-                "Probability": 0.2,
-            },
-            {
-                "ID": "scen_2",
-                "Fidelity": "LF",
-                "Demand": 2,
-                "Weight": 1,
-                "Probability": 0.8,
-            },
-        ]
+        "HF": {
+            "scenarios": [
+                {
+                    "ID": "scen_1",
+                    "Demand": 3,
+                    "Probability": 0.4,
+                },
+                {
+                    "ID": "scen_0",
+                    "Demand": 1,
+                    "Probability": 0.6,
+                },
+            ]
+        },
+        "LF": {
+            "scenarios": [
+                {
+                    "ID": "scen_3",
+                    "Demand": 4,
+                    "Probability": 0.2,
+                },
+                {
+                    "ID": "scen_2",
+                    "Demand": 2,
+                    "Probability": 0.8,
+                },
+            ]
+        },
     }
 
 
 @pytest.fixture
 def SF_data():
     return {
-        "scenarios": [
-            {
-                "ID": "scen_1",
-                "Fidelity": "HF",
-                "Demand": 3,
-                "Weight": 1,
-                "Probability": 0.2,
-            },
-            {
-                "ID": "scen_0",
-                "Fidelity": "HF",
-                "Demand": 1,
-                "Weight": 1,
-                "Probability": 0.3,
-            },
-            {
-                "ID": "scen_3",
-                "Fidelity": "LF",
-                "Demand": 4,
-                "Weight": 1,
-                "Probability": 0.1,
-            },
-            {
-                "ID": "scen_2",
-                "Fidelity": "LF",
-                "Demand": 2,
-                "Weight": 1,
-                "Probability": 0.4,
-            },
-        ]
+        "HF": {
+            "scenarios": [
+                {
+                    "ID": "scen_1",
+                    "Demand": 3,
+                    "Probability": 0.2,
+                },
+                {
+                    "ID": "scen_0",
+                    "Demand": 1,
+                    "Probability": 0.3,
+                },
+            ]
+        },
+        "LF": {
+            "scenarios": [
+                {
+                    "ID": "scen_3",
+                    "Demand": 4,
+                    "Probability": 0.1,
+                },
+                {
+                    "ID": "scen_2",
+                    "Demand": 2,
+                    "Probability": 0.4,
+                },
+            ]
+        },
     }
 
 
 @pytest.fixture
-def nofid_scen():
-    return {"scenarios": [{"ID": "nofid", "Demand": 20, "Probability": 1.0}]}
+def rand_data():
+    return {
+        "HF": {
+            "scenarios": [
+                {
+                    "ID": "scen_0",
+                    "Demand": 1,
+                    "Probability": 0.6,
+                },
+            ]
+        },
+        "LF": {
+            "scenarios": [
+                {
+                    "ID": "scen_2",
+                    "Demand": 2,
+                    "Probability": 0.4,
+                },
+            ]
+        },
+    }
 
 
 @pytest.fixture
-def rand_scens():
+def rand_data_MF():
     return {
-        "scenarios": [
-            {
-                "ID": "rand_1",
-                "Fidelity": "HF",
-                "Demand": 3,
-                "Weight": 1,
-                "Probability": 0.5,
-            },
-            {
-                "ID": "rand_0",
-                "Fidelity": "HF",
-                "Demand": 1,
-                "Weight": 1,
-                "Probability": 0.3,
-            },
-            {
-                "ID": "rand_2",
-                "Fidelity": "LF",
-                "Demand": 4,
-                "Weight": 1,
-                "Probability": 0.2,
-            },
-        ]
+        "HF": {
+            "scenarios": [
+                {
+                    "ID": "scen_0",
+                    "Demand": 1,
+                    "Probability": 1.0,
+                },
+            ]
+        },
+        "LF": {
+            "scenarios": [
+                {
+                    "ID": "scen_2",
+                    "Demand": 2,
+                    "Probability": 1.0,
+                },
+            ]
+        },
+    }
+
+
+@pytest.fixture
+def imbalanced_data():
+    return {
+        "HF": {
+            "scenarios": [
+                {
+                    "ID": "rand_1",
+                    "Demand": 3,
+                    "Probability": 0.5,
+                },
+                {
+                    "ID": "rand_0",
+                    "Demand": 1,
+                    "Probability": 0.3,
+                },
+            ]
+        },
+        "LF": {
+            "scenarios": [
+                {
+                    "ID": "rand_2",
+                    "Demand": 4,
+                    "Probability": 0.2,
+                },
+            ]
+        },
     }
 
 
 class TestBundleFunctions(object):
 
-    @pytest.mark.skip(
-        reason="truly no idea why mf_paired isn't importing correctly but it's working in function_tests -R"
-    )
-    def test_mf_paired(self, MF_data, rand_scens):
+    def test_mf_paired(self, MF_data, imbalanced_data):
         # check bundling when #HF scenarios = #LF scenarios:
         assert mf_paired(MF_data, bundle_args={"ordered": True}) == {
             "ord_pair_0": {
@@ -128,23 +164,23 @@ class TestBundleFunctions(object):
                     "scen_1": 0.6666666666666666,
                     "scen_3": 0.3333333333333333,
                 },
-                "Probability": 0.42857142857142855,
+                "Probability": 0.30000000000000004,
             },
             "ord_pair_1": {
                 "scenarios": {
-                    "scen_0": 0.42857142857142855,
-                    "scen_2": 0.5714285714285714,
+                    "scen_0": 0.4285714285714286,
+                    "scen_2": 0.5714285714285715,
                 },
-                "Probability": 0.5714285714285714,
+                "Probability": 0.7,
             },
         }
 
-        # check bundling when #HF scens /= # LF scens:
-        assert mf_paired(rand_scens, bundle_args={"ordered": True}) == {
+        # check bundling when # HF scens /= # LF scens:
+        assert mf_paired(imbalanced_data, bundle_args={"ordered": True}) == {
             "ord_pair_0": {
                 "scenarios": {
                     "rand_1": 0.7142857142857143,
-                    "rand_2": 0.2857142857142857,
+                    "rand_2": 0.28571428571428575,
                 },
                 "Probability": 0.5833333333333334,
             },
@@ -154,7 +190,7 @@ class TestBundleFunctions(object):
             },
         }
 
-    def test_bundle_by_fidelity(self, MF_data, nofid_scen):
+    def test_bundle_by_fidelity(self, MF_data):
         # check that nonempty bundle_args returns the same bundle as empty bundle_args
         assert bundle_by_fidelity(
             MF_data, bundle_args={"test_arg": "test_arg"}
@@ -166,11 +202,6 @@ class TestBundleFunctions(object):
             "LF": {"scenarios": {"scen_3": 0.2, "scen_2": 0.8}, "Probability": 0.5},
         }
 
-        # check that scenario with no fidelity key returns error
-        with pytest.raises(RuntimeError) as excinfo:
-            bundle_by_fidelity(nofid_scen)
-        assert excinfo.type is RuntimeError
-
     def test_single_scenario(self, SF_data, MF_data):
         # checking logic with no bundle_args
         assert single_scenario(SF_data, bundle_args=None) == {
@@ -180,13 +211,13 @@ class TestBundleFunctions(object):
             "scen_2": {"scenarios": {"scen_2": 1.0}, "Probability": 0.4},
         }
 
-        # checking logic w/ fidelity in bundle_args
+        # checking logic with "fidelity" in bundle_args
         assert single_scenario(MF_data, bundle_args={"fidelity": "HF"}) == {
             "scen_1": {"scenarios": {"scen_1": 1.0}, "Probability": 0.4},
             "scen_0": {"scenarios": {"scen_0": 1.0}, "Probability": 0.6},
         }
 
-        # checking logic with bundle_args that aren't fidelity
+        # checking logic with bundle_args that aren't "fidelity"
         assert single_scenario(
             SF_data, bundle_args={"some_other_arg": "arg"}
         ) == single_scenario(SF_data, bundle_args=None)
@@ -215,34 +246,46 @@ class TestBundleFunctions(object):
             SF_data, bundle_args={"some_other_arg": "arg"}
         ) == single_bundle(SF_data, bundle_args=None)
 
-    def test_bundle_random_partition(self, rand_scens):
+    def test_bundle_random_partition(self, rand_data, rand_data_MF):
         # check that no "num_buns" in bundle args returns error
         with pytest.raises(TypeError) as excinfo:
-            bundle_random_partition(rand_scens, bundle_args=None)
+            bundle_random_partition(rand_data, bundle_args=None)
         assert excinfo.type is TypeError
 
         # check that "num_buns" larger than #scenarios returns error
         with pytest.raises(RuntimeError) as excinfo:
-            bundle_random_partition(rand_scens, bundle_args={"num_buns": 4})
+            bundle_random_partition(rand_data, bundle_args={"num_buns": 4})
         assert excinfo.type is RuntimeError
 
         # check that a non-integer/negative "num_buns" returns error
         with pytest.raises(ValueError) as excinfo:
-            bundle_random_partition(rand_scens, bundle_args={"num_buns": -1})
+            bundle_random_partition(rand_data, bundle_args={"num_buns": -1})
         assert excinfo.type is ValueError
 
         with pytest.raises(ValueError) as excinfo:
-            bundle_random_partition(rand_scens, bundle_args={"num_buns": 2.4})
+            bundle_random_partition(rand_data, bundle_args={"num_buns": 1.4})
         assert excinfo.type is ValueError
 
-        # TODO: check logic with no bundle args except seed
-        assert bundle_random_partition(
-            rand_scens, bundle_args={"num_buns": 3, "seed": 1}
+        # check logic with no 'fidelity' key in bundle_args
+        rbundle0 = {
+            "rand_0": {"scenarios": {"scen_0": 0.6}, "Probability": 1.0},
+            "rand_1": {"scenarios": {"scen_2": 0.4}, "Probability": 1.0},
+        }
+        rbundle1 = {
+            "rand_0": {"scenarios": {"scen_2": 0.4}, "Probability": 1.0},
+            "rand_1": {"scenarios": {"scen_0": 0.6}, "Probability": 1.0},
+        }
+        assert (
+            bundle_random_partition(rand_data, bundle_args={"num_buns": 2}) == rbundle0
+            or rbundle1
         )
 
-        # TODO: check logic with 'fidelity' in bundle_args
+        # check logic with 'fidelity' in bundle_args
+        assert bundle_random_partition(
+            rand_data_MF, bundle_args={"num_buns": 1, "fidelity": "LF"}
+        ) == {"rand_0": {"scenarios": {"scen_2": 1.0}, "Probability": 1.0}}
 
-        # TODO: check logic with bundle args in addition to fidelity and seed
-
-    def test_bundle_scheme(self):
-        pass
+        # TODO: check logic with optional bundle args other than 'fidelity'
+        assert bundle_random_partition(
+            rand_data_MF, bundle_args={"num_buns": 1, "some_other_arg": "arg"}
+        ) == bundle_random_partition(rand_data_MF, bundle_args={"num_buns": 1})

@@ -6,23 +6,19 @@ with open("scenlist.json", "r") as file:
 
 
 def mf_paired(
-    data, bundle_args={"ordered": True}
-):  # ordered=False will randomize. default is True
+    data, bundle_args=None
+):  # ordered=False will randomize; default is True. assumes all scenario probs within each fidelity sum to 1!!!
     """
     Scenarios are paired according to their fidelities
     this will only work with exactly two fidelities!!!!!!
     """
-
     counts = (
         {}
     )  # keys are fidelity, values are how many scenarios of that fidelity are in scenario list
-    for fid in list(map(lambda d: d["Fidelity"], data["scenarios"])):
-        counts[fid] = counts.get(fid, 0) + 1
+    for fid in data.keys():
+        counts[fid] = len(data[fid]["scenarios"])
 
-    fidelities = list(
-        set(map(lambda d: d["Fidelity"], data["scenarios"]))
-    )  # list of unique fidelities in scenario list
-
+    fidelities = list(data.keys())
     """
         max_fid is the fidelity with the largest number of scenarios; max_fid and min_fid are arbitrarily set to the first/second
         in the scenario list respectively if each fidelity has the same number of scenarios
@@ -36,29 +32,23 @@ def mf_paired(
 
     bundle = {}
 
-    temp_dict = {}  # keys are fidelity, values are scenarios of that fidelity
-    for fid in fidelities:
-        temp_dict[f"{fid}"] = []
-    for i in range(len(data["scenarios"])):
-        for fid in fidelities:
-            if data["scenarios"][i]["Fidelity"] == fid:
-                temp_dict[f"{fid}"].append(data["scenarios"][i])
-
     if (
         bundle_args["ordered"] == True
     ):  # scenarios from each fid are paired by order they appear in scenario list
-        for i in range(len(temp_dict[max_fid])):
+        for i in range(len(data[max_fid]["scenarios"])):
             bun_prob = (
-                temp_dict[max_fid][i]["Probability"]
-                + temp_dict[min_fid][i % counts[min_fid]]["Probability"]
+                data[max_fid]["scenarios"][i]["Probability"]
+                + data[min_fid]["scenarios"][i % counts[min_fid]]["Probability"]
             )
             bundle[f"ord_pair_{i}"] = {
                 "scenarios": {
-                    temp_dict[max_fid][i]["ID"]: temp_dict[max_fid][i]["Probability"]
+                    data[max_fid]["scenarios"][i]["ID"]: data[max_fid]["scenarios"][i][
+                        "Probability"
+                    ]
                     / bun_prob,
-                    temp_dict[min_fid][i % counts[min_fid]]["ID"]: temp_dict[min_fid][
-                        i % counts[min_fid]
-                    ]["Probability"]
+                    data[min_fid]["scenarios"][i % counts[min_fid]]["ID"]: data[
+                        min_fid
+                    ]["scenarios"][i % counts[min_fid]]["Probability"]
                     / bun_prob,
                 },
                 "Probability": bun_prob,
@@ -74,39 +64,29 @@ def mf_paired(
     return bundle
 
 
-def bundle_by_fidelity(data, bundle_args=None):
+def bundle_by_fidelity(
+    data, bundle_args=None
+):  # assumes all scenario probs within each fidelity sum to 1!!!
     """Scenarios are bundled according to their fidelities"""
 
-    if any(
-        data["scenarios"][i].get("Fidelity") == None
-        for i in range(len(data["scenarios"]))
-    ):
-        raise RuntimeError(f"Fidelities not specified for all scenarios")
-
     bundle = {}
-    bundle_names = list(set(map(lambda d: d["Fidelity"], data["scenarios"])))
+    bundle_names = list(data.keys())
 
     for fid in bundle_names:
         bundle[fid] = {}
 
-    temp_dict = {}
-    for fid in bundle_names:
-        temp_dict[f"{fid}"] = []
-
-    for i in range(len(data["scenarios"])):
-        for fid in bundle_names:
-            if data["scenarios"][i]["Fidelity"] == fid:
-                temp_dict[f"{fid}"].append(data["scenarios"][i])
-
     for fid in bundle_names:  # each bundle assumed to have same probability
         bun_prob = sum(
-            temp_dict[fid][i]["Probability"] for i in range(len(temp_dict[fid]))
+            data[fid]["scenarios"][i]["Probability"]
+            for i in range(len(data[fid]["scenarios"]))
         )
         bundle[f"{fid}"] = {
             "scenarios": {
-                temp_dict[f"{fid}"][i]["ID"]: temp_dict[f"{fid}"][i]["Probability"]
+                data[f"{fid}"]["scenarios"][i]["ID"]: data[f"{fid}"]["scenarios"][i][
+                    "Probability"
+                ]
                 / bun_prob
-                for i in range(len(temp_dict[f"{fid}"]))
+                for i in range(len(data[f"{fid}"]["scenarios"]))
             },
             "Probability": bun_prob / len(bundle_names),
         }
@@ -114,47 +94,49 @@ def bundle_by_fidelity(data, bundle_args=None):
     return bundle
 
 
-def single_scenario(data, bundle_args=None):
+def single_scenario(
+    data, bundle_args=None
+):  # input fidelity as bundle arg if only solving one model fidelity
     """Each scenario is its own bundle (i.e., no bundling)"""
     bundle = {}
     scens = []
 
-    if bundle_args != None and "fidelity" in bundle_args:
-        for i in range(len(data["scenarios"])):
-            if data["scenarios"][i]["Fidelity"] == f"{bundle_args['fidelity']}":
-                scens.append(data["scenarios"][i])
+    if bundle_args != None and "fidelity" in bundle_args.keys():
+        for i in range(len(data[bundle_args["fidelity"]]["scenarios"])):
+            scens.append(data[bundle_args["fidelity"]]["scenarios"][i])
     else:
-        assert bundle_args == None or "fidelity" not in bundle_args
-        for i in range(len(data["scenarios"])):
-            scens.append(data["scenarios"][i])
+        assert bundle_args == None or "fidelity" not in bundle_args.keys()
+        for fid in data.keys():
+            for i in range(len(data[fid]["scenarios"])):
+                scens.append(data[fid]["scenarios"][i])
 
     scen_prob = {
         j: scens[j].get("Probability", 1.0 / len(scens)) for j in range(len(scens))
     }
     for j in range(len(scens)):
-        bun_prob = scen_prob[j]
         bundle[str(scens[j]["ID"])] = {
-            "scenarios": {scens[j]["ID"]: scen_prob[j] / bun_prob},
-            "Probability": bun_prob,
+            "scenarios": {scens[j]["ID"]: 1.0},
+            "Probability": scen_prob[j],
         }
 
     return bundle
 
 
-def single_bundle(data, bundle_args=None):
+def single_bundle(
+    data, bundle_args=None
+):  # input fidelity as bundle arg if only solving one model fidelity
     """Every scenario in a single bundle (i.e., the subproblem is the master problem)"""
     bundle = {}
+    scens = []
 
     if bundle_args != None and "fidelity" in bundle_args.keys():
-        scens = []
-        for i in range(len(data["scenarios"])):
-            if data["scenarios"][i]["Fidelity"] == f"{bundle_args['fidelity']}":
-                scens.append(data["scenarios"][i])
+        for i in range(len(data[bundle_args["fidelity"]]["scenarios"])):
+            scens.append(data[bundle_args["fidelity"]]["scenarios"][i])
     else:
         assert bundle_args == None or "fidelity" not in bundle_args.keys()
-        scens = []
-        for i in range(len(data["scenarios"])):
-            scens.append(data["scenarios"][i])
+        for fid in data.keys():
+            for i in range(len(data[fid]["scenarios"])):
+                scens.append(data[fid]["scenarios"][i])
 
     bun_prob = sum(scens[j]["Probability"] for j in range(len(scens)))
     bundle["bundle"] = {
@@ -168,10 +150,13 @@ def single_bundle(data, bundle_args=None):
     return bundle
 
 
-def bundle_random_partition(data, bundle_args):
+def bundle_random_partition(
+    data, bundle_args
+):  # input fidelity as bundle arg if only solving one model fidelity!!!
     """Each scenario is randomly assigned to a single bundle"""
 
     bundle = {}
+    scens = []
 
     # user can optionally set random seed
     if bundle_args != None and "seed" in bundle_args.keys():
@@ -180,11 +165,20 @@ def bundle_random_partition(data, bundle_args):
         seed_value = 972819128347298
     random.seed(seed_value)
 
+    # solving model for one fidelity vs. multiple
+    if bundle_args != None and "fidelity" in bundle_args.keys():
+        for i in range(len(data[bundle_args["fidelity"]]["scenarios"])):
+            scens.append(data[bundle_args["fidelity"]]["scenarios"][i])
+    else:
+        assert bundle_args == None or "fidelity" not in bundle_args.keys()
+        for fid in data.keys():
+            for i in range(len(data[fid]["scenarios"])):
+                scens.append(data[fid]["scenarios"][i])
+
+    # extracting number of bundles from bundle_args
     num_buns = bundle_args["num_buns"]
 
-    if num_buns > len(
-        data["scenarios"]
-    ):  # can't construct more bundles than num. of scenarios
+    if num_buns > len(scens):  # can't construct more bundles than num. of scenarios
         raise RuntimeError(f"Number of bundles must be <= number of scenarios")
 
     if num_buns < 0:  # number of bundles must be positive
@@ -192,17 +186,6 @@ def bundle_random_partition(data, bundle_args):
 
     if (int(num_buns) == num_buns) == False:  # number of bundles must be integer
         raise ValueError(f"Number of bundles must be integer")
-
-    if bundle_args != None and "fidelity" in bundle_args.keys():
-        scens = []
-        for i in range(len(data["scenarios"])):
-            if data["scenarios"][i]["Fidelity"] == f"{bundle_args['fidelity']}":
-                scens.append(data["scenarios"][i])
-    else:
-        assert bundle_args == None or "fidelity" not in bundle_args.keys()
-        scens = []
-        for i in range(len(data["scenarios"])):
-            scens.append(data["scenarios"][i])
 
     base_bunsize = len(scens) // num_buns
     rem = len(scens) % num_buns
@@ -281,5 +264,7 @@ def bundle_scheme(data, scheme_str, bundle_args=None):
     return bundle
 
 
-bundle = bundle_scheme(data, "mf_paired", bundle_args={"ordered": True})
+bundle = bundle_scheme(
+    data, "single_scenario", bundle_args={"fidelity": "HF", "num_buns": 3}
+)
 print(bundle)

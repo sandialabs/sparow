@@ -1,62 +1,22 @@
-{"scenarios": [
-    { "ID": 3,
-        "Fidelity": "HF",
-        "Demand": 2.1,
-        "Weight": 1,
-        "Probability": 0.1
+{
+    "HF": {
+        "data": {"key": 2.0},
+        "scenarios": [
+            {"ID": 3, "Demand": 2.1, "Probability": 0.1},
+            {"ID": 0, "Demand": 1.2, "Probability": 0.1},
+            {"ID": 5, "Demand": 2.8, "Probability": 0.2},
+            {"ID": 1, "Demand": 1.6, "Probability": 0.2},
+            {"ID": 2, "Demand": 1.9, "Probability": 0.2},
+            {"ID": 4, "Demand": 2.7, "Probability": 0.2}
+        ]
     },
-    { "ID": 0,
-        "Fidelity": "HF",
-        "Demand": 1.2,
-        "Weight": 1,
-        "Probability": 0.1
-    },
-    { "ID": 5,
-        "Fidelity": "HF",
-        "Demand": 2.8,
-        "Weight": 1,
-        "Probability": 0.2
-    },
-    { "ID": 1,
-        "Fidelity": "HF",
-        "Demand": 1.6,
-        "Weight": 1,
-        "Probability": 0.2
-    },
-    { "ID": 2,
-        "Fidelity": "HF",
-        "Demand": 1.9,
-        "Weight": 1,
-        "Probability": 0.2
-    },
-    { "ID": 4,
-        "Fidelity": "HF",
-        "Demand": 2.7,
-        "Weight": 1,
-        "Probability": 0.2
-    },
-    { "ID": 6,
-        "Fidelity": "LF",
-        "Demand": 1,
-        "Weight": 1,
-        "Probability": 0.3
-    },
-    { "ID": 7,
-        "Fidelity": "LF",
-        "Demand": 2,
-        "Weight": 1,
-        "Probability": 0.3
-    },
-    { "ID": 8,
-        "Fidelity": "LF",
-        "Demand": 3,
-        "Weight": 1,
-        "Probability": 0.3
-    },
-    { "ID": 9,
-        "Fidelity": "LF",
-        "Demand": 4,
-        "Weight": 1,
-        "Probability": 0.1
+    "LF": {
+        "data": {"another key": "a"},
+        "scenarios": [
+            {"ID": 6, "Demand": 1, "Probability": 0.3},
+            {"ID": 7, "Demand": 2, "Probability": 0.3},
+            {"ID": 8, "Demand": 3, "Probability": 0.3},
+            {"ID": 9, "Demand": 4, "Probability": 0.1}
+        ]
     }
-]}
+}
