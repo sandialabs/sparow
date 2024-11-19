@@ -9,13 +9,16 @@ bundle is a dictionary of dictionaries
 specify which bundling scheme (function) is used via "bundle_scheme" in sp.py
 """
 
+
 def scen_name(model, scenario):
     if model is None:
         return f"{scenario}"
     return f"{model}_{scenario}"
 
+
 def scen_key(model, scenario):
-    return (model,scenario)
+    return (model, scenario)
+
 
 # ordered=False will randomize; default is True.
 # assumes all scenario probs within each fidelity sum to 1!!!
@@ -25,17 +28,17 @@ def mf_paired(data, models=None, bundle_args=None):
     """
     if models is None:
         models = list(data.keys())
-    assert len(models)>1, "Expecting multiple models for mf_paired"
+    assert len(models) > 1, "Expecting multiple models for mf_paired"
 
     # keys are model names, and values are how many scenarios for that model
     counts = {model: len(data[model]) for model in models}
 
     # max_fid is the first model in {models} with the largest number of scenarios.
-    max_fid = max(range(len(models)), key=lambda i: (counts[models[i]],-i))
+    max_fid = max(range(len(models)), key=lambda i: (counts[models[i]], -i))
 
     bundle = {}
 
-    if (bundle_args["ordered"] == True):
+    if bundle_args["ordered"] == True:
         #
         # scenarios from each model are paired by order they appear in scenario list
         #
@@ -88,8 +91,9 @@ def single_scenario(data, models=None, bundle_args=None):
         bundle = {}
         for model in models:
             for s, sdata in data[model].items():
-                bundle[scen_name(model,s)] = dict(
-                    scenarios={scen_key(model,s): 1.0}, Probability=sdata["Probability"] / total_prob
+                bundle[scen_name(model, s)] = dict(
+                    scenarios={scen_key(model, s): 1.0},
+                    Probability=sdata["Probability"] / total_prob,
                 )
     else:
         #
@@ -100,7 +104,9 @@ def single_scenario(data, models=None, bundle_args=None):
         bundle = {}
         for model in models:
             for s, sdata in data[model].items():
-                bundle[scen_name(model,s)] = dict(scenarios={scen_key(model,s): 1.0}, Probability=1.0 / total)
+                bundle[scen_name(model, s)] = dict(
+                    scenarios={scen_key(model, s): 1.0}, Probability=1.0 / total
+                )
 
     return bundle
 
@@ -112,7 +118,9 @@ def single_bundle(data, models=None, bundle_args=None):
     if models is None:
         models = list(data.keys())
 
-    if all("Probability" in sdata for model in models for sdata in data[model].values()):
+    if all(
+        "Probability" in sdata for model in models for sdata in data[model].values()
+    ):
         #
         # Probability values have been specified for all scenarios, so we use the relative weight
         # of these probabilities
@@ -124,7 +132,7 @@ def single_bundle(data, models=None, bundle_args=None):
         scenarios = {}
         for model in models:
             for s, sdata in data[model].items():
-                scenarios[scen_key(model,s)] = sdata["Probability"] / bun_prob
+                scenarios[scen_key(model, s)] = sdata["Probability"] / bun_prob
     else:
         #
         # At least some of the scenarios are missing probability values, so we just assume
@@ -135,7 +143,7 @@ def single_bundle(data, models=None, bundle_args=None):
         scenarios = {}
         for model in models:
             for s, sdata in data[model].items():
-                scenarios[scen_key(model,s)] = 1.0 / total
+                scenarios[scen_key(model, s)] = 1.0 / total
 
     bundle = dict(bundle=dict(scenarios=scenarios, Probability=1.0))
 
@@ -151,9 +159,9 @@ def bundle_by_fidelity(data, models=None, bundle_args=None):
 
     bundle = {}
     for fid in models:
-        bundle[fid] = single_bundle(data, models=[fid])['bundle']
+        bundle[fid] = single_bundle(data, models=[fid])["bundle"]
         # each bundle assumed to have same probability
-        bundle[fid]['Probability'] = 1.0/len(models)
+        bundle[fid]["Probability"] = 1.0 / len(models)
 
     return bundle
 
@@ -168,7 +176,7 @@ def bundle_random_partition(data, models=None, bundle_args=None):
     # user can optionally set random seed
     seed_value = 972819128347298
     if bundle_args != None:
-        seed_value = bundle_args.get('seed', seed_value)
+        seed_value = bundle_args.get("seed", seed_value)
     random.seed(seed_value)
 
     bundle = {}
@@ -295,7 +303,9 @@ class BundleObj(object):
         return key in self._bundles
 
     def __getitem__(self, key):
-        assert key in self._bundles, f"Unexpected key {key} {type(key)}.  Valid keys: {list(self._bundles.keys())}"
+        assert (
+            key in self._bundles
+        ), f"Unexpected key {key} {type(key)}.  Valid keys: {list(self._bundles.keys())}"
         return self._bundles[key]
 
     def __iter__(self):

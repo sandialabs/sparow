@@ -85,7 +85,9 @@ class TestMFNewsVendor:
     def test_LF_builder(self):
         sp = stochastic_program(first_stage_variables=["x"])
         sp.initialize_application(app_data=app_data)
-        sp.initialize_model(name="LF", model_builder=LF_builder, model_data=model_data["LF"])
+        sp.initialize_model(
+            name="LF", model_builder=LF_builder, model_data=model_data["LF"]
+        )
 
         assert set(sp.bundles.keys()) == {"LF_1", "LF_2", "LF_3", "LF_4", "LF_5"}
         assert sp.bundles["LF_1"].probability == 0.2
@@ -105,15 +107,17 @@ class TestMFNewsVendor:
         # Test subproblem solver logic
         #
         sp.solve(M1, solver="glpk")
-        assert pyo.value(M1.s["LF",1].x) == 15.0
+        assert pyo.value(M1.s["LF", 1].x) == 15.0
 
         sp.solve(M2, solver="glpk")
-        assert pyo.value(M2.s["LF",2].x) == 60.0
+        assert pyo.value(M2.s["LF", 2].x) == 60.0
 
     def test_HF_builder(self):
         sp = stochastic_program(first_stage_variables=["x"])
         sp.initialize_application(app_data=app_data)
-        sp.initialize_model(name="HF", model_builder=HF_builder, model_data=model_data["HF"])
+        sp.initialize_model(
+            name="HF", model_builder=HF_builder, model_data=model_data["HF"]
+        )
 
         assert set(sp.bundles.keys()) == {"HF_11", "HF_12", "HF_13", "HF_14", "HF_15"}
         assert sp.bundles["HF_11"].probability == 0.2
@@ -133,10 +137,10 @@ class TestMFNewsVendor:
         # Test subproblem solver logic
         #
         sp.solve(M1, solver="glpk")
-        assert pyo.value(M1.s["HF",11].x) == 9.0
+        assert pyo.value(M1.s["HF", 11].x) == 9.0
 
         sp.solve(M2, solver="glpk")
-        assert pyo.value(M2.s["HF",12].x) == 40.0
+        assert pyo.value(M2.s["HF", 12].x) == 40.0
 
     def test_MF_builder1(self):
         sp = stochastic_program(first_stage_variables=["x"])

@@ -95,10 +95,10 @@ class TestNewsVendor:
         # Test subproblem solver logic
         #
         sp.solve(M1, solver="glpk")
-        assert pyo.value(M1.s[None,1].x) == 15.0
+        assert pyo.value(M1.s[None, 1].x) == 15.0
 
         sp.solve(M2, solver="glpk")
-        assert pyo.value(M2.s[None,2].x) == 60.0
+        assert pyo.value(M2.s[None, 2].x) == 60.0
 
     def test_multistage_builder(self):
         sp = stochastic_program(model_builder_list=[first_stage, second_stage])

@@ -163,23 +163,29 @@ class TestBundleFunctions(object):
 
         # check that scenarios are partitioned into bundles by their fidelities
         assert bundle_by_fidelity(MF_data) == {
-            "HF": {"scenarios": {("HF","scen_1"): 0.4, ("HF","scen_0"): 0.6}, "Probability": 0.5},
-            "LF": {"scenarios": {("LF","scen_3"): 0.2, ("LF","scen_2"): 0.8}, "Probability": 0.5},
+            "HF": {
+                "scenarios": {("HF", "scen_1"): 0.4, ("HF", "scen_0"): 0.6},
+                "Probability": 0.5,
+            },
+            "LF": {
+                "scenarios": {("LF", "scen_3"): 0.2, ("LF", "scen_2"): 0.8},
+                "Probability": 0.5,
+            },
         }
 
     def test_single_scenario(self, SF_data, MF_data):
         # checking logic with no bundle_args
         assert single_scenario(SF_data, models=["LF", "HF"]) == {
-            "HF_scen_1": {"scenarios": {("HF","scen_1"): 1.0}, "Probability": 0.2},
-            "HF_scen_0": {"scenarios": {("HF","scen_0"): 1.0}, "Probability": 0.3},
-            "LF_scen_3": {"scenarios": {("LF","scen_3"): 1.0}, "Probability": 0.1},
-            "LF_scen_2": {"scenarios": {("LF","scen_2"): 1.0}, "Probability": 0.4},
+            "HF_scen_1": {"scenarios": {("HF", "scen_1"): 1.0}, "Probability": 0.2},
+            "HF_scen_0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.3},
+            "LF_scen_3": {"scenarios": {("LF", "scen_3"): 1.0}, "Probability": 0.1},
+            "LF_scen_2": {"scenarios": {("LF", "scen_2"): 1.0}, "Probability": 0.4},
         }
 
         # checking logic with "fidelity" in bundle_args
         assert single_scenario(MF_data, models=["HF"]) == {
-            "HF_scen_1": {"scenarios": {("HF","scen_1"): 1.0}, "Probability": 0.4},
-            "HF_scen_0": {"scenarios": {("HF","scen_0"): 1.0}, "Probability": 0.6},
+            "HF_scen_1": {"scenarios": {("HF", "scen_1"): 1.0}, "Probability": 0.4},
+            "HF_scen_0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.6},
         }
 
         # checking logic with bundle_args that aren't "fidelity"
@@ -192,10 +198,10 @@ class TestBundleFunctions(object):
         assert single_bundle(SF_data, models=["LF", "HF"]) == {
             "bundle": {
                 "scenarios": {
-                    ("HF","scen_1"): 0.2,
-                    ("HF","scen_0"): 0.3,
-                    ("LF","scen_3"): 0.1,
-                    ("LF","scen_2"): 0.4,
+                    ("HF", "scen_1"): 0.2,
+                    ("HF", "scen_0"): 0.3,
+                    ("LF", "scen_3"): 0.1,
+                    ("LF", "scen_2"): 0.4,
                 },
                 "Probability": 1.0,
             }
@@ -203,7 +209,10 @@ class TestBundleFunctions(object):
 
         # check logic with 'fidelity' in bundle args
         assert single_bundle(MF_data, models=["LF"]) == {
-            "bundle": {"scenarios": {("LF","scen_3"): 0.2, ("LF","scen_2"): 0.8}, "Probability": 1.0}
+            "bundle": {
+                "scenarios": {("LF", "scen_3"): 0.2, ("LF", "scen_2"): 0.8},
+                "Probability": 1.0,
+            }
         }
 
         # check logic with bundle args that aren't fidelity
