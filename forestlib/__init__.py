@@ -3,3 +3,4 @@
 from .version import version
 from . import bnbpy
 from . import logs
+from . import util
