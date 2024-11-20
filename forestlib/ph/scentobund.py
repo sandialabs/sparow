@@ -20,9 +20,37 @@ def scen_key(model, scenario):
     return (model, scenario)
 
 
+def mf_paired(data, models=None, bundle_args=None):
+    """
+    Scenarios are paired according to their models
+
+    Note that scenario probabilities specified for each model are ignored.
+    """
+    if models is None:
+        models = list(data.keys())
+    assert len(models) > 1, "Expecting multiple models for mf_paired"
+
+    #
+    # This bundling strategy requires that all models have the same scenarios.
+    #
+    model0 = models[0]
+    scenarios = set(data[model0].keys())
+    for model in models[1:]:
+        assert scenarios == set(data[model].keys()), "All scenarios have the same keys"
+
+    bundle = {}
+    for s in scenarios:
+        bundle[f"{s}"] = dict(
+            scenarios={scen_key(model, s): 1.0 / len(models) for model in models},
+            Probability=1.0 / len(scenarios),
+        )
+
+    return bundle
+
+
 # ordered=False will randomize; default is True.
 # assumes all scenario probs within each fidelity sum to 1!!!
-def mf_paired(data, models=None, bundle_args=None):
+def mf_ordered(data, models=None, bundle_args=None):
     """
     Scenarios are paired according to their models
     """
@@ -30,18 +58,22 @@ def mf_paired(data, models=None, bundle_args=None):
         models = list(data.keys())
     assert len(models) > 1, "Expecting multiple models for mf_paired"
 
+    if bundle_args is None:
+        bundle_args = {"paired": True}
+
     # keys are model names, and values are how many scenarios for that model
     counts = {model: len(data[model]) for model in models}
 
-    # max_fid is the first model in {models} with the largest number of scenarios.
-    max_fid = max(range(len(models)), key=lambda i: (counts[models[i]], -i))
-
     bundle = {}
 
-    if bundle_args["ordered"] == True:
+    if bundle_args.get("ordered", False):
         #
         # scenarios from each model are paired by order they appear in scenario list
         #
+
+        # max_fid is the first model in {models} with the largest number of scenarios.
+        max_fid = max(range(len(models)), key=lambda i: (counts[models[i]], -i))
+
         for i in range(len(data[max_fid]["scenarios"])):
             bun_prob = (
                 data[max_fid]["scenarios"][i]["Probability"]
@@ -261,6 +293,7 @@ scheme = {
     "single_bundle": single_bundle,
     "bundle_random_partition": bundle_random_partition,
     "mf_paired": mf_paired,
+    "mf_ordered": mf_ordered,
 }
 
 

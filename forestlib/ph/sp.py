@@ -7,6 +7,7 @@ import pyomo.environ as pyo
 import pyomo.util.vars_from_expressions as vfe
 from . import scentobund
 
+import forestlib.util
 import forestlib.logs
 
 logger = forestlib.logs.logger
@@ -282,14 +283,23 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             with open(f"{filename}", "r") as file:
                 model_data = json.load(filename)
 
+        if name in self.model_data:
+            logger.warning(
+                "Initializing model with name {name}, which already has been initialized!  This may be a bug in the setup of this StochasticProgram instance."
+            )
+
         if model_data is not None:
             self.model_data[name] = model_data.get("data", {})
             self.scenario_data[name] = {
                 scen["ID"]: scen for scen in model_data.get("scenarios", {})
             }
+        else:
+            self.model_data[name] = {}
+            self.scenario_data[name] = {}
+
         if model_builder is not None:
             self.model_builder[name] = model_builder
-        if model_data is not None:
+        if model_data is not None and default:
             self.initialize_bundles(models=[name])
 
     def _first_stage_variables(self, *, M):

@@ -20,11 +20,11 @@ model_data = {
     "HF": {
         "data": {"B": 0.9},
         "scenarios": [
-            {"ID": 11, "d": 15, "C": 1.4},
-            {"ID": 12, "d": 60, "C": 1.3},
-            {"ID": 13, "d": 72, "C": 1.2},
-            {"ID": 14, "d": 78, "C": 1.1},
-            {"ID": 15, "d": 82, "C": 1.0},
+            {"ID": 1, "d": 15, "C": 1.4},
+            {"ID": 2, "d": 60, "C": 1.3},
+            {"ID": 3, "d": 72, "C": 1.2},
+            {"ID": 4, "d": 78, "C": 1.1},
+            {"ID": 5, "d": 82, "C": 1.0},
         ],
     },
 }
@@ -119,35 +119,40 @@ class TestMFNewsVendor:
             name="HF", model_builder=HF_builder, model_data=model_data["HF"]
         )
 
-        assert set(sp.bundles.keys()) == {"HF_11", "HF_12", "HF_13", "HF_14", "HF_15"}
-        assert sp.bundles["HF_11"].probability == 0.2
+        assert set(sp.bundles.keys()) == {"HF_1", "HF_2", "HF_3", "HF_4", "HF_5"}
+        assert sp.bundles["HF_1"].probability == 0.2
 
         #
         # Testing internal data structures
         #
-        M1 = sp.create_subproblem("HF_11")
-        assert set(sp.int_to_FirstStageVar.keys()) == {"HF_11"}
+        M1 = sp.create_subproblem("HF_1")
+        assert set(sp.int_to_FirstStageVar.keys()) == {"HF_1"}
         assert sp.varcuid_to_int == {pyo.ComponentUID("x"): 0}
 
-        M2 = sp.create_subproblem("HF_12")
-        assert set(sp.int_to_FirstStageVar.keys()) == {"HF_11", "HF_12"}
+        M2 = sp.create_subproblem("HF_2")
+        assert set(sp.int_to_FirstStageVar.keys()) == {"HF_1", "HF_2"}
         assert sp.varcuid_to_int == {pyo.ComponentUID("x"): 0}
 
         #
         # Test subproblem solver logic
         #
         sp.solve(M1, solver="glpk")
-        assert pyo.value(M1.s["HF", 11].x) == 9.0
+        assert pyo.value(M1.s["HF", 1].x) == 9.0
 
         sp.solve(M2, solver="glpk")
-        assert pyo.value(M2.s["HF", 12].x) == 40.0
+        assert pyo.value(M2.s["HF", 2].x) == 40.0
 
     def test_MF_builder1(self):
         sp = stochastic_program(first_stage_variables=["x"])
         sp.initialize_application(app_data=app_data)
-        sp.initialize_model(model_data=model_data["HF"], model_builder=HF_builder)
         sp.initialize_model(
-            model_data=model_data["LF"], model_builder=LF_builder, default=False
+            name="HF", model_data=model_data["HF"], model_builder=HF_builder
+        )
+        sp.initialize_model(
+            name="LF",
+            model_data=model_data["LF"],
+            model_builder=LF_builder,
+            default=False,
         )
         sp.initialize_bundles(scheme="mf_paired", ordered_pairing=True)
 
@@ -170,14 +175,11 @@ class TestMFNewsVendor:
         #
         ### TODO: solutions are not correct here
         sp.solve(M1, solver="glpk")
-        assert pyo.value(M1.s[1].x) == 15.0
+        assert len(M1.s) == 2
+        assert pyo.value(M1.s["HF", 1].x) == 15.0
+        assert pyo.value(M1.s["LF", 1].x) == 15.0
 
         sp.solve(M2, solver="glpk")
-        assert pyo.value(M2.s[2].x) == 60.0
-
-    def test_MF_builder21(self):
-        # MORE TESTS HERE
-        # sp.initialize_bundles(bundle_data=model_data, scheme="mf_paired", random_pairing=True, seed=837493847937)
-        # sp.initialize_bundles(bundle_data=model_data, scheme="mf_paired", ordered_pairing=True)
-
-        pass
+        assert len(M2.s) == 2
+        assert pyo.value(M2.s["HF", 2].x) == 60.0
+        assert pyo.value(M2.s["LF", 2].x) == 60.0
