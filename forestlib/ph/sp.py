@@ -247,10 +247,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
     def __init__(
         self,
         *,
-        objective=None,
         first_stage_variables,
-        model_builder=None,
-        model_builders=None,
     ):
         super().__init__()
         #
@@ -258,13 +255,9 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         #   [ "x", "b.y", "b[*].z[*,*]" ]
         #
         self.first_stage_variables = first_stage_variables
-        self.objective = objective
+        # WEH - We may have different objectives for different model_builders?
+        self.objective = None
         self.model_builder = {}
-        if model_builder is not None:
-            self.initialize_model(name=None, model_builder=model_builder)
-        if model_builders is not None:
-            for k, v in model_builders.items():
-                self.initialize_model(name=k, model_builder=v)
 
     def initialize_model(
         self,
@@ -400,10 +393,6 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                     )
                     EF_model.non_ant_cons.add(expr=EF_model.rootx[i] == var)
 
-        # print(f"pyomo1_{self.ctr}.lp")
-        # EF_model.write(f"pyomo1_{self.ctr}.lp", io_options={"symbolic_solver_labels":True})
-        # self.ctr += 1
-
         return EF_model
 
 
@@ -495,8 +484,6 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
 def stochastic_program(
     *,
     model_builder_list=None,
-    model_builder=None,
-    model_builders=None,
     first_stage_variables=None,
     aml="pyomo",
 ):
@@ -505,45 +492,16 @@ def stochastic_program(
 
     model_builder_list - A list of functions used to construct the model.
 
-    model_builder - A single function used to construct the model.
-
-    model_builders - A dictionary mapping model names to model builder functions
-
-    first_stage_variables - A list of strings that denote the first-stage variables in the model.  This is only used if model_builder is specified.
+    first_stage_variables - A list of strings that denote the first-stage variables in the model.
+        This is only used if model_builder is specified.
     """
-    if model_builder is not None:
-        assert (
-            model_builder_list is None and model_builders is None
-        ), "Cannot specify 'model_builder' and 'model_builder_list' or 'model_builders' options"
-        assert (
-            first_stage_variables is not None
-        ), "Must specify 'first_stage_variables' with the 'model_builer' option"
-
-    if model_builders is not None:
-        assert (
-            model_builder_list is None and model_builder is None
-        ), "Cannot specify 'model_builders' and 'model_builder_list' or 'model_builder' options"
-        assert (
-            first_stage_variables is not None
-        ), "Must specify 'first_stage_variables' with the 'model_builer' option"
-
-    if model_builder_list is not None:
-        assert (
-            model_builder is None and model_builders is None
-        ), "Cannot specify 'model_builder_list' and 'model_builder' or 'model_builders' options"
-
     if aml == "pyomo":
-        if model_builder is not None:
-            return StochasticProgram_Pyomo_NamedBuilder(
-                model_builder=model_builder, first_stage_variables=first_stage_variables
-            )
-        elif model_builder_list is not None:
+        if model_builder_list is not None:
             return StochasticProgram_Pyomo_MultistageBuilder(
                 model_builder_list=model_builder_list
             )
         else:
             return StochasticProgram_Pyomo_NamedBuilder(
-                model_builders=model_builders,
                 first_stage_variables=first_stage_variables,
             )
 

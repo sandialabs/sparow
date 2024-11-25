@@ -14,7 +14,8 @@ def sp1():
         M.o = pyo.Objective(expr=M.x)
         return M
 
-    sp = stochastic_program(first_stage_variables=["x"], model_builder=builder)
+    sp = stochastic_program(first_stage_variables=["x"])
+    sp.initialize_model(model_builder=builder)
     sp.initialize_model(model_data=dict(scenarios=[dict(ID=1), dict(ID=2)]))
     return sp
 
@@ -28,7 +29,8 @@ def sp2():
         M.o = pyo.Objective(expr=M.x)
         return M
 
-    sp = stochastic_program(first_stage_variables=["y", "x"], model_builder=builder)
+    sp = stochastic_program(first_stage_variables=["y", "x"])
+    sp.initialize_model(model_builder=builder)
     sp.initialize_model(model_data=dict(scenarios=[dict(ID=1), dict(ID=2)]))
     return sp
 

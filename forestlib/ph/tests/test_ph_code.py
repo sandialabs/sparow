@@ -166,9 +166,8 @@ def model_builder(scen, scen_args):
     return model
 
 
-FarmerSP = stochastic_program(
-    first_stage_variables=["X[*]"], model_builder=model_builder
-)
+FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
+FarmerSP.initialize_model(model_builder=model_builder)
 
 model_data = {
     "scenarios": [
