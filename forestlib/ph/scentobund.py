@@ -26,8 +26,6 @@ def mf_paired(data, models=None, bundle_args=None):
 
     Note that scenario probabilities specified for each model are ignored.
     """
-    if models is None:
-        models = list(data.keys())
     assert len(models) > 1, "Expecting multiple models for mf_paired"
     #
     # This bundling strategy requires that all models have the same scenario keys.
