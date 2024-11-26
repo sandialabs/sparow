@@ -154,7 +154,7 @@ class TestMFNewsVendor:
             model_builder=LF_builder,
             default=False,
         )
-        sp.initialize_bundles(scheme="mf_paired", ordered_pairing=True)
+        sp.initialize_bundles(scheme="mf_paired")
 
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
         assert sp.bundles["1"].probability == 0.2
@@ -186,3 +186,102 @@ class TestMFNewsVendor:
         assert pyo.value(M2.s["LF", 2].x) == 60.0
         assert pyo.value(M2.s["HF", 2].y) == 78.0
         assert pyo.value(M2.s["LF", 2].y) == 60.0
+
+    def test_MF_builder2(self):
+        sp = stochastic_program(first_stage_variables=["x"])
+        sp.initialize_application(app_data=app_data)
+        sp.initialize_model(
+            name="HF", model_data=model_data["HF"], model_builder=HF_builder
+        )
+        sp.initialize_model(
+            name="LF",
+            model_data=model_data["LF"],
+            model_builder=LF_builder,
+            default=False,
+        )
+        sp.initialize_bundles(scheme="mf_random_nested", LF=2, seed=1234567890)
+
+        assert sp.get_bundles() == {
+            "HF_1": {
+                "probability": 0.2,
+                "scenario_probability": {
+                    ("HF", 1): 0.3333333333333333,
+                    ("LF", 3): 0.3333333333333333,
+                    ("LF", 4): 0.3333333333333333,
+                },
+                "scenarios": [("HF", 1), ("LF", 3), ("LF", 4)],
+            },
+            "HF_2": {
+                "probability": 0.2,
+                "scenario_probability": {
+                    ("HF", 2): 0.3333333333333333,
+                    ("LF", 1): 0.3333333333333333,
+                    ("LF", 3): 0.3333333333333333,
+                },
+                "scenarios": [("HF", 2), ("LF", 1), ("LF", 3)],
+            },
+            "HF_3": {
+                "probability": 0.2,
+                "scenario_probability": {
+                    ("HF", 3): 0.3333333333333333,
+                    ("LF", 4): 0.3333333333333333,
+                    ("LF", 5): 0.3333333333333333,
+                },
+                "scenarios": [("HF", 3), ("LF", 4), ("LF", 5)],
+            },
+            "HF_4": {
+                "probability": 0.2,
+                "scenario_probability": {
+                    ("HF", 4): 0.3333333333333333,
+                    ("LF", 2): 0.3333333333333333,
+                    ("LF", 3): 0.3333333333333333,
+                },
+                "scenarios": [("HF", 4), ("LF", 2), ("LF", 3)],
+            },
+            "HF_5": {
+                "probability": 0.2,
+                "scenario_probability": {
+                    ("HF", 5): 0.3333333333333333,
+                    ("LF", 1): 0.3333333333333333,
+                    ("LF", 2): 0.3333333333333333,
+                },
+                "scenarios": [("HF", 5), ("LF", 1), ("LF", 2)],
+            },
+        }
+
+        assert set(sp.bundles.keys()) == {"HF_1", "HF_2", "HF_3", "HF_4", "HF_5"}
+        assert sp.bundles["HF_1"].probability == 0.2
+
+        #
+        # Testing internal data structures
+        #
+        M1 = sp.create_subproblem("HF_1")
+        assert set(sp.int_to_FirstStageVar.keys()) == {"HF_1"}
+        assert sp.varcuid_to_int == {pyo.ComponentUID("x"): 0}
+
+        M2 = sp.create_subproblem("HF_2")
+        assert set(sp.int_to_FirstStageVar.keys()) == {"HF_1", "HF_2"}
+        assert sp.varcuid_to_int == {pyo.ComponentUID("x"): 0}
+
+        #
+        # Test subproblem solver logic
+        #
+        sp.solve(M1, solver="glpk")
+        assert len(M1.s) == 3
+        assert set(M1.s.keys()) == {("HF", 1), ("LF", 3), ("LF", 4)}
+        assert pyo.value(M1.s["HF", 1].x) == 25.0
+        assert pyo.value(M1.s["LF", 3].x) == 25.0
+        assert pyo.value(M1.s["LF", 4].x) == 25.0
+        assert pyo.value(M1.s["HF", 1].y) == 26.0
+        assert pyo.value(M1.s["LF", 3].y) == 95.5
+        assert pyo.value(M1.s["LF", 4].y) == 104.5
+
+        sp.solve(M2, solver="glpk")
+        assert len(M2.s) == 3
+        assert set(M2.s.keys()) == {("HF", 2), ("LF", 1), ("LF", 3)}
+        assert pyo.value(M2.s["HF", 2].x) == 15.0
+        assert pyo.value(M2.s["LF", 1].x) == 15.0
+        assert pyo.value(M2.s["LF", 3].x) == 15.0
+        assert pyo.value(M2.s["HF", 2].y) == 82.5
+        assert pyo.value(M2.s["LF", 1].y) == 15.0
+        assert pyo.value(M2.s["LF", 3].y) == 100.5

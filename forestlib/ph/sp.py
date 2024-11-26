@@ -72,7 +72,13 @@ class StochasticProgram(object):
         if scheme == None:
             scheme = "single_scenario"
         if models == None:
-            models = list(sorted(self.scenario_data.keys()))
+            models = [self.default_model] + list(
+                sorted(
+                    model
+                    for model in self.scenario_data.keys()
+                    if model != self.default_model
+                )
+            )
         else:
             for name in models:
                 assert name in self.scenario_data
@@ -84,6 +90,11 @@ class StochasticProgram(object):
             scheme=scheme,
             bundle_args=kwargs,
         )
+
+    def get_bundles(self):
+        if self.bundles is None:
+            return None
+        return munch.unmunchify(self.bundles._bundles)
 
     def get_variable_value(self, b, v):
         pass

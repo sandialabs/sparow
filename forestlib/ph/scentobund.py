@@ -51,7 +51,7 @@ def mf_paired(data, models=None, bundle_args=None):
     return bundle
 
 
-def mf_paired_random(data, models, bundle_args=None):
+def mf_random_nested(data, models, bundle_args=None):
     """
     Bundle randomly selected scenarios for all but the first model.
 
@@ -368,7 +368,7 @@ scheme = {
     "single_bundle": single_bundle,
     "bundle_random_partition": bundle_random_partition,
     "mf_paired": mf_paired,
-    "mf_paired_random": mf_paired_random,
+    "mf_random_nested": mf_random_nested,
     "mf_ordered": mf_ordered,
 }
 
@@ -407,6 +407,9 @@ class BundleObj(object):
             )
             for key in bundles
         }
+
+    def to_dict(self):
+        return munch.unmunchify(self._bundles)
 
     def __contains__(self, key):
         return key in self._bundles

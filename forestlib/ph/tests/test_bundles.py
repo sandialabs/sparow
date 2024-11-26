@@ -4,7 +4,7 @@ from forestlib.ph.scentobund import (
     single_bundle,
     bundle_random_partition,
     mf_paired,
-    mf_paired_random,
+    mf_random_nested,
 )
 import random
 import pytest
@@ -184,8 +184,8 @@ class TestBundleFunctions(object):
             },
         }
 
-    def test_mf_paired_random(self, MFpaired_data, imbalanced_data):
-        assert mf_paired_random(
+    def test_mf_random_nested(self, MFpaired_data, imbalanced_data):
+        assert mf_random_nested(
             MFpaired_data, models=["HF", "LF"], bundle_args=dict(seed=123456789)
         ) == {
             "HF_scen_0": {
@@ -205,7 +205,7 @@ class TestBundleFunctions(object):
                 "scenarios": {("HF", "scen_3"): 0.5, ("LF", "scen_0"): 0.5},
             },
         }
-        assert mf_paired_random(
+        assert mf_random_nested(
             MFpaired_data, models=["HF", "LF"], bundle_args=dict(LF=2, seed=1234567890)
         ) == {
             "HF_scen_0": {
