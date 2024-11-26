@@ -190,11 +190,11 @@ class TestBundleFunctions(object):
         ) == {
             "HF_scen_0": {
                 "Probability": 0.25,
-                "scenarios": {("HF", "scen_0"): 0.5, ("LF", "scen_2"): 0.5},
+                "scenarios": {("HF", "scen_0"): 0.5, ("LF", "scen_1"): 0.5},
             },
             "HF_scen_1": {
                 "Probability": 0.25,
-                "scenarios": {("HF", "scen_1"): 0.5, ("LF", "scen_0"): 0.5},
+                "scenarios": {("HF", "scen_1"): 0.5, ("LF", "scen_2"): 0.5},
             },
             "HF_scen_2": {
                 "Probability": 0.25,
@@ -202,7 +202,43 @@ class TestBundleFunctions(object):
             },
             "HF_scen_3": {
                 "Probability": 0.25,
-                "scenarios": {("HF", "scen_3"): 0.5, ("LF", "scen_1"): 0.5},
+                "scenarios": {("HF", "scen_3"): 0.5, ("LF", "scen_0"): 0.5},
+            },
+        }
+        assert mf_paired_random(
+            MFpaired_data, models=["HF", "LF"], bundle_args=dict(LF=2, seed=1234567890)
+        ) == {
+            "HF_scen_0": {
+                "Probability": 0.25,
+                "scenarios": {
+                    ("HF", "scen_0"): 0.3333333333333333,
+                    ("LF", "scen_2"): 0.3333333333333333,
+                    ("LF", "scen_3"): 0.3333333333333333,
+                },
+            },
+            "HF_scen_1": {
+                "Probability": 0.25,
+                "scenarios": {
+                    ("HF", "scen_1"): 0.3333333333333333,
+                    ("LF", "scen_0"): 0.3333333333333333,
+                    ("LF", "scen_2"): 0.3333333333333333,
+                },
+            },
+            "HF_scen_2": {
+                "Probability": 0.25,
+                "scenarios": {
+                    ("HF", "scen_2"): 0.3333333333333333,
+                    ("LF", "scen_0"): 0.3333333333333333,
+                    ("LF", "scen_3"): 0.3333333333333333,
+                },
+            },
+            "HF_scen_3": {
+                "Probability": 0.25,
+                "scenarios": {
+                    ("HF", "scen_3"): 0.3333333333333333,
+                    ("LF", "scen_1"): 0.3333333333333333,
+                    ("LF", "scen_2"): 0.3333333333333333,
+                },
             },
         }
 

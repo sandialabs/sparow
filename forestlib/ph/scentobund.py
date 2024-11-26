@@ -35,7 +35,9 @@ def mf_paired(data, models=None, bundle_args=None):
     model0 = models[0]
     scenarios = set(data[model0].keys())
     for model in models[1:]:
-        assert scenarios == set(data[model].keys()), "All models have the same scenario keys"
+        assert scenarios == set(
+            data[model].keys()
+        ), "All models have the same scenario keys"
     #
     # Bundle the paired scenarios for all models
     #
@@ -51,7 +53,7 @@ def mf_paired(data, models=None, bundle_args=None):
 
 def mf_paired_random(data, models, bundle_args=None):
     """
-    Scenarios are paired randomly according to their models (1 per model)
+    Bundle randomly selected scenarios for all but the first model.
 
     Note that scenario probabilities specified for each model are ignored.
     """
@@ -62,42 +64,57 @@ def mf_paired_random(data, models, bundle_args=None):
     model0 = models[0]
     scenarios = set(data[model0].keys())
     for model in models[1:]:
-        assert scenarios == set(data[model].keys()), "All models have the same scenario keys"
+        assert scenarios == set(
+            data[model].keys()
+        ), "All models have the same scenario keys"
     #
-    # Bundle randomly selected scenarios for all but the first model
+    # Process bundle_args
     #
+    n = {model: 1 for model in models}
     if bundle_args != None:
-        if 'seed' in bundle_args:
-            random.seed(bundle_args['seed'])
+        if "seed" in bundle_args:
+            random.seed(bundle_args["seed"])
+        for model in models:
+            if model in bundle_args:
+                n[model] = bundle_args[model]
 
-    scenario_keys = list(scenarios)
     bundle_scen = {}
     # model[0]
     for s in scenarios:
-        bundle_scen[s] = {scen_key(model0, s): 1.0 / len(models)}
+        bundle_scen[s] = {scen_key(model0, s): 1.0}
     # model[i]
-    N = len(scenario_keys)
+
+    N = len(scenarios)
+    scenario_keys = list(sorted(scenarios))
     for model in models[1:]:
-        # We randomly select one other scenario for the other models, but we may
-        #   select the same scenario twice for different models in models[1:]
+        #
+        # We randomly select n[model] scenarios for the each model 'model'.
+        #
+        # This uses a single shuffle of all of the scenario keys to encourage a
+        # diverse set of scenarios.  We bias sampling by disallowing the scenario
+        # use for model0 to be repeated.
+        #
         index = list(range(N))
-        for i,s in enumerate(scenario_keys):
-            if i+2 == N:
-                tmp = index[i]
-                index[i] = index[i+1]
-                index[i+1] = tmp
-            elif i+1 < N:
-                j = random.randint(i+1, N-1)
-                tmp = index[i]
-                index[i] = index[j]
-                index[j] = tmp
-            s_ = scenario_keys[index[i]]
-            bundle_scen[s][scen_key(model,s_)] = 1.0 / len(models)
+        random.shuffle(index)
+        for i, s in enumerate(scenario_keys):
+            k = 0
+            count = 0
+            while count < n[model]:
+                i_ = (index[i] + k) % N
+                k += 1
+                if scenario_keys[i_] == s:
+                    continue
+                s_ = scenario_keys[i_]
+                bundle_scen[s][scen_key(model, s_)] = 1.0
+                count += 1
     #
     # Create the final bundle object
     #
     bundle = {}
     for s in scenarios:
+        N = len(bundle_scen[s])
+        for k in bundle_scen[s]:
+            bundle_scen[s][k] = 1.0 / N
         bundle[f"{model0}_{s}"] = dict(
             scenarios=bundle_scen[s],
             Probability=1.0 / len(scenarios),
