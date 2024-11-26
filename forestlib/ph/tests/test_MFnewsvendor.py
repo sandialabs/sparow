@@ -173,13 +173,16 @@ class TestMFNewsVendor:
         #
         # Test subproblem solver logic
         #
-        ### TODO: solutions are not correct here
         sp.solve(M1, solver="glpk")
         assert len(M1.s) == 2
         assert pyo.value(M1.s["HF", 1].x) == 15.0
         assert pyo.value(M1.s["LF", 1].x) == 15.0
+        assert pyo.value(M1.s["HF", 1].y) == 21.0
+        assert pyo.value(M1.s["LF", 1].y) == 15.0
 
         sp.solve(M2, solver="glpk")
         assert len(M2.s) == 2
         assert pyo.value(M2.s["HF", 2].x) == 60.0
         assert pyo.value(M2.s["LF", 2].x) == 60.0
+        assert pyo.value(M2.s["HF", 2].y) == 78.0
+        assert pyo.value(M2.s["LF", 2].y) == 60.0
