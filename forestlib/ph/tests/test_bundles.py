@@ -4,6 +4,7 @@ from forestlib.ph.scentobund import (
     single_bundle,
     bundle_random_partition,
     mf_paired,
+    mf_paired_random,
 )
 import random
 import pytest
@@ -30,6 +31,48 @@ def MF_data():
             "scen_2": {
                 "Demand": 2,
                 "Probability": 0.8,
+            },
+        },
+    }
+
+
+@pytest.fixture
+def MFpaired_data():
+    return {
+        "HF": {
+            "scen_0": {
+                "Demand": 3,
+                "Probability": 0.2,
+            },
+            "scen_1": {
+                "Demand": 1,
+                "Probability": 0.2,
+            },
+            "scen_2": {
+                "Demand": 2,
+                "Probability": 0.3,
+            },
+            "scen_3": {
+                "Demand": 4,
+                "Probability": 0.3,
+            },
+        },
+        "LF": {
+            "scen_0": {
+                "Demand": 4,
+                "Probability": 0.2,
+            },
+            "scen_1": {
+                "Demand": 2,
+                "Probability": 0.3,
+            },
+            "scen_2": {
+                "Demand": 1,
+                "Probability": 0.3,
+            },
+            "scen_3": {
+                "Demand": 3,
+                "Probability": 0.2,
             },
         },
     }
@@ -121,37 +164,45 @@ def imbalanced_data():
 
 class TestBundleFunctions(object):
 
-    def test_mf_paired(self, MF_data, imbalanced_data):
-        # check bundling when #HF scenarios = #LF scenarios:
-        assert mf_paired(MF_data, bundle_args={"ordered": True}) == {
-            "ord_pair_0": {
-                "scenarios": {
-                    "scen_1": 0.6666666666666666,
-                    "scen_3": 0.3333333333333333,
-                },
-                "Probability": 0.30000000000000004,
+    def test_mf_paired(self, MFpaired_data, imbalanced_data):
+        assert mf_paired(MFpaired_data) == {
+            "scen_0": {
+                "Probability": 0.25,
+                "scenarios": {("HF", "scen_0"): 0.5, ("LF", "scen_0"): 0.5},
             },
-            "ord_pair_1": {
-                "scenarios": {
-                    "scen_0": 0.4285714285714286,
-                    "scen_2": 0.5714285714285715,
-                },
-                "Probability": 0.7,
+            "scen_1": {
+                "Probability": 0.25,
+                "scenarios": {("HF", "scen_1"): 0.5, ("LF", "scen_1"): 0.5},
+            },
+            "scen_2": {
+                "Probability": 0.25,
+                "scenarios": {("HF", "scen_2"): 0.5, ("LF", "scen_2"): 0.5},
+            },
+            "scen_3": {
+                "Probability": 0.25,
+                "scenarios": {("HF", "scen_3"): 0.5, ("LF", "scen_3"): 0.5},
             },
         }
 
-        # check bundling when # HF scens /= # LF scens:
-        assert mf_paired(imbalanced_data, bundle_args={"ordered": True}) == {
-            "ord_pair_0": {
-                "scenarios": {
-                    "rand_1": 0.7142857142857143,
-                    "rand_2": 0.28571428571428575,
-                },
-                "Probability": 0.5833333333333334,
+    def test_mf_paired_random(self, MFpaired_data, imbalanced_data):
+        assert mf_paired_random(
+            MFpaired_data, models=["HF", "LF"], bundle_args=dict(seed=123456789)
+        ) == {
+            "HF_scen_0": {
+                "Probability": 0.25,
+                "scenarios": {("HF", "scen_0"): 0.5, ("LF", "scen_2"): 0.5},
             },
-            "ord_pair_1": {
-                "scenarios": {"rand_0": 0.6, "rand_2": 0.4},
-                "Probability": 0.4166666666666667,
+            "HF_scen_1": {
+                "Probability": 0.25,
+                "scenarios": {("HF", "scen_1"): 0.5, ("LF", "scen_0"): 0.5},
+            },
+            "HF_scen_2": {
+                "Probability": 0.25,
+                "scenarios": {("HF", "scen_2"): 0.5, ("LF", "scen_3"): 0.5},
+            },
+            "HF_scen_3": {
+                "Probability": 0.25,
+                "scenarios": {("HF", "scen_3"): 0.5, ("LF", "scen_1"): 0.5},
             },
         }
 
