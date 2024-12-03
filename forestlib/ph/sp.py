@@ -64,7 +64,6 @@ class StochasticProgram(object):
         models=None,
         **kwargs,
     ):
-        # returns bundles, probabilities, and list of scenarios in each bundle
         if filename is not None:
             with open(f"{filename}", "r") as file:
                 bundle_data = json.load(filename)
@@ -104,6 +103,18 @@ class StochasticProgram(object):
             return None
         return munch.unmunchify(self.bundles._bundles)
 
+    def get_variables(self, b=None):
+        if b is None:
+            # If no value for 'b' is specified, then get the "first" bundle ID in self.bundles
+            b = next(iter(self.bundles))
+
+        # Return a dictionary mapping variable name to variable value, for all
+        # first stage variables
+        return {
+            self.get_variable_name(b, v): self.get_variable_value(b, v)
+            for v in self.shared_variables()
+        }
+
     def get_variable_value(self, b, v):
         pass
 
@@ -142,30 +153,21 @@ class StochasticProgram(object):
             M[b] = self.create_subproblem(b)
             for i, xval in enumerate(x):
                 self.fix_variable(b, i, xval)
-            obj_value[b] = self.solve(M[b], solver_options=solver_options)
-            if obj_value[b] is None:
+            results = self.solve(M[b], solver_options=solver_options)
+            if results.obj_value is None:
                 msg = f"Error evaluating solution for scenario {b}\n\tVariables:\n\t\t"
-                tmp = {
-                    self.get_variable_name(b, v): self.get_variable_value(b, v)
-                    for v in self.shared_variables()
-                }
+                tmp = self.get_variables(b)
                 msg = msg + "\n\t\t".join(
                     f"{var}:\t{tmp[var]}" for var in sorted(tmp.keys())
                 )
                 logger.debug(msg)
                 return munch.Munch(feasible=False, bundle=b)
+            else:
+                obj_value[b] = results.obj_value
         obj = sum(self.bundles[b].probability * obj_value[b] for b in self.bundles)
         # Just need to get one of the bundles to collect the variables
 
-        for b in self.bundles:
-            return munch.Munch(
-                feasible=True,
-                objective=obj,
-                variables={
-                    self.get_variable_name(b, v): self.get_variable_value(b, v)
-                    for v in self.shared_variables()
-                },
-            )
+        return munch.Munch(feasible=True, objective=obj, variables=self.get_variables())
 
         # Reset the bundles
         self.bundles = _bundles
@@ -177,6 +179,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         super().__init__()
         self.varcuid_to_int = {}
         self.int_to_FirstStageVar = {}
+        self.int_to_FirstStageVarName = {}
         self.solver_options = {}
         self.pyo_solver = None
 
@@ -184,7 +187,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         # A generator that yields (name,component) tuples
         pass
 
-    def _initialize_cuid_map(self, *, M, b=None):
+    def _initialize_cuid_map(self, *, M, b):
         if len(self.varcuid_to_int) == 0:
             #
             # self.varcuid_to_int maps the cuids for variables to unique integers (starting with 0).
@@ -197,14 +200,14 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
                 if var.is_binary() or var.is_integer():
                     self._binary_or_integer_fsv.add(i)
         #
-        # Setup int_to_FirstStageVar
+        # Setup int_to_FirstStageVar and int_to_FirstStageVarName
         #
-        if b is not None:
-            self.int_to_FirstStageVar[b] = {}
-            for varname, var in self._first_stage_variables(M=M):
-                self.int_to_FirstStageVar[b][
-                    self.varcuid_to_int[pyo.ComponentUID(var)]
-                ] = var
+        self.int_to_FirstStageVar[b] = {}
+        self.int_to_FirstStageVarName[b] = {}
+        for varname, var in self._first_stage_variables(M=M):
+            ndx = self.varcuid_to_int[pyo.ComponentUID(var)]
+            self.int_to_FirstStageVar[b][ndx] = var
+            self.int_to_FirstStageVarName[b][ndx] = varname
 
     def continuous_fsv(self):
         assert (
@@ -224,7 +227,11 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         return pyo.value(self.int_to_FirstStageVar[b][v])
 
     def get_variable_name(self, b, v):
-        return self.int_to_FirstStageVar[b][v].name
+        # return self.int_to_FirstStageVar[b][v].name
+        assert (
+            b in self.int_to_FirstStageVarName
+        ), f"Missing keys: {b} not in {self.int_to_FirstStageVarName}"
+        return self.int_to_FirstStageVarName[b][v]
 
     def shared_variables(self):
         return list(range(len(self.varcuid_to_int)))
@@ -253,12 +260,20 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
                     "TerminationCondition = {}"
                 ).format(M.name, status.value, condition.value)
             )
-            return None
+            return munch.Munch(
+                obj_value=None,
+                termination_condition=results.solver.termination_condition,
+                status=results.solver.status,
+            )
         else:
             # Load the results into the model so the user can find them there
             M.solutions.load_from(results)
             # Return the value of the 'first' objective
-            return list(results.Solution[0].Objective.values())[0]["Value"]
+            return munch.Munch(
+                obj_value=list(results.Solution[0].Objective.values())[0]["Value"],
+                termination_condition=results.solver.termination_condition,
+                status=results.solver.status,
+            )
 
 
 class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
@@ -336,7 +351,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             data[k] = v
         return self.model_builder[model_name](data, {})
 
-    def create_EF(self, *, w=None, x_bar=None, rho=None, b):
+    def create_EF(self, *, b, w=None, x_bar=None, rho=None):
         scenarios = self.bundles[b].scenarios
 
         # 1) create scenario dictionary
@@ -344,7 +359,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         if len(scenarios) > 1:
             for s in scenarios:
                 scenario_model = self._create_scenario(s)
-                self._initialize_cuid_map(M=scenario_model)
+                self._initialize_cuid_map(M=scenario_model, b=b)
                 scen_dict[s] = scenario_model
         else:
             s = scenarios[0]

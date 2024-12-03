@@ -79,10 +79,11 @@ class ProgressiveHedgingSolver(object):
             M = sp.create_subproblem(b)
             # M.write(f'Iter0_PH_{b}.lp',io_options={'symbolic_solver_labels':True})
             logger.verbose(f"Optimizing subproblem '{b}'")
-            obj_value[b] = sp.solve(M, solver_options=self.solver_options)
+            results = sp.solve(M, solver_options=self.solver_options)
             assert (
-                obj_value[b] is not None
+                results.obj_value is not None
             ), f"ERROR solving bundle {b} in initial solve"
+            obj_value[b] = results.obj_value
             logger.verbose(f"Optimization Complete")
         obj_lb = sum(sp.bundles[b].probability * obj_value[b] for b in sp.bundles)
 
@@ -130,10 +131,11 @@ class ProgressiveHedgingSolver(object):
                     b=b, w=w_prev[b], x_bar=xbar_prev, rho=self.rho
                 )
                 logger.verbose(f"Optimizing subproblem '{b}'")
-                obj_value[b] = sp.solve(M, solver_options=self.solver_options)
+                results = sp.solve(M, solver_options=self.solver_options)
                 assert (
-                    obj_value[b] is not None
+                    results.obj_value is not None
                 ), f"ERROR solving bundle {b} in iteration {iteration}"
+                obj_value[b] = results.obj_value
                 logger.verbose(f"Optimization Complete")
             obj_lb = sum(sp.bundles[b].probability * obj_value[b] for b in sp.bundles)
 
@@ -195,7 +197,7 @@ class ProgressiveHedgingSolver(object):
         logger.info("")
         logger.info("-" * 70)
         logger.info("ProgressiveHedgingSolver - RESULTS")
-        if logging.VERBOSE >= logger.level:
+        if logger.level != logging.NOTSET and logger.level <= logging.VERBOSE:
             pprint.pprint(results.toDict())
 
         logger.info("")
@@ -216,7 +218,7 @@ class ProgressiveHedgingSolver(object):
         #
         solutions = []
         if sp.continuous_fsv():
-            logger.debug("Final solution is continuous")
+            logger.info("Final solution is continuous")
             #
             # Evaluate the final xbar, and keep if feasible.
             #
@@ -224,13 +226,13 @@ class ProgressiveHedgingSolver(object):
             if sol.feasible:
                 solutions.append(sol)
         else:
-            logger.debug("Final solution has binary or integer variables")
+            logger.info("Final solution has binary or integer variables")
 
             if self.finalize_xbar_by_rounding:
                 #
                 # Round the final xbar, and keep if feasible.
                 #
-                logger.debug(
+                logger.info(
                     "Rounding xbar values associated with binary and integer variables"
                 )
                 tmpx = [sp.round(x, xbar[x]) for x in sp.shared_variables()]

@@ -474,6 +474,9 @@ class BundleObj(object):
     def to_dict(self):
         return munch.unmunchify(self._bundles)
 
+    def __len__(self):
+        return len(self._bundles)
+
     def __contains__(self, key):
         return key in self._bundles
 

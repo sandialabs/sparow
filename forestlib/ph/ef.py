@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+import munch
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -47,16 +48,31 @@ class ExtensiveFormSolver(object):
 
         logger.info("ProgressiveHendingSolver - START")
 
-        sp.initialize_bundles(bundle_scheme="single_bundle")
-
-        assert len(sp.bundles) == 1, "The extensive form has a single bundle"
+        sp.initialize_bundles(scheme="single_bundle")
+        assert (
+            len(sp.bundles) == 1
+        ), f"The extensive form should only have one bundle: {len(sp.bundles)}"
 
         logger.debug(f"Creating extensive form")
         b = next(iter(sp.bundles))
         M = sp.create_subproblem(b)
 
         logger.debug(f"Optimizing extensive form")
-        sp.solve(M, solver_options=self.solver_options)
+        results = sp.solve(M, solver_options=self.solver_options)
 
         # TODO - show value of subproblem
         logger.debug(f"Optimization Complete")
+
+        if results.obj_value is None:
+            return munch.Munch(
+                termination_condition=str(results.termination_condition),
+                status=str(results.status),
+                solutions=[],
+            )
+        else:
+            return munch.Munch(
+                obj_value=results.obj_value,
+                termination_condition=str(results.termination_condition),
+                status=str(results.status),
+                solutions=[sp.get_variables()],
+            )
