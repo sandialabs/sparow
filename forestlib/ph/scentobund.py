@@ -20,7 +20,7 @@ def scen_key(model, scenario):
     return (model, scenario)
 
 
-def mf_paired(data, models=None, model_weight=None, bundle_args=None):
+def mf_paired(data, model_weight, models=None, bundle_args=None):
     """
     Scenarios are paired according to their models
 
@@ -49,7 +49,7 @@ def mf_paired(data, models=None, model_weight=None, bundle_args=None):
     return bundle
 
 
-def mf_random_nested(data, models, bundle_args=None):
+def mf_random_nested(data, model_weight, models, bundle_args=None):
     """
     Bundle randomly selected scenarios for all but the first model.
 
@@ -60,9 +60,9 @@ def mf_random_nested(data, models, bundle_args=None):
     # This bundling strategy requires that all models have the same scenario keys.
     #
     model0 = models[0]
-    scenarios = set(data[model0].keys())
+    bundleIDs = set(data[model0].keys())
     for model in models[1:]:
-        assert scenarios == set(
+        assert bundleIDs == set(
             data[model].keys()
         ), "All models have the same scenario keys"
     #
@@ -78,12 +78,12 @@ def mf_random_nested(data, models, bundle_args=None):
 
     bundle_scen = {}
     # model[0]
-    for s in scenarios:
-        bundle_scen[s] = {scen_key(model0, s): 1.0}
+    for b in bundleIDs:
+        bundle_scen[b] = {scen_key(model0, b): 1.0}
     # model[i]
 
-    N = len(scenarios)
-    scenario_keys = list(sorted(scenarios))
+    N = len(bundleIDs)
+    scenario_keys = list(sorted(bundleIDs))
     for model in models[1:]:
         #
         # We randomly select n[model] scenarios for the each model 'model'.
@@ -109,13 +109,13 @@ def mf_random_nested(data, models, bundle_args=None):
     # Create the final bundle object
     #
     bundle = {}
-    for s in scenarios:
-        N = len(bundle_scen[s])
-        for k in bundle_scen[s]:
-            bundle_scen[s][k] = 1.0 / N
-        bundle[f"{model0}_{s}"] = dict(
-            scenarios=bundle_scen[s],
-            Probability=1.0 / len(scenarios),
+    for b in bundleIDs:
+        N = len(bundle_scen[b])
+        for k in bundle_scen[b]:
+            bundle_scen[b][k] = 1.0 / N
+        bundle[f"{model0}_{b}"] = dict(
+            scenarios=bundle_scen[b],
+            Probability=1.0 / len(bundleIDs),
         )
 
     return bundle
@@ -123,7 +123,7 @@ def mf_random_nested(data, models, bundle_args=None):
 
 # ordered=False will randomize; default is True.
 # assumes all scenario probs within each fidelity sum to 1!!!
-def mf_ordered(data, models=None, bundle_args=None):
+def mf_ordered(data, model_weight, models=None, bundle_args=None):
     """
     Scenarios are paired according to their models
     """
@@ -176,7 +176,7 @@ def mf_ordered(data, models=None, bundle_args=None):
     return bundle
 
 
-def single_scenario(data, models=None, bundle_args=None):
+def single_scenario(data, model_weight, models=None, bundle_args=None):
     """
     Each scenario is its own bundle (i.e., no bundling)
     """
@@ -216,7 +216,7 @@ def single_scenario(data, models=None, bundle_args=None):
     return bundle
 
 
-def single_bundle(data, models=None, bundle_args=None):
+def single_bundle(data, model_weight, models=None, bundle_args=None):
     """
     Combine scenarios from the specified models into a single bundle (i.e., the subproblem is the master problem).
     """
@@ -255,7 +255,7 @@ def single_bundle(data, models=None, bundle_args=None):
     return bundle
 
 
-def bundle_by_fidelity(data, models=None, bundle_args=None):
+def bundle_by_fidelity(data, model_weight, models=None, bundle_args=None):
     """
     Scenarios are bundled according to their fidelities
     """
@@ -264,14 +264,14 @@ def bundle_by_fidelity(data, models=None, bundle_args=None):
 
     bundle = {}
     for fid in models:
-        bundle[fid] = single_bundle(data, models=[fid])["bundle"]
+        bundle[fid] = single_bundle(data, model_weight, models=[fid])["bundle"]
         # each bundle assumed to have same probability
         bundle[fid]["Probability"] = 1.0 / len(models)
 
     return bundle
 
 
-def bundle_random_partition(data, models=None, bundle_args=None):
+def bundle_random_partition(data, model_weight, models=None, bundle_args=None):
     """
     Each scenario is randomly assigned to a single bundle
     """
@@ -371,8 +371,8 @@ scheme = {
 }
 
 
-def bundle_scheme(data, scheme_str, models, bundle_args=None):
-    bundle = scheme[scheme_str](data, models, bundle_args)
+def bundle_scheme(data, scheme_str, model_weight, models, bundle_args=None):
+    bundle = scheme[scheme_str](data, model_weight, models, bundle_args)
 
     # Return error if bundle probabilities do not sum to 1
     if abs(sum(b["Probability"] for b in bundle.values()) - 1.0) > 1e-04:
@@ -397,7 +397,7 @@ class BundleObj(object):
         self.bundle_models = models
         self.bundle_weights = model_weight
         self.bundle_args = bundle_args
-        bundles = bundle_scheme(data, scheme, models, model_weight, bundle_args)
+        bundles = bundle_scheme(data, scheme, model_weight, models, bundle_args)
         self._bundles = {
             key: munch.Munch(
                 probability=bundles[key]["Probability"],

@@ -165,7 +165,7 @@ def imbalanced_data():
 class TestBundleFunctions(object):
 
     def test_mf_paired(self, MFpaired_data, imbalanced_data):
-        assert mf_paired(MFpaired_data, models=["HF", "LF"]) == {
+        assert mf_paired(MFpaired_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["HF", "LF"]) == {
             "scen_0": {
                 "Probability": 0.25,
                 "scenarios": {("HF", "scen_0"): 0.5, ("LF", "scen_0"): 0.5},
@@ -186,7 +186,7 @@ class TestBundleFunctions(object):
 
     def test_mf_random_nested(self, MFpaired_data, imbalanced_data):
         assert mf_random_nested(
-            MFpaired_data, models=["HF", "LF"], bundle_args=dict(seed=123456789)
+            MFpaired_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["HF", "LF"], bundle_args=dict(seed=123456789)
         ) == {
             "HF_scen_0": {
                 "Probability": 0.25,
@@ -206,7 +206,7 @@ class TestBundleFunctions(object):
             },
         }
         assert mf_random_nested(
-            MFpaired_data, models=["HF", "LF"], bundle_args=dict(LF=2, seed=1234567890)
+            MFpaired_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["HF", "LF"], bundle_args=dict(LF=2, seed=1234567890)
         ) == {
             "HF_scen_0": {
                 "Probability": 0.25,
@@ -245,11 +245,11 @@ class TestBundleFunctions(object):
     def test_bundle_by_fidelity(self, MF_data):
         # check that nonempty bundle_args returns the same bundle as empty bundle_args
         assert bundle_by_fidelity(
-            MF_data, bundle_args={"test_arg": "test_arg"}
-        ) == bundle_by_fidelity(MF_data, bundle_args=None)
+            MF_data, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args={"test_arg": "test_arg"}
+        ) == bundle_by_fidelity(MF_data, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args=None)
 
         # check that scenarios are partitioned into bundles by their fidelities
-        assert bundle_by_fidelity(MF_data) == {
+        assert bundle_by_fidelity(MF_data, model_weight={"HF": 1.0, "LF": 1.0}) == {
             "HF": {
                 "scenarios": {("HF", "scen_1"): 0.4, ("HF", "scen_0"): 0.6},
                 "Probability": 0.5,
@@ -262,7 +262,7 @@ class TestBundleFunctions(object):
 
     def test_single_scenario(self, SF_data, MF_data):
         # checking logic with no bundle_args
-        assert single_scenario(SF_data, models=["LF", "HF"]) == {
+        assert single_scenario(SF_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["LF", "HF"]) == {
             "HF_scen_1": {"scenarios": {("HF", "scen_1"): 1.0}, "Probability": 0.2},
             "HF_scen_0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.3},
             "LF_scen_3": {"scenarios": {("LF", "scen_3"): 1.0}, "Probability": 0.1},
@@ -270,19 +270,19 @@ class TestBundleFunctions(object):
         }
 
         # checking logic with "fidelity" in bundle_args
-        assert single_scenario(MF_data, models=["HF"]) == {
+        assert single_scenario(MF_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["HF"]) == {
             "HF_scen_1": {"scenarios": {("HF", "scen_1"): 1.0}, "Probability": 0.4},
             "HF_scen_0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.6},
         }
 
         # checking logic with bundle_args that aren't "fidelity"
         assert single_scenario(
-            SF_data, bundle_args={"some_other_arg": "arg"}
-        ) == single_scenario(SF_data, bundle_args=None)
+            SF_data, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args={"some_other_arg": "arg"}
+        ) == single_scenario(SF_data, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args=None)
 
     def test_single_bundle(self, SF_data, MF_data):
         # check logic with no bundle args
-        assert single_bundle(SF_data, models=["LF", "HF"]) == {
+        assert single_bundle(SF_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["LF", "HF"]) == {
             "bundle": {
                 "scenarios": {
                     ("HF", "scen_1"): 0.2,
@@ -295,7 +295,7 @@ class TestBundleFunctions(object):
         }
 
         # check logic with 'fidelity' in bundle args
-        assert single_bundle(MF_data, models=["LF"]) == {
+        assert single_bundle(MF_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["LF"]) == {
             "bundle": {
                 "scenarios": {("LF", "scen_3"): 0.2, ("LF", "scen_2"): 0.8},
                 "Probability": 1.0,
@@ -304,18 +304,18 @@ class TestBundleFunctions(object):
 
         # check logic with bundle args that aren't fidelity
         assert single_bundle(
-            SF_data, bundle_args={"some_other_arg": "arg"}
-        ) == single_bundle(SF_data, bundle_args=None)
+            SF_data, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args={"some_other_arg": "arg"}
+        ) == single_bundle(SF_data, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args=None)
 
     def test_bundle_random_partition(self, rand_data, rand_data_MF):
         # check that no "num_buns" in bundle args returns error
         with pytest.raises(TypeError) as excinfo:
-            bundle_random_partition(rand_data, bundle_args=None)
+            bundle_random_partition(rand_data, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args=None)
         assert excinfo.type is TypeError
 
         # check that "num_buns" larger than #scenarios returns error
         with pytest.raises(RuntimeError) as excinfo:
-            bundle_random_partition(rand_data, bundle_args={"num_buns": 4})
+            bundle_random_partition(rand_data, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args={"num_buns": 4})
         assert excinfo.type is RuntimeError
 
         # check that a non-integer/negative "num_buns" returns error
@@ -337,16 +337,16 @@ class TestBundleFunctions(object):
             "rand_1": {"scenarios": {"scen_0": 0.6}, "Probability": 1.0},
         }
         assert (
-            bundle_random_partition(rand_data, bundle_args={"num_buns": 2}) == rbundle0
+            bundle_random_partition(rand_data, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args={"num_buns": 2}) == rbundle0
             or rbundle1
         )
 
         # check logic with 'fidelity' in bundle_args
         assert bundle_random_partition(
-            rand_data_MF, bundle_args={"num_buns": 1, "fidelity": "LF"}
+            rand_data_MF, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args={"num_buns": 1, "fidelity": "LF"}
         ) == {"rand_0": {"scenarios": {"scen_2": 1.0}, "Probability": 1.0}}
 
         # TODO: check logic with optional bundle args other than 'fidelity'
         assert bundle_random_partition(
-            rand_data_MF, bundle_args={"num_buns": 1, "some_other_arg": "arg"}
+            rand_data_MF, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args={"num_buns": 1, "some_other_arg": "arg"}
         ) == bundle_random_partition(rand_data_MF, bundle_args={"num_buns": 1})
