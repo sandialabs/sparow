@@ -165,7 +165,7 @@ def imbalanced_data():
 class TestBundleFunctions(object):
 
     def test_mf_paired(self, MFpaired_data, imbalanced_data):
-        assert mf_paired(MFpaired_data) == {
+        assert mf_paired(MFpaired_data, models=["HF", "LF"]) == {
             "scen_0": {
                 "Probability": 0.25,
                 "scenarios": {("HF", "scen_0"): 0.5, ("LF", "scen_0"): 0.5},
