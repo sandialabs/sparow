@@ -53,6 +53,9 @@ def mf_random_nested(data, model_weight, models, bundle_args=None):
     """
     Bundle randomly selected scenarios for all but the first model.
 
+    All scenario IDs are required to be the same here, and this is used to prevent the
+    repeated selection of the scenario from the "high fidelity" model (a.k.. models[0]).
+
     Note that scenario probabilities specified for each model are ignored.
     """
     assert len(models) > 1, "Expecting multiple models for mf_paired_random"
@@ -80,8 +83,8 @@ def mf_random_nested(data, model_weight, models, bundle_args=None):
     # model[0]
     for b in bundleIDs:
         bundle_scen[b] = {scen_key(model0, b): model_weight[model0]}
-    # model[i]
 
+    # model[i]
     N = len(bundleIDs)
     scenario_keys = list(sorted(bundleIDs))
     for model in models[1:]:
@@ -111,7 +114,67 @@ def mf_random_nested(data, model_weight, models, bundle_args=None):
     bundle = {}
     for b in bundleIDs:
         total_weight = sum(weight for weight in bundle_scen[b].values())
-        for k,w in bundle_scen[b].items():
+        for k, w in bundle_scen[b].items():
+            bundle_scen[b][k] = w / total_weight
+        bundle[f"{model0}_{b}"] = dict(
+            scenarios=bundle_scen[b],
+            Probability=1.0 / len(bundleIDs),
+        )
+
+    return bundle
+
+
+def mf_random(data, model_weight, models, bundle_args=None):
+    """
+    Bundle randomly selected scenarios for all but the first model.
+
+    Note that scenario probabilities specified for each model are ignored.
+    """
+    assert len(models) > 1, "Expecting multiple models for mf_paired_random"
+
+    model0 = models[0]
+    bundleIDs = set(data[model0].keys())
+    #
+    # Process bundle_args
+    #
+    n = {model: 1 for model in models}
+    if bundle_args != None:
+        if "seed" in bundle_args:
+            random.seed(bundle_args["seed"])
+        for model in models:
+            if model in bundle_args:
+                n[model] = bundle_args[model]
+
+    bundle_scen = {}
+    # model[0]
+    for b in bundleIDs:
+        bundle_scen[b] = {scen_key(model0, b): model_weight[model0]}
+
+    # model[i]
+    for b in bundleIDs:
+        for model in models[1:]:
+            #
+            # We randomly select n[model] scenarios for the each model 'model'.
+            #
+            # This uses a single shuffle of all of the scenario keys to encourage a
+            # diverse set of scenarios.
+            #
+            N = len(data[model])
+            scenario_keys = list(sorted(data[model].keys()))
+            index = list(range(N))
+            random.shuffle(index)
+            k = 0
+            while k < min(N, n[model]):
+                s_ = scenario_keys[k]
+                bundle_scen[b][scen_key(model, s_)] = model_weight[model]
+                k += 1
+    #
+    # Create the final bundle object
+    #
+    bundle = {}
+    for b in bundleIDs:
+        total_weight = sum(weight for weight in bundle_scen[b].values())
+        for k, w in bundle_scen[b].items():
             bundle_scen[b][k] = w / total_weight
         bundle[f"{model0}_{b}"] = dict(
             scenarios=bundle_scen[b],
@@ -367,6 +430,7 @@ scheme = {
     "bundle_random_partition": bundle_random_partition,
     "mf_paired": mf_paired,
     "mf_random_nested": mf_random_nested,
+    "mf_random": mf_random,
     "mf_ordered": mf_ordered,
 }
 

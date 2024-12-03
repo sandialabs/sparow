@@ -298,7 +298,12 @@ class TestMFNewsVendor:
             model_builder=LF_builder,
             default=False,
         )
-        sp.initialize_bundles(scheme="mf_random_nested", LF=2, seed=1234567890, model_weight={"HF":2.0, "LF":1.0})
+        sp.initialize_bundles(
+            scheme="mf_random_nested",
+            LF=2,
+            seed=1234567890,
+            model_weight={"HF": 2.0, "LF": 1.0},
+        )
 
         assert sp.get_bundles() == {
             "HF_1": {
