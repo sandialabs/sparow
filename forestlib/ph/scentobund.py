@@ -79,7 +79,7 @@ def mf_random_nested(data, model_weight, models, bundle_args=None):
     bundle_scen = {}
     # model[0]
     for b in bundleIDs:
-        bundle_scen[b] = {scen_key(model0, b): 1.0}
+        bundle_scen[b] = {scen_key(model0, b): model_weight[model0]}
     # model[i]
 
     N = len(bundleIDs)
@@ -103,16 +103,16 @@ def mf_random_nested(data, model_weight, models, bundle_args=None):
                 if scenario_keys[i_] == s:
                     continue
                 s_ = scenario_keys[i_]
-                bundle_scen[s][scen_key(model, s_)] = 1.0
+                bundle_scen[s][scen_key(model, s_)] = model_weight[model]
                 count += 1
     #
     # Create the final bundle object
     #
     bundle = {}
     for b in bundleIDs:
-        N = len(bundle_scen[b])
-        for k in bundle_scen[b]:
-            bundle_scen[b][k] = 1.0 / N
+        total_weight = sum(weight for weight in bundle_scen[b].values())
+        for k,w in bundle_scen[b].items():
+            bundle_scen[b][k] = w / total_weight
         bundle[f"{model0}_{b}"] = dict(
             scenarios=bundle_scen[b],
             Probability=1.0 / len(bundleIDs),

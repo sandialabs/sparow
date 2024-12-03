@@ -206,6 +206,26 @@ class TestBundleFunctions(object):
             },
         }
         assert mf_random_nested(
+            MFpaired_data, model_weight={"HF": 3.0, "LF": 1.0}, models=["HF", "LF"], bundle_args=dict(seed=123456789)
+        ) == {
+            "HF_scen_0": {
+                "Probability": 0.25,
+                "scenarios": {("HF", "scen_0"): 0.75, ("LF", "scen_1"): 0.25},
+            },
+            "HF_scen_1": {
+                "Probability": 0.25,
+                "scenarios": {("HF", "scen_1"): 0.75, ("LF", "scen_2"): 0.25},
+            },
+            "HF_scen_2": {
+                "Probability": 0.25,
+                "scenarios": {("HF", "scen_2"): 0.75, ("LF", "scen_3"): 0.25},
+            },
+            "HF_scen_3": {
+                "Probability": 0.25,
+                "scenarios": {("HF", "scen_3"): 0.75, ("LF", "scen_0"): 0.25},
+            },
+        }
+        assert mf_random_nested(
             MFpaired_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["HF", "LF"], bundle_args=dict(LF=2, seed=1234567890)
         ) == {
             "HF_scen_0": {
