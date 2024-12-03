@@ -20,7 +20,7 @@ def scen_key(model, scenario):
     return (model, scenario)
 
 
-def mf_paired(data, models=None, bundle_args=None):
+def mf_paired(data, models=None, model_weight=None, bundle_args=None):
     """
     Scenarios are paired according to their models
 
@@ -392,11 +392,12 @@ def bundle_scheme(data, scheme_str, models, bundle_args=None):
 
 class BundleObj(object):
 
-    def __init__(self, *, data, scheme, models, bundle_args):
+    def __init__(self, *, data, scheme, models, model_weight, bundle_args):
         self.bundle_scheme_str = scheme
         self.bundle_models = models
+        self.bundle_weights = model_weight
         self.bundle_args = bundle_args
-        bundles = bundle_scheme(data, scheme, models, bundle_args)
+        bundles = bundle_scheme(data, scheme, models, model_weight, bundle_args)
         self._bundles = {
             key: munch.Munch(
                 probability=bundles[key]["Probability"],

@@ -84,9 +84,11 @@ class StochasticProgram(object):
                 assert name in self.scenario_data
 
         assert len(models) > 0, "Cannot initialize bundles without model data"
+        model_weight = {model:mdata.get('_model_weight_',1.0) for model, mdata in self.model_data.items()}
         self.bundles = scentobund.BundleObj(
             data=self.scenario_data,
             models=models,
+            model_weight=model_weight,
             scheme=scheme,
             bundle_args=kwargs,
         )
