@@ -91,7 +91,7 @@ def HF_EF():
     )
 
     solver = ExtensiveFormSolver()
-    solver.set_options(solver="gurobi")
+    solver.set_options(solver="gurobi", loglevel="DEBUG")
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
@@ -123,7 +123,22 @@ def HF_PH():
     )
 
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", loglevel="DEBUG")
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO")
+    results = solver.solve(sp)
+    pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
+
+def LF_PH():
+    print("-" * 60)
+    print("Running LF_PH")
+    print("-" * 60)
+    sp = stochastic_program(first_stage_variables=["x"])
+    sp.initialize_application(app_data=app_data)
+    sp.initialize_model(
+        name="LF", model_data=model_data["LF"], model_builder=LF_builder
+    )
+
+    solver = ProgressiveHedgingSolver()
+    solver.set_options(solver="gurobi", rho=0.25, loglevel="INFO")
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
@@ -159,6 +174,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--lf-ef", action="store_true")
 parser.add_argument("--hf-ef", action="store_true")
 parser.add_argument("--hf-ph", action="store_true")
+parser.add_argument("--lf-ph", action="store_true")
 parser.add_argument("--mf-ph", action="store_true")
 args = parser.parse_args()  # parse sys.argv
 
@@ -168,5 +184,7 @@ elif args.hf_ef:
     HF_EF()
 elif args.hf_ph:
     HF_PH()
+elif args.lf_ph:
+    LF_PH()
 elif args.mf_ph:
     MF_PH()
