@@ -1,7 +1,9 @@
+import sys
 import pprint
 import json
 import copy
 import munch
+import logging
 import pyomo.core.base.indexed_component
 import pyomo.environ as pyo
 import pyomo.util.vars_from_expressions as vfe
@@ -268,6 +270,11 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         else:
             # Load the results into the model so the user can find them there
             M.solutions.load_from(results)
+            if logger.isEnabledFor(logging.DEBUG):
+                M.pprint()
+                M.display()
+                sys.stdout.flush()
+
             # Return the value of the 'first' objective
             return munch.Munch(
                 obj_value=list(results.Solution[0].Objective.values())[0]["Value"],

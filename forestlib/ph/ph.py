@@ -1,3 +1,4 @@
+import sys
 import munch
 import pprint
 import numpy as np
@@ -144,6 +145,9 @@ class ProgressiveHedgingSolver(object):
             for x in sfs_variables:
                 xbar[x] = 0.0
                 for b in sp.bundles:
+                    logger.debug(
+                        f"Variable: {x} {b} {sp.get_variable_name(b,x)} {sp.get_variable_value(b, x)}"
+                    )
                     xbar[x] += sp.bundles[b].probability * sp.get_variable_value(b, x)
             logger.debug(f"xbar = {xbar}")
 
@@ -199,6 +203,7 @@ class ProgressiveHedgingSolver(object):
         logger.info("ProgressiveHedgingSolver - RESULTS")
         if logger.level != logging.NOTSET and logger.level <= logging.VERBOSE:
             pprint.pprint(results.toDict())
+            sys.stdout.flush()
 
         logger.info("")
         logger.info("-" * 70)

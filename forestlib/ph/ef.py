@@ -1,12 +1,10 @@
-import logging
 import numpy as np
 import munch
 
-logger = logging.getLogger(__name__)
-handler = logging.StreamHandler()
-formatter = logging.Formatter("%(levelname)s - %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+import logging
+import forestlib.logs
+
+logger = forestlib.logs.logger
 
 
 class ExtensiveFormSolver(object):
@@ -32,10 +30,7 @@ class ExtensiveFormSolver(object):
 
         if loglevel is not None:
             if loglevel == "DEBUG":
-                formatter = logging.Formatter(
-                    "%(asctime)s - %(levelname)s - %(message)s"
-                )
-                handler.setFormatter(formatter)
+                forestlib.logs.use_debugging_formatter()
             logger.setLevel(loglevel)
 
     def solve(self, sp, **options):
