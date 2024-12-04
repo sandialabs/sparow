@@ -14,7 +14,7 @@ The high fidelity (HF) farmers problem considers divisions of the land into indi
 
 (run with num_plots = 1 and num_scens = 3 for original (LF) farmers problem)
 """
-
+# TODO: figuring out why num_scens=3 doesn't output a solution! -R
 
 class GlobalData:
     num_plots = 1
@@ -268,24 +268,20 @@ class Scenario_dict(object):
         return self.scen_dict
 
 
-def model_builder(app_data, scen_data, scen_args):
-    num_plots = app_data["num_plots"]
+def model_builder(scen_data, scen_args):
+    num_plots = GlobalData.num_plots
     model = pyo.ConcreteModel(scen_data["ID"])
-
-    # TODO: add crops_multiplier index
-    # crops_multiplier = int(scen["crops_multiplier"])
 
     #
     # Parameters
     #
 
-    model.TOTAL_ACREAGE = 500.0  # * crops_multiplier
+    model.TOTAL_ACREAGE = 500.0
     # assert model.TOTAL_ACREAGE % num_plots == 0
     model.PLOTS = pyo.Set(initialize=[j for j in range(num_plots)])
 
     def crops_init(m):
         retval = []
-        # for i in range(crops_multiplier):
         for j in range(num_plots):
             retval.append("WHEAT" + str(j))
             retval.append("CORN" + str(j))
@@ -296,7 +292,6 @@ def model_builder(app_data, scen_data, scen_args):
 
     def _scale_up_data(indict):
         outdict = {}
-        # for i in range(crops_multiplier):
         for j in range(num_plots):
             for crop in ["WHEAT", "CORN", "SUGAR_BEETS"]:
                 outdict[crop + str(j)] = indict[crop]
@@ -446,24 +441,17 @@ def model_builder(app_data, scen_data, scen_args):
 
     return model
 
+Scen_object = Scenario_dict(scendata)
+bundle_data = Scen_object.scenario_generator(GlobalData.num_plots, GlobalData.num_scens)
 
 sp = stochastic_program(
-    # objective="Total_Cost_Objective",
-    first_stage_variables=["DevotedAcreage[*,*]"],
-    model_builder=model_builder,
+    first_stage_variables=["DevotedAcreage[*,*]"]
 )
 app_data = {"num_plots": GlobalData.num_plots}
 sp.initialize_application(app_data=app_data)
-
-Scen_object = Scenario_dict(scendata)
-bundle_data = Scen_object.scenario_generator(GlobalData.num_plots, GlobalData.num_scens)
-import pprint
-
-print("BUNDLE_DATA")
-pprint.pprint(bundle_data)
-
-
-sp.initialize_bundles(bundle_data=bundle_data)
+sp.initialize_model(
+            model_data=bundle_data, model_builder=model_builder
+        )
 
 ph = ProgressiveHedgingSolver()
-ph.solve(sp, max_iterations=10, solver="gurobi", loglevel="DEBUG")
+ph.solve(sp, max_iterations=10, solver="gurobi")
