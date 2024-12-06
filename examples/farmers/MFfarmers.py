@@ -330,10 +330,15 @@ model_data = {"LF": LF_data, "HF": HF_data}
 #
 # Construct LF farmers problem model:
 #
-def LF_builder(app_data, scen_data, scen_args):
-    model = pyo.ConcreteModel(scen_data["ID"])
+def LF_builder(data, args):
+    print("DATA")
+    pprint.pprint(data)
+    print("ARGS")
+    pprint.pprint(args)
 
-    crops_multiplier = int(app_data["crops_multiplier"])
+    model = pyo.ConcreteModel(data["ID"])
+
+    crops_multiplier = int(data["crops_multiplier"])
 
     def crops_init(m):
         retval = []
@@ -382,14 +387,14 @@ def LF_builder(app_data, scen_data, scen_args):
     ### STOCHASTIC DATA
     def Yield_init(m, cropname):
         crop_base_name = cropname.rstrip("0123456789")
-        return scen_data["Yield"][crop_base_name] + random.uniform(0, 1)
+        return data["Yield"][crop_base_name] + random.uniform(0, 1)
 
     model.Yield = pyo.Param(
         model.CROPS, within=pyo.NonNegativeReals, initialize=Yield_init, mutable=True
     )
 
     ### VARIABLES
-    if scen_args.get("use_integer", True):
+    if args.get("use_integer", True):
         model.DevotedAcreage = pyo.Var(
             model.CROPS,
             within=pyo.NonNegativeIntegers,
@@ -463,9 +468,9 @@ def LF_builder(app_data, scen_data, scen_args):
 #
 # Construct HF farmers problem model:
 #
-def HF_builder(scen_data, scen_args):
+def HF_builder(data, args):
     num_plots = GlobalData.num_plots
-    model = pyo.ConcreteModel(scen_data["ID"])
+    model = pyo.ConcreteModel(data["ID"])
 
     ### PARAMETERS
     model.TOTAL_ACREAGE = 500.0
@@ -515,7 +520,7 @@ def HF_builder(scen_data, scen_args):
     ### STOCHASTIC DATA
     def Yield_init(m, cropname, plot):  ### per-plot crop yields
         crop_base_name = cropname.rstrip("0123456789")
-        return scen_data["list_IDs"][plot]["Yield"][crop_base_name] + random.uniform(
+        return data["list_IDs"][plot]["Yield"][crop_base_name] + random.uniform(
             0, 1
         )
 
@@ -528,7 +533,7 @@ def HF_builder(scen_data, scen_args):
     )
 
     ### VARIABLES
-    if scen_args.get("use_integer", True):
+    if args.get("use_integer", True):
         model.DevotedAcreage = pyo.Var(
             model.CROPS,
             model.PLOTS,
