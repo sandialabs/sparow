@@ -61,15 +61,10 @@ class StochasticProgram(object):
     def initialize_bundles(
         self,
         *,
-        filename=None,
         scheme=None,
         models=None,
         **kwargs,
     ):
-        if filename is not None:
-            with open(f"{filename}", "r") as file:
-                bundle_data = json.load(filename)
-
         if scheme == None:
             scheme = "single_scenario"
         if models == None:
@@ -104,6 +99,12 @@ class StochasticProgram(object):
         if self.bundles is None:
             return None
         return munch.unmunchify(self.bundles._bundles)
+
+    def save_bundles(self, json_filename, indent=None, sort_keys=False):
+        self.bundles.dump(json_filename, indent=indent, sort_keys=sort_keys)
+
+    def load_bundles(self, json_filename):
+        self.bundles = scentobund.load_bundles(json_filename)
 
     def get_variables(self, b=None):
         if b is None:

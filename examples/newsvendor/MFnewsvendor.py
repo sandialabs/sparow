@@ -15,21 +15,21 @@ app_data = dict(c=1.0, b=1.5, h=0.1)
 model_data = {
     "LF": {
         "scenarios": [
-            {"ID": 1, "d": 15},
-            {"ID": 2, "d": 60},
-            {"ID": 3, "d": 72},
-            {"ID": 4, "d": 78},
-            {"ID": 5, "d": 82},
+            {"ID": "1", "d": 15},
+            {"ID": "2", "d": 60},
+            {"ID": "3", "d": 72},
+            {"ID": "4", "d": 78},
+            {"ID": "5", "d": 82},
         ]
     },
     "HF": {
         "data": {"B": 0.9},
         "scenarios": [
-            {"ID": 1, "d": 15, "C": 1.4},
-            {"ID": 2, "d": 60, "C": 1.3},
-            {"ID": 3, "d": 72, "C": 1.2},
-            {"ID": 4, "d": 78, "C": 1.1},
-            {"ID": 5, "d": 82, "C": 1.0},
+            {"ID": "1", "d": 15, "C": 1.4},
+            {"ID": "2", "d": 60, "C": 1.3},
+            {"ID": "3", "d": 72, "C": 1.2},
+            {"ID": "4", "d": 78, "C": 1.1},
+            {"ID": "5", "d": 82, "C": 1.0},
         ],
     },
 }
@@ -127,6 +127,7 @@ def HF_PH():
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
+
 def LF_PH():
     print("-" * 60)
     print("Running LF_PH")
@@ -166,8 +167,13 @@ def MF_PH():
         seed=1234567890,
         model_weight={"HF": 2.0, "LF": 1.0},
     )
-    with open(f"MF_PH_bundle_{bundle_num}.json", "w") as OUTPUT:
-        json.dump(sp.get_bundles(), OUTPUT, indent=4)
+    pprint.pprint(sp.get_bundles())
+    sp.save_bundles(f"MF_PH_bundle_{bundle_num}.json", indent=4, sort_keys=True)
+    
+    solver = ProgressiveHedgingSolver()
+    solver.set_options(solver="gurobi", rho=0.25, loglevel="INFO")
+    results = solver.solve(sp)
+    pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
 
 parser = argparse.ArgumentParser()

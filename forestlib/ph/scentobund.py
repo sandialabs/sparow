@@ -1,3 +1,4 @@
+import json
 import munch
 import random
 
@@ -8,6 +9,29 @@ bundle is a dictionary of dictionaries
 
 specify which bundling scheme (function) is used via "bundle_scheme" in sp.py
 """
+
+
+def JSdecoded(item: dict, dict_key=False):
+    if isinstance(item, list):
+        return [JSdecoded(e) for e in item]
+    elif isinstance(item, dict):
+        return {literal_eval(key): value for key, value in item.items()}
+    return item
+
+
+def JSencoded(item, dict_key=False):
+    if isinstance(item, tuple):
+        if dict_key:
+            return str(item)
+        else:
+            return list(item)
+    elif isinstance(item, list):
+        return [JSencoded(e) for e in item]
+    elif isinstance(item, dict):
+        return {JSencoded(key, True): JSencoded(value) for key, value in item.items()}
+    elif isinstance(item, set):
+        return list(item)
+    return item
 
 
 def scen_name(model, scenario):
@@ -456,7 +480,11 @@ def bundle_scheme(data, scheme_str, model_weight, models, bundle_args=None):
 
 class BundleObj(object):
 
-    def __init__(self, *, data, scheme, models, model_weight, bundle_args):
+    def __init__(self, *, data=None, scheme=None, models=None, model_weight=None, bundle_args=None):
+        if scheme == None:
+            # Empty constructor
+            return
+
         self.bundle_scheme_str = scheme
         self.bundle_models = models
         self.bundle_weights = model_weight
@@ -493,3 +521,26 @@ class BundleObj(object):
     def keys(self):
         for key in self._bundles:
             yield key
+
+    def dump(self, json_filename, indent=None, sort_keys=False):
+        data = dict(
+            scheme=self.bundle_scheme_str,
+            models=self.bundle_models,
+            weights=self.bundle_weights,
+            args=self.bundle_args,
+            bundles=self.to_dict(),
+        )
+        with open(json_filename, "w") as OUTPUT:
+            json.dump(JSencoded(data), OUTPUT, indent=indent, sort_keys=sort_keys)
+
+def load_bundles(json_filename):
+    with open(json_filename, "r") as INPUT:
+        data = json.load(INPUT, cls=JSdecoded)
+        # TODO: error checking on data fields
+        bundles = BundleObj()
+        bundles.bundle_scheme_str = data["scheme"]
+        bundles.bundle_models = data["models"]
+        bundles.bundle_weights = data["weights"]
+        bundles.bundle_args = data["args"]
+        bundles._bundles = data["bundles"]
+    return bundles
