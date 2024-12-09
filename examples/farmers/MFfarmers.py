@@ -16,7 +16,7 @@ random.seed(923874938740938740)
 #
 class GlobalData:
     num_plots = 1
-    num_scens = 6  ### should be >= 3
+    num_scens = 3  ### should be >= 3
 
 
 if GlobalData.num_scens < 3:
@@ -320,7 +320,7 @@ class HFScenario_dict(object):
 #
 LFScen_object = LFScenario_dict(LF_scendata)
 HFScen_object = HFScenario_dict(HF_scendata)
-LF_data = LFScen_object.scenario_generator(GlobalData.num_plots, num_scens=3)
+LF_data = LFScen_object.scenario_generator(num_plots=1, num_scens=3)
 HF_data = HFScen_object.scenario_generator(GlobalData.num_plots, GlobalData.num_scens)
 
 app_data = {"crops_multiplier": 1.0, "num_plots": GlobalData.num_plots}
@@ -328,147 +328,9 @@ model_data = {"LF": LF_data, "HF": HF_data}
 
 
 #
-# Construct LF farmers problem model:
+# Construct farmers problem model:
 #
-def LF_builder(data, args):
-    print("DATA")
-    pprint.pprint(data)
-    print("ARGS")
-    pprint.pprint(args)
-
-    model = pyo.ConcreteModel(data["ID"])
-
-    crops_multiplier = int(data["crops_multiplier"])
-
-    def crops_init(m):
-        retval = []
-        for i in range(crops_multiplier):
-            retval.append("WHEAT" + str(i))
-            retval.append("CORN" + str(i))
-            retval.append("SUGAR_BEETS" + str(i))
-        return retval
-
-    model.CROPS = pyo.Set(initialize=crops_init)
-
-    ### PARAMETERS
-    model.TOTAL_ACREAGE = 500.0 * crops_multiplier
-
-    def _scale_up_data(indict):
-        outdict = {}
-        for i in range(crops_multiplier):
-            for crop in ["WHEAT", "CORN", "SUGAR_BEETS"]:
-                outdict[crop + str(i)] = indict[crop]
-        return outdict
-
-    model.PriceQuota = _scale_up_data(
-        {"WHEAT": 100000.0, "CORN": 100000.0, "SUGAR_BEETS": 6000.0}
-    )
-
-    model.SubQuotaSellingPrice = _scale_up_data(
-        {"WHEAT": 170.0, "CORN": 150.0, "SUGAR_BEETS": 36.0}
-    )
-
-    model.SuperQuotaSellingPrice = _scale_up_data(
-        {"WHEAT": 0.0, "CORN": 0.0, "SUGAR_BEETS": 10.0}
-    )
-
-    model.CattleFeedRequirement = _scale_up_data(
-        {"WHEAT": 200.0, "CORN": 240.0, "SUGAR_BEETS": 0.0}
-    )
-
-    model.PurchasePrice = _scale_up_data(
-        {"WHEAT": 238.0, "CORN": 210.0, "SUGAR_BEETS": 100000.0}
-    )
-
-    model.PlantingCostPerAcre = _scale_up_data(
-        {"WHEAT": 150.0, "CORN": 230.0, "SUGAR_BEETS": 260.0}
-    )
-
-    ### STOCHASTIC DATA
-    def Yield_init(m, cropname):
-        crop_base_name = cropname.rstrip("0123456789")
-        return data["Yield"][crop_base_name] + random.uniform(0, 1)
-
-    model.Yield = pyo.Param(
-        model.CROPS, within=pyo.NonNegativeReals, initialize=Yield_init, mutable=True
-    )
-
-    ### VARIABLES
-    if args.get("use_integer", True):
-        model.DevotedAcreage = pyo.Var(
-            model.CROPS,
-            within=pyo.NonNegativeIntegers,
-            bounds=(0.0, model.TOTAL_ACREAGE),
-        )
-    else:
-        model.DevotedAcreage = pyo.Var(model.CROPS, bounds=(0.0, model.TOTAL_ACREAGE))
-
-    model.QuantitySubQuotaSold = pyo.Var(model.CROPS, bounds=(0.0, None))
-    model.QuantitySuperQuotaSold = pyo.Var(model.CROPS, bounds=(0.0, None))
-    model.QuantityPurchased = pyo.Var(model.CROPS, bounds=(0.0, None))
-
-    ### CONSTRAINTS
-    def ConstrainTotalAcreage_rule(model):
-        return pyo.sum_product(model.DevotedAcreage) <= model.TOTAL_ACREAGE
-
-    model.ConstrainTotalAcreage = pyo.Constraint(rule=ConstrainTotalAcreage_rule)
-
-    def EnforceCattleFeedRequirement_rule(model, i):
-        return (
-            model.CattleFeedRequirement[i]
-            <= (model.Yield[i] * model.DevotedAcreage[i])
-            + model.QuantityPurchased[i]
-            - model.QuantitySubQuotaSold[i]
-            - model.QuantitySuperQuotaSold[i]
-        )
-
-    model.EnforceCattleFeedRequirement = pyo.Constraint(
-        model.CROPS, rule=EnforceCattleFeedRequirement_rule
-    )
-
-    def LimitAmountSold_rule(model, i):
-        return (
-            model.QuantitySubQuotaSold[i]
-            + model.QuantitySuperQuotaSold[i]
-            - (model.Yield[i] * model.DevotedAcreage[i])
-            <= 0.0
-        )
-
-    model.LimitAmountSold = pyo.Constraint(model.CROPS, rule=LimitAmountSold_rule)
-
-    def EnforceQuotas_rule(model, i):
-        return (0.0, model.QuantitySubQuotaSold[i], model.PriceQuota[i])
-
-    model.EnforceQuotas = pyo.Constraint(model.CROPS, rule=EnforceQuotas_rule)
-
-    ### Stage-specific cost computations;
-    def ComputeFirstStageCost_rule(model):
-        return pyo.sum_product(model.PlantingCostPerAcre, model.DevotedAcreage)
-
-    model.FirstStageCost = pyo.Expression(rule=ComputeFirstStageCost_rule)
-
-    def ComputeSecondStageCost_rule(model):
-        expr = pyo.sum_product(model.PurchasePrice, model.QuantityPurchased)
-        expr -= pyo.sum_product(model.SubQuotaSellingPrice, model.QuantitySubQuotaSold)
-        expr -= pyo.sum_product(
-            model.SuperQuotaSellingPrice, model.QuantitySuperQuotaSold
-        )
-        return expr
-
-    model.SecondStageCost = pyo.Expression(rule=ComputeSecondStageCost_rule)
-
-    def total_cost_rule(model):
-        return model.FirstStageCost + model.SecondStageCost
-
-    model.Total_Cost_Objective = pyo.Objective(rule=total_cost_rule)
-
-    return model
-
-
-#
-# Construct HF farmers problem model:
-#
-def HF_builder(data, args):
+def model_builder(data, args):
     num_plots = GlobalData.num_plots
     model = pyo.ConcreteModel(data["ID"])
 
@@ -637,7 +499,7 @@ def HF_EF():
     sp = stochastic_program(first_stage_variables=["DevotedAcreage[*,*]"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
-        name="HF", model_data=model_data["HF"], model_builder=HF_builder
+        name="HF", model_data=model_data["HF"], model_builder=model_builder
     )
 
     solver = ExtensiveFormSolver()
@@ -650,10 +512,10 @@ def LF_EF():
     print("-" * 60)
     print("Running LF_EF")
     print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["DevotedAcreage[*]"])
+    sp = stochastic_program(first_stage_variables=["DevotedAcreage[*,*]"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
-        name="LF", model_data=model_data["LF"], model_builder=LF_builder
+        name="LF", model_data=model_data["LF"], model_builder=model_builder
     )
 
     solver = ExtensiveFormSolver()
@@ -666,16 +528,16 @@ def LF_PH():
     print("-" * 60)
     print("Running LF_PH")
     print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["DevotedAcreage[*]"])
+    sp = stochastic_program(first_stage_variables=["DevotedAcreage[*,*]"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
-        name="LF", model_data=model_data["LF"], model_builder=LF_builder
+        name="LF", model_data=model_data["LF"], model_builder=model_builder
     )
 
     ph = ProgressiveHedgingSolver()
     ph.solve(sp, max_iterations=2, solver="gurobi", loglevel="DEBUG")
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO")
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=20)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
@@ -687,11 +549,11 @@ def HF_PH():
     sp = stochastic_program(first_stage_variables=["DevotedAcreage[*,*]"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
-        name="HF", model_data=model_data["HF"], model_builder=HF_builder
+        name="HF", model_data=model_data["HF"], model_builder=model_builder
     )
 
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO")
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=20)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
@@ -703,12 +565,12 @@ def MF_PH():
     sp = stochastic_program(first_stage_variables=["DevotedAcreage[*,*]"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
-        name="HF", model_data=model_data["HF"], model_builder=HF_builder
+        name="HF", model_data=model_data["HF"], model_builder=model_builder
     )
     sp.initialize_model(
         name="LF",
         model_data=model_data["LF"],
-        model_builder=LF_builder,
+        model_builder=model_builder,
         default=False,
     )
 
@@ -719,8 +581,11 @@ def MF_PH():
         seed=1234567890,
         model_weight={"HF": 2.0, "LF": 1.0},
     )
-    with open(f"MF_PH_bundle_{bundle_num}.json", "w") as OUTPUT:
-        json.dump(sp.get_bundles(), OUTPUT, indent=4)
+
+    solver = ProgressiveHedgingSolver()
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=20)
+    results = solver.solve(sp)
+    pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
 
 parser = argparse.ArgumentParser()
