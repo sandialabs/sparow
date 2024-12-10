@@ -533,14 +533,19 @@ class BundleObj(object):
         with open(json_filename, "w") as OUTPUT:
             json.dump(JSencoded(data), OUTPUT, indent=indent, sort_keys=sort_keys)
 
-def load_bundles(json_filename):
-    with open(json_filename, "r") as INPUT:
-        data = json.load(INPUT, cls=JSdecoded)
-        # TODO: error checking on data fields
-        bundles = BundleObj()
-        bundles.bundle_scheme_str = data["scheme"]
-        bundles.bundle_models = data["models"]
-        bundles.bundle_weights = data["weights"]
-        bundles.bundle_args = data["args"]
-        bundles._bundles = data["bundles"]
+def create_bundles(data):
+    # TODO: error checking on data fields
+    bundles = BundleObj()
+    bundles.bundle_scheme_str = data["scheme"]
+    bundles.bundle_models = data["models"]
+    bundles.bundle_weights = data["weights"]
+    bundles.bundle_args = data["args"]
+    bundles._bundles = data["bundles"]
     return bundles
+
+def load_bundles(filename):
+    with open(filename, "r") as INPUT:
+        data = json.load(INPUT, cls=JSdecoded)
+    return create_bundles(data)
+
+
