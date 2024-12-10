@@ -51,6 +51,10 @@ class ExtensiveFormSolver(object):
         logger.debug(f"Creating extensive form")
         b = next(iter(sp.bundles))
         M = sp.create_subproblem(b)
+        if logger.isEnabledFor(logging.DEBUG):
+            M.pprint()
+            M.display()
+            sys.stdout.flush()
 
         logger.debug(f"Optimizing extensive form")
         results = sp.solve(M, solver_options=self.solver_options)
