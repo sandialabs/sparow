@@ -197,7 +197,7 @@ class LFScenario_dict(object):
     def __init__(self, LF_scendata):
         self.LF_scendata = LF_scendata
 
-    def scenario_generator(self, num_plots, num_scens):
+    def scenario_generator(self):
         self.scen_dict_list = []
         self.scen_dict = {"scenarios": self.scen_dict_list}
 
@@ -207,45 +207,42 @@ class LFScenario_dict(object):
             each entry of the list contains an ID corresponding to the scenario, the list of 
             items from LF_scendata contained in the scenario, and the probability
         """
-        for s in range(num_scens):
+        for s in range(3):
             self.scen_dict_list.append(
                 {"ID": f"scen_{s}", "list_IDs": [], "Probability": None}
             )
 
         ### always samples the three original (LF) scenarios:
-        for i in range(num_plots):
-            self.scen_dict_list[0]["list_IDs"].append(
-                {
-                    "ID": "BBB",
-                    "Yield": {"WHEAT": 2.0, "CORN": 2.4, "SUGAR_BEETS": 16.0},
-                    "Probability": 0.027,
-                }
-            )
-        self.scen_dict_list[0]["Probability"] = 0.027**num_plots
-        for i in range(num_plots):
-            self.scen_dict_list[1]["list_IDs"].append(
-                {
-                    "ID": "VVV",
-                    "Yield": {"WHEAT": 2.5, "CORN": 3.0, "SUGAR_BEETS": 20.0},
-                    "Probability": 0.027,
-                }
-            )
-        self.scen_dict_list[1]["Probability"] = 0.027**num_plots
-        for i in range(num_plots):
-            self.scen_dict_list[2]["list_IDs"].append(
-                {
-                    "ID": "AAA",
-                    "Yield": {"WHEAT": 3.0, "CORN": 3.6, "SUGAR_BEETS": 24.0},
-                    "Probability": 0.064,
-                }
-            )
-        self.scen_dict_list[2]["Probability"] = 0.064**num_plots
+        self.scen_dict_list[0]["list_IDs"].append(
+            {
+                "ID": "BBB",
+                "Yield": {"WHEAT": 2.0, "CORN": 2.4, "SUGAR_BEETS": 16.0},
+                "Probability": 0.027,
+            }
+        )
+        self.scen_dict_list[0]["Probability"] = 0.027
+        self.scen_dict_list[1]["list_IDs"].append(
+            {
+                "ID": "VVV",
+                "Yield": {"WHEAT": 2.5, "CORN": 3.0, "SUGAR_BEETS": 20.0},
+                "Probability": 0.027,
+            }
+        )
+        self.scen_dict_list[1]["Probability"] = 0.027
+        self.scen_dict_list[2]["list_IDs"].append(
+            {
+                "ID": "AAA",
+                "Yield": {"WHEAT": 3.0, "CORN": 3.6, "SUGAR_BEETS": 24.0},
+                "Probability": 0.064,
+            }
+        )
+        self.scen_dict_list[2]["Probability"] = 0.064
 
         ### normalize scenario probabilities
         norm_factor = sum(
-            self.scen_dict_list[s]["Probability"] for s in range(num_scens)
+            self.scen_dict_list[s]["Probability"] for s in range(3)
         )
-        for s in range(num_scens):
+        for s in range(3):
             self.scen_dict_list[s]["Probability"] /= norm_factor
 
         return self.scen_dict
@@ -320,7 +317,7 @@ class HFScenario_dict(object):
 #
 LFScen_object = LFScenario_dict(LF_scendata)
 HFScen_object = HFScenario_dict(HF_scendata)
-LF_data = LFScen_object.scenario_generator(num_plots=1, num_scens=3)
+LF_data = LFScen_object.scenario_generator()
 HF_data = HFScen_object.scenario_generator(GlobalData.num_plots, GlobalData.num_scens)
 
 app_data = {"crops_multiplier": 1.0, "num_plots": GlobalData.num_plots}
@@ -537,7 +534,7 @@ def LF_PH():
     ph = ProgressiveHedgingSolver()
     ph.solve(sp, max_iterations=2, solver="gurobi", loglevel="DEBUG")
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=20)
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=50)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
@@ -581,9 +578,10 @@ def MF_PH():
         seed=1234567890,
         model_weight={"HF": 2.0, "LF": 1.0},
     )
+    sp.save_bundles(f"MF_PH_bundle_{bundle_num}.json", indent=4, sort_keys=True)
 
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=20)
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=50)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
@@ -594,7 +592,7 @@ parser.add_argument("--hf-ef", action="store_true")
 parser.add_argument("--hf-ph", action="store_true")
 parser.add_argument("--lf-ph", action="store_true")
 parser.add_argument("--mf-ph", action="store_true")
-args = parser.parse_args()  # parse sys.argv
+args = parser.parse_args()
 
 if args.lf_ef:
     LF_EF()
