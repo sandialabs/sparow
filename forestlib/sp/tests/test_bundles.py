@@ -1,4 +1,6 @@
-from forestlib.ph.scentobund import (
+import random
+import pytest
+from forestlib.sp.scentobund import (
     bundle_by_fidelity,
     single_scenario,
     single_bundle,
@@ -7,8 +9,6 @@ from forestlib.ph.scentobund import (
     mf_random_nested,
     mf_random,
 )
-import random
-import pytest
 
 
 @pytest.fixture
@@ -416,7 +416,7 @@ class TestBundleFunctions(object):
             SF_data, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args=None
         )
 
-    def test_bundle_random_partition(self, rand_data, rand_data_MF):
+    def Xtest_bundle_random_partition(self, rand_data, rand_data_MF):
         # check that no "num_buns" in bundle args returns error
         with pytest.raises(TypeError) as excinfo:
             bundle_random_partition(

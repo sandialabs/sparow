@@ -1,8 +1,8 @@
 # Test variable initialization logic for Pyomo models
 
-import pyomo.environ as pyo
 import pytest
-from forestlib.ph.sp import stochastic_program
+import pyomo.environ as pyo
+from forestlib.sp import stochastic_program
 
 
 @pytest.fixture

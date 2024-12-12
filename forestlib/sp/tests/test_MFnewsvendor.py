@@ -1,6 +1,6 @@
 import pytest
 import pyomo.environ as pyo
-from forestlib.ph import stochastic_program
+from forestlib.sp import stochastic_program
 
 
 #
