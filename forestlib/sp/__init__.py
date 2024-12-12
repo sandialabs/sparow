@@ -1,4 +1,4 @@
 # forestlib.sp
 
 from . import sp
-from .sp import stochastic_program
+from .api import stochastic_program
