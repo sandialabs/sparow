@@ -4,8 +4,8 @@ import pprint
 import argparse
 import munch
 import pyomo.environ as pyo
-from forestlib.ph import stochastic_program
-from forestlib.ph import ExtensiveFormSolver
+from forestlib.sp import stochastic_program
+from forestlib.ef import ExtensiveFormSolver
 from forestlib.ph import ProgressiveHedgingSolver
 import json
 
@@ -532,7 +532,7 @@ def LF_PH():
     )
 
     ph = ProgressiveHedgingSolver()
-    ph.solve(sp, max_iterations=2, solver="gurobi", loglevel="DEBUG")
+    ph.solve(sp, max_iterations=2, solver="gurobi", loglevel="INFO")
     solver = ProgressiveHedgingSolver()
     solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=50)
     results = solver.solve(sp)

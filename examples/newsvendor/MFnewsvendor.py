@@ -3,8 +3,8 @@ import pprint
 import argparse
 import munch
 import pyomo.environ as pyo
-from forestlib.ph import stochastic_program
-from forestlib.ph import ExtensiveFormSolver
+from forestlib.sp import stochastic_program
+from forestlib.ef import ExtensiveFormSolver
 from forestlib.ph import ProgressiveHedgingSolver
 
 
@@ -91,7 +91,7 @@ def HF_EF():
     )
 
     solver = ExtensiveFormSolver()
-    solver.set_options(solver="gurobi", loglevel="DEBUG")
+    solver.set_options(solver="gurobi")
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
