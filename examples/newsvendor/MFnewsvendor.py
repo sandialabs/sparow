@@ -128,7 +128,7 @@ def HF_PH():
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
 
-def LF_PH():
+def LF_PH(*, cache, max_iter):
     print("-" * 60)
     print("Running LF_PH")
     print("-" * 60)
@@ -139,12 +139,12 @@ def LF_PH():
     )
 
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.25, loglevel="INFO")
+    solver.set_options(solver="gurobi", rho=0.25, loglevel="INFO", cached_model_generation=cache, max_iterations=max_iter)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
 
-def MF_PH():
+def MF_PH(*, cache, max_iter):
     print("-" * 60)
     print("Running MF_PH")
     print("-" * 60)
@@ -171,7 +171,7 @@ def MF_PH():
     sp.save_bundles(f"MF_PH_bundle_{bundle_num}.json", indent=4, sort_keys=True)
     
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.25, loglevel="INFO")
+    solver.set_options(solver="gurobi", rho=0.25, loglevel="INFO", cached_model_generation=cache, max_iterations=max_iter)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
@@ -182,6 +182,8 @@ parser.add_argument("--hf-ef", action="store_true")
 parser.add_argument("--hf-ph", action="store_true")
 parser.add_argument("--lf-ph", action="store_true")
 parser.add_argument("--mf-ph", action="store_true")
+parser.add_argument("--cache", action="store_true", default=False)
+parser.add_argument("--max-iter", action="store", default=100, type=int)
 args = parser.parse_args()  # parse sys.argv
 
 if args.lf_ef:
@@ -189,8 +191,8 @@ if args.lf_ef:
 elif args.hf_ef:
     HF_EF()
 elif args.hf_ph:
-    HF_PH()
+    HF_PH(cache=args.cache, max_iter=args.max_iter)
 elif args.lf_ph:
-    LF_PH()
+    LF_PH(cache=args.cache, max_iter=args.max_iter)
 elif args.mf_ph:
     MF_PH()
