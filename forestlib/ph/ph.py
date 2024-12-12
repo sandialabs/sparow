@@ -17,6 +17,7 @@ class ProgressiveHedgingSolver(object):
 
     def __init__(self):
         self.rho = 1.5
+        self.cached_model_generation = True
         self.max_iterations = 100
         self.convergence_tolerance = 1e-3
         self.normalize_convergence_norm = True
@@ -29,6 +30,7 @@ class ProgressiveHedgingSolver(object):
         self,
         *,
         rho=None,
+        cached_model_generation=None,
         max_iterations=None,
         convergence_tolerance=None,
         normalize_convergence_norm=None,
@@ -43,19 +45,21 @@ class ProgressiveHedgingSolver(object):
         #
         if rho:
             self.rho = rho
-        if max_iterations:
+        if cached_model_generation is not None:
+            self.cached_model_generation = cached_model_generation
+        if max_iterations is not None:
             self.max_iterations = max_iterations
-        if convergence_tolerance:
+        if convergence_tolerance is not None:
             self.convergence_tolerance = convergence_tolerance
-        if normalize_convergence_norm:
+        if normalize_convergence_norm is not None:
             self.normalize_convergence_norm = normalize_convergence_norm
-        if convergence_norm:
+        if convergence_norm is not None:
             self.convergence_norm = convergence_norm
-        if solver:
+        if solver is not None:
             self.solver_name = solver
-        if solver_options:
+        if solver_options is not None:
             self.solver_options = solver_options
-        if finalize_xbar_by_rounding:
+        if finalize_xbar_by_rounding is not None:
             self.finalize_xbar_by_rounding = finalize_xbar_by_rounding
 
         if loglevel is not None:
@@ -66,6 +70,18 @@ class ProgressiveHedgingSolver(object):
     def solve(self, sp, **options):
         if len(options) > 0:
             self.set_options(**options)
+        if logger.isEnabledFor(logging.DEBUG):
+            print("Solver Configuration")
+            print(f"  cached_model_generation    {self.cached_model_generation}")
+            print(f"  convergence_norm           {self.convergence_norm}")
+            print(f"  convergence_tolerance      {self.convergence_tolerance}")
+            print(f"  finalize_xbar_by_rounding  {self.finalize_xbar_by_rounding}")
+            print(f"  max_iterations             {self.max_iterations}")
+            print(f"  normalize_convergence_norm {self.normalize_convergence_norm}")
+            print(f"  rho                        {self.rho}")
+            print(f"  solver_name                {self.solver_name}")
+            print("")
+
         # The StochProgram object manages the sub-solver interface.  By default, we assume
         #   the user has initialized the sub-solver within the SP object.
         if self.solver_name:
@@ -77,7 +93,7 @@ class ProgressiveHedgingSolver(object):
         obj_value = {}
         for b in sp.bundles:
             logger.verbose(f"Creating subproblem '{b}'")
-            M = sp.create_subproblem(b)
+            M = sp.create_subproblem(b, cached=self.cached_model_generation)
             # M.write(f'Iter0_PH_{b}.lp',io_options={'symbolic_solver_labels':True})
             logger.verbose(f"Optimizing subproblem '{b}'")
             results = sp.solve(M, solver_options=self.solver_options)
@@ -129,7 +145,11 @@ class ProgressiveHedgingSolver(object):
                 logger.verbose(f"Creating subproblem '{b}'")
                 logger.debug(f"  b: {b}  w: {w[b]}")
                 M = sp.create_subproblem(
-                    b=b, w=w_prev[b], x_bar=xbar_prev, rho=self.rho
+                    b=b,
+                    w=w_prev[b],
+                    x_bar=xbar_prev,
+                    rho=self.rho,
+                    cached=self.cached_model_generation,
                 )
                 logger.verbose(f"Optimizing subproblem '{b}'")
                 results = sp.solve(M, solver_options=self.solver_options)
@@ -179,7 +199,7 @@ class ProgressiveHedgingSolver(object):
                 break
 
             iteration += 1
-            if iteration == self.max_iterations:
+            if iteration >= self.max_iterations:
                 termination_condition = f"Termination: max_iterations ({iteration} == {self.max_iterations})"
                 logger.info(termination_condition)
                 break
