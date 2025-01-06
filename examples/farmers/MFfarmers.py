@@ -687,10 +687,8 @@ def LF_PH():
         name="LF", model_data=model_data["LF"], model_builder=LF_model_builder
     )
 
-    ph = ProgressiveHedgingSolver()
-    ph.solve(sp, max_iterations=20, solver="gurobi", loglevel="INFO")
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=20)
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=2)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
@@ -706,7 +704,7 @@ def HF_PH():
     )
 
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=20)
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=2)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
@@ -737,7 +735,7 @@ def MF_PH():
     sp.save_bundles(f"MF_PH_bundle_{bundle_num}.json", indent=4, sort_keys=True)
 
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=50)
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=2)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
