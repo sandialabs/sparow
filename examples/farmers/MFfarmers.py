@@ -11,6 +11,7 @@ import json
 
 random.seed(923874938740938740)
 
+
 #
 # Global data for the HF model:
 #
@@ -28,17 +29,17 @@ if GlobalData.num_scens < 3:
 LF_scendata = {
     "scenarios": [
         {
-            "ID": "BelowAverageScenario",
+            "ID": "scen_0",
             "Yield": {"WHEAT": 2.0, "CORN": 2.4, "SUGAR_BEETS": 16.0},
             "Probability": 0.3,
         },
         {
-            "ID": "AverageScenario",
+            "ID": "scen_1",
             "Yield": {"WHEAT": 2.5, "CORN": 3.0, "SUGAR_BEETS": 20.0},
             "Probability": 0.3,
         },
         {
-            "ID": "AboveAverageScenario",
+            "ID": "scen_2",
             "Yield": {"WHEAT": 3.0, "CORN": 3.6, "SUGAR_BEETS": 24.0},
             "Probability": 0.4,
         },
@@ -239,9 +240,7 @@ class LFScenario_dict(object):
         self.scen_dict_list[2]["Probability"] = 0.064
 
         ### normalize scenario probabilities
-        norm_factor = sum(
-            self.scen_dict_list[s]["Probability"] for s in range(3)
-        )
+        norm_factor = sum(self.scen_dict_list[s]["Probability"] for s in range(3))
         for s in range(3):
             self.scen_dict_list[s]["Probability"] /= norm_factor
 
@@ -315,17 +314,178 @@ class HFScenario_dict(object):
 #
 # construct model_data:
 #
-LFScen_object = LFScenario_dict(LF_scendata)
 HFScen_object = HFScenario_dict(HF_scendata)
-LF_data = LFScen_object.scenario_generator()
 HF_data = HFScen_object.scenario_generator(GlobalData.num_plots, GlobalData.num_scens)
 
-app_data = {"crops_multiplier": 1.0, "num_plots": GlobalData.num_plots}
-model_data = {"LF": LF_data, "HF": HF_data}
+app_data = {"num_plots": GlobalData.num_plots}
+model_data = {"LF": LF_scendata, "HF": HF_data}
 
 
 #
-# Construct farmers problem model:
+# Construct LF farmers problem model:
+#
+def LF_model_builder(data, args):
+    num_plots = GlobalData.num_plots
+    model = pyo.ConcreteModel(data["ID"])
+
+    ### PARAMETERS
+    model.TOTAL_ACREAGE = 500.0
+    model.PLOTS = pyo.Set(initialize=[j for j in range(num_plots)])
+
+    def crops_init(m):
+        retval = []
+        # for j in range(num_plots):
+        retval.append("WHEAT")
+        retval.append("CORN")
+        retval.append("SUGAR_BEETS")
+        return retval
+
+    model.CROPS = pyo.Set(initialize=crops_init)
+
+    def _scale_up_data(indict):
+        outdict = {}
+        # for j in range(num_plots):
+        for crop in ["WHEAT", "CORN", "SUGAR_BEETS"]:
+            outdict[crop] = indict[crop]
+        return outdict
+
+    model.PriceQuota = _scale_up_data(
+        {"WHEAT": 100000.0, "CORN": 100000.0, "SUGAR_BEETS": 6000.0}
+    )
+
+    model.SubQuotaSellingPrice = _scale_up_data(
+        {"WHEAT": 170.0, "CORN": 150.0, "SUGAR_BEETS": 36.0}
+    )
+
+    model.SuperQuotaSellingPrice = _scale_up_data(
+        {"WHEAT": 0.0, "CORN": 0.0, "SUGAR_BEETS": 10.0}
+    )
+
+    model.CattleFeedRequirement = _scale_up_data(
+        {"WHEAT": 200.0, "CORN": 240.0, "SUGAR_BEETS": 0.0}
+    )
+
+    model.PurchasePrice = _scale_up_data(
+        {"WHEAT": 238.0, "CORN": 210.0, "SUGAR_BEETS": 100000.0}
+    )
+
+    model.PlantingCostPerAcre = _scale_up_data(
+        {"WHEAT": 150.0, "CORN": 230.0, "SUGAR_BEETS": 260.0}
+    )
+
+    ### STOCHASTIC DATA
+    def Yield_init(m, cropname):
+        crop_base_name = cropname.rstrip("0123456789")
+        return data["Yield"][crop_base_name] + random.uniform(0, 1)
+
+    model.Yield = pyo.Param(
+        model.CROPS,
+        within=pyo.NonNegativeReals,
+        initialize=Yield_init,
+        mutable=True,
+    )
+
+    ### VARIABLES
+    if args.get("use_integer", True):
+        model.DevotedAcreage = pyo.Var(
+            model.CROPS,
+            model.PLOTS,
+            within=pyo.NonNegativeIntegers,
+            bounds=(0.0, model.TOTAL_ACREAGE / num_plots),
+        )
+    else:
+        model.DevotedAcreage = pyo.Var(
+            model.CROPS, model.PLOTS, bounds=(0.0, model.TOTAL_ACREAGE / num_plots)
+        )
+
+    model.QuantitySubQuotaSold = pyo.Var(model.CROPS, bounds=(0.0, None))
+    model.QuantitySuperQuotaSold = pyo.Var(model.CROPS, bounds=(0.0, None))
+    model.QuantityPurchased = pyo.Var(model.CROPS, bounds=(0.0, None))
+
+    ### CONSTRAINTS
+    def ConstrainPerPlotAcreage_rule(model):
+        return (
+            sum(sum(model.DevotedAcreage[c, j] for j in model.PLOTS) for c in model.CROPS)
+            <= model.TOTAL_ACREAGE
+        )
+
+    model.ConstrainPerPlotAcreage = pyo.Constraint(
+        rule=ConstrainPerPlotAcreage_rule
+    )
+
+    if len(model.PLOTS) > 1:
+
+        def ConsistentPerPlotAcreage_rule(model):
+            return (
+                0, sum(sum(model.DevotedAcreage[c, j] for j in range(1,len(model.PLOTS)-1)) for c in model.CROPS), 0
+            )
+
+        model.ConsistentPerPlotAcreage = pyo.Constraint(
+            rule=ConsistentPerPlotAcreage_rule
+        )
+
+    def EnforceCattleFeedRequirement_rule(model, c):
+        return model.CattleFeedRequirement[c] <= model.Yield[c] * model.DevotedAcreage[
+            c, 0
+        ] + model.QuantityPurchased[c] - (
+            model.QuantitySubQuotaSold[c] + model.QuantitySuperQuotaSold[c]
+        )
+
+    model.EnforceCattleFeedRequirement = pyo.Constraint(
+        model.CROPS, rule=EnforceCattleFeedRequirement_rule
+    )
+
+    def LimitAmountSold_rule(model, c):
+        return (
+            model.QuantitySubQuotaSold[c]
+            + model.QuantitySuperQuotaSold[c]
+            - model.Yield[c] * model.DevotedAcreage[c, 0]
+        ) <= 0.0
+
+    model.LimitAmountSold = pyo.Constraint(model.CROPS, rule=LimitAmountSold_rule)
+
+    def EnforceQuotas_rule(model, c):
+        return (
+            0.0,
+            model.QuantitySubQuotaSold[c],
+            model.PriceQuota[c],
+        )
+
+    model.EnforceQuotas = pyo.Constraint(model.CROPS, rule=EnforceQuotas_rule)
+
+    ### OBJECTIVE
+    def ComputeFirstStageCost_rule(model):
+        return sum(
+            model.PlantingCostPerAcre[c] * model.DevotedAcreage[c, 0]
+            for c in model.CROPS
+        )
+
+    model.FirstStageCost = pyo.Expression(rule=ComputeFirstStageCost_rule)
+
+    def ComputeSecondStageCost_rule(model):
+        expr = pyo.sum_product(model.PurchasePrice, model.QuantityPurchased)
+        expr -= sum(
+            model.SubQuotaSellingPrice[c] * model.QuantitySubQuotaSold[c]
+            for c in model.CROPS
+        )
+        expr -= sum(
+            model.SuperQuotaSellingPrice[c] * model.QuantitySuperQuotaSold[c]
+            for c in model.CROPS
+        )
+        return expr
+
+    model.SecondStageCost = pyo.Expression(rule=ComputeSecondStageCost_rule)
+
+    def total_cost_rule(model):
+        return model.FirstStageCost + model.SecondStageCost
+
+    model.Total_Cost_Objective = pyo.Objective(rule=total_cost_rule, sense=pyo.minimize)
+
+    return model
+
+
+#
+# Construct HF farmers problem model:
 #
 def model_builder(data, args):
     num_plots = GlobalData.num_plots
@@ -337,19 +497,17 @@ def model_builder(data, args):
 
     def crops_init(m):
         retval = []
-        for j in range(num_plots):
-            retval.append("WHEAT" + str(j))
-            retval.append("CORN" + str(j))
-            retval.append("SUGAR_BEETS" + str(j))
+        retval.append("WHEAT")
+        retval.append("CORN")
+        retval.append("SUGAR_BEETS")
         return retval
 
     model.CROPS = pyo.Set(initialize=crops_init)
 
     def _scale_up_data(indict):
         outdict = {}
-        for j in range(num_plots):
-            for crop in ["WHEAT", "CORN", "SUGAR_BEETS"]:
-                outdict[crop + str(j)] = indict[crop]
+        for crop in ["WHEAT", "CORN", "SUGAR_BEETS"]:
+            outdict[crop] = indict[crop]
         return outdict
 
     model.PriceQuota = _scale_up_data(
@@ -379,9 +537,7 @@ def model_builder(data, args):
     ### STOCHASTIC DATA
     def Yield_init(m, cropname, plot):  ### per-plot crop yields
         crop_base_name = cropname.rstrip("0123456789")
-        return data["list_IDs"][plot]["Yield"][crop_base_name] + random.uniform(
-            0, 1
-        )
+        return data["list_IDs"][plot]["Yield"][crop_base_name] + random.uniform(0, 1)
 
     model.Yield = pyo.Param(
         model.CROPS,
@@ -500,7 +656,7 @@ def HF_EF():
     )
 
     solver = ExtensiveFormSolver()
-    solver.set_options(solver="gurobi")
+    solver.set_options(solver="gurobi", loglevel="INFO")
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
@@ -512,34 +668,32 @@ def LF_EF():
     sp = stochastic_program(first_stage_variables=["DevotedAcreage[*,*]"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
-        name="LF", model_data=model_data["LF"], model_builder=model_builder
+        name="LF", model_data=model_data["LF"], model_builder=LF_model_builder
     )
 
     solver = ExtensiveFormSolver()
-    solver.set_options(solver="gurobi")
+    solver.set_options(solver="gurobi", loglevel="INFO")
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
 
-def LF_PH():
+def LF_PH(*, cache, max_iter):
     print("-" * 60)
     print("Running LF_PH")
     print("-" * 60)
     sp = stochastic_program(first_stage_variables=["DevotedAcreage[*,*]"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
-        name="LF", model_data=model_data["LF"], model_builder=model_builder
+        name="LF", model_data=model_data["LF"], model_builder=LF_model_builder
     )
 
-    ph = ProgressiveHedgingSolver()
-    ph.solve(sp, max_iterations=2, solver="gurobi", loglevel="INFO")
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=50)
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", cached_model_generation=cache, max_iterations=max_iter)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
 
-def HF_PH():
+def HF_PH(*, cache, max_iter):
     print("-" * 60)
     print("Running HF_PH")
     print("-" * 60)
@@ -550,12 +704,12 @@ def HF_PH():
     )
 
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=20)
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", cached_model_generation=cache, max_iterations=max_iter)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
 
-def MF_PH():
+def MF_PH(*, cache, max_iter):
     print("-" * 60)
     print("Running MF_PH")
     print("-" * 60)
@@ -567,7 +721,7 @@ def MF_PH():
     sp.initialize_model(
         name="LF",
         model_data=model_data["LF"],
-        model_builder=model_builder,
+        model_builder=LF_model_builder,
         default=False,
     )
 
@@ -581,7 +735,7 @@ def MF_PH():
     sp.save_bundles(f"MF_PH_bundle_{bundle_num}.json", indent=4, sort_keys=True)
 
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", max_iterations=50)
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", cached_model_generation=cache, max_iterations=max_iter)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
@@ -592,15 +746,17 @@ parser.add_argument("--hf-ef", action="store_true")
 parser.add_argument("--hf-ph", action="store_true")
 parser.add_argument("--lf-ph", action="store_true")
 parser.add_argument("--mf-ph", action="store_true")
-args = parser.parse_args()
+parser.add_argument("--cache", action="store_true", default=False)
+parser.add_argument("--max-iter", action="store", default=100, type=int)
+args = parser.parse_args()  # parse sys.argv
 
 if args.lf_ef:
     LF_EF()
 elif args.hf_ef:
     HF_EF()
 elif args.hf_ph:
-    HF_PH()
+    HF_PH(cache=args.cache, max_iter=args.max_iter)
 elif args.lf_ph:
-    LF_PH()
+    LF_PH(cache=args.cache, max_iter=args.max_iter)
 elif args.mf_ph:
-    MF_PH()
+    MF_PH(cache=args.cache, max_iter=args.max_iter)

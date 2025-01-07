@@ -112,7 +112,7 @@ def LF_EF():
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
 
-def HF_PH():
+def HF_PH(*, cache, max_iter):
     print("-" * 60)
     print("Running HF_PH")
     print("-" * 60)
@@ -123,7 +123,7 @@ def HF_PH():
     )
 
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO")
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", cached_model_generation=cache, max_iterations=max_iter)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
@@ -195,4 +195,4 @@ elif args.hf_ph:
 elif args.lf_ph:
     LF_PH(cache=args.cache, max_iter=args.max_iter)
 elif args.mf_ph:
-    MF_PH()
+    MF_PH(cache=args.cache, max_iter=args.max_iter)
