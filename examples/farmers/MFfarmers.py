@@ -677,7 +677,7 @@ def LF_EF():
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
 
-def LF_PH(*, cache, max_iter):
+def LF_PH(*, cache, max_iter, loglevel):
     print("-" * 60)
     print("Running LF_PH")
     print("-" * 60)
@@ -688,12 +688,12 @@ def LF_PH(*, cache, max_iter):
     )
 
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", cached_model_generation=cache, max_iterations=max_iter)
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
 
-def HF_PH(*, cache, max_iter):
+def HF_PH(*, cache, max_iter, loglevel):
     print("-" * 60)
     print("Running HF_PH")
     print("-" * 60)
@@ -704,12 +704,12 @@ def HF_PH(*, cache, max_iter):
     )
 
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", cached_model_generation=cache, max_iterations=max_iter)
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
 
-def MF_PH(*, cache, max_iter):
+def MF_PH(*, cache, max_iter, loglevel):
     print("-" * 60)
     print("Running MF_PH")
     print("-" * 60)
@@ -735,7 +735,7 @@ def MF_PH(*, cache, max_iter):
     sp.save_bundles(f"MF_PH_bundle_{bundle_num}.json", indent=4, sort_keys=True)
 
     solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel="INFO", cached_model_generation=cache, max_iterations=max_iter)
+    solver.set_options(solver="gurobi", rho=0.0125, loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter)
     results = solver.solve(sp)
     pprint.pprint(munch.unmunchify(results), indent=4, sort_dicts=True)
 
@@ -748,6 +748,7 @@ parser.add_argument("--lf-ph", action="store_true")
 parser.add_argument("--mf-ph", action="store_true")
 parser.add_argument("--cache", action="store_true", default=False)
 parser.add_argument("--max-iter", action="store", default=100, type=int)
+parser.add_argument("-l", "--loglevel", action="store", default="INFO")
 args = parser.parse_args()  # parse sys.argv
 
 if args.lf_ef:
@@ -755,8 +756,11 @@ if args.lf_ef:
 elif args.hf_ef:
     HF_EF()
 elif args.hf_ph:
-    HF_PH(cache=args.cache, max_iter=args.max_iter)
+    HF_PH(cache=args.cache, max_iter=args.max_iter, loglevel=args.loglevel)
 elif args.lf_ph:
-    LF_PH(cache=args.cache, max_iter=args.max_iter)
+    LF_PH(cache=args.cache, max_iter=args.max_iter, loglevel=args.loglevel)
 elif args.mf_ph:
-    MF_PH(cache=args.cache, max_iter=args.max_iter)
+    MF_PH(cache=args.cache, max_iter=args.max_iter, loglevel=args.loglevel)
+else:
+    parser.print_help()
+

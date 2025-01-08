@@ -1,6 +1,4 @@
 import sys
-
-# import pprint
 import json
 import copy
 import munch
@@ -10,9 +8,6 @@ import pyomo.core.base.indexed_component
 import pyomo.environ as pyo
 import pyomo.util.vars_from_expressions as vfe
 
-# from . import scentobund
-
-# import forestlib.util
 import forestlib.logs
 from .sp import StochasticProgram
 
@@ -133,6 +128,9 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
             # Load the results into the model so the user can find them there
             M.solutions.load_from(results)
             if logger.isEnabledFor(logging.DEBUG):
+                print("-"*70)
+                print("Solver Results")
+                print("-"*70)
                 M.pprint()
                 M.display()
                 sys.stdout.flush()
