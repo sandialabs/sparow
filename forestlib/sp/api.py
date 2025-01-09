@@ -1,4 +1,8 @@
-from .sp_pyomo import StochasticProgram_Pyomo_MultistageBuilder, StochasticProgram_Pyomo_NamedBuilder
+from .sp_pyomo import (
+    StochasticProgram_Pyomo_MultistageBuilder,
+    StochasticProgram_Pyomo_NamedBuilder,
+)
+
 
 def stochastic_program(
     *,

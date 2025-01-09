@@ -480,7 +480,15 @@ def bundle_scheme(data, scheme_str, model_weight, models, bundle_args=None):
 
 class BundleObj(object):
 
-    def __init__(self, *, data=None, scheme=None, models=None, model_weight=None, bundle_args=None):
+    def __init__(
+        self,
+        *,
+        data=None,
+        scheme=None,
+        models=None,
+        model_weight=None,
+        bundle_args=None,
+    ):
         if scheme == None:
             # Empty constructor
             return
@@ -533,6 +541,7 @@ class BundleObj(object):
         with open(json_filename, "w") as OUTPUT:
             json.dump(JSencoded(data), OUTPUT, indent=indent, sort_keys=sort_keys)
 
+
 def create_bundles(data):
     # TODO: error checking on data fields
     bundles = BundleObj()
@@ -543,9 +552,8 @@ def create_bundles(data):
     bundles._bundles = data["bundles"]
     return bundles
 
+
 def load_bundles(filename):
     with open(filename, "r") as INPUT:
         data = json.load(INPUT, cls=JSdecoded)
     return create_bundles(data)
-
-

@@ -1,5 +1,4 @@
 import sys
-#import pprint
 import json
 import copy
 import munch
@@ -8,9 +7,7 @@ import logging
 import pyomo.core.base.indexed_component
 import pyomo.environ as pyo
 import pyomo.util.vars_from_expressions as vfe
-#from . import scentobund
 
-#import forestlib.util
 import forestlib.logs
 from .sp import StochasticProgram
 
@@ -43,6 +40,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         self.int_to_FirstStageVarName = {}
         self.solver_options = {}
         self.pyo_solver = None
+        self._model_cache = {}
 
     def _first_stage_variables(self, *, M):
         # A generator that yields (name,component) tuples
@@ -130,6 +128,9 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
             # Load the results into the model so the user can find them there
             M.solutions.load_from(results)
             if logger.isEnabledFor(logging.DEBUG):
+                print("-"*70)
+                print("Solver Results")
+                print("-"*70)
                 M.pprint()
                 M.display()
                 sys.stdout.flush()
@@ -217,8 +218,38 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             data[k] = v
         return self.model_builder[model_name](data, {})
 
-    def create_EF(self, *, b, w=None, x_bar=None, rho=None):
+    def create_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
         scenarios = self.bundles[b].scenarios
+
+        if cached and b in self._model_cache:
+            M = self._model_cache[b]
+
+            if rho is None:
+                M.forestlib_params.rho.set_value(0.0)
+            else:
+                M.forestlib_params.rho.set_value(rho)
+
+            if w is None:
+                for i in M.forestlib_params.w:
+                    M.forestlib_params.w[i].set_value(0.0)
+            else:
+                assert len(w) == len(
+                    M.forestlib_params.w
+                ), f"Inconsistent data sizes between param.w ({len(M.forestlib_params.w)}) and w ({len(w)})"
+                for i in M.forestlib_params.w:
+                    M.forestlib_params.w[i].set_value(w[i])
+
+            if x_bar is None:
+                for i in M.forestlib_params.x_bar:
+                    M.forestlib_params.x_bar[i].set_value(0.0)
+            else:
+                assert len(x_bar) == len(
+                    M.forestlib_params.x_bar
+                ), f"Inconsistent data sizes between param.x_bar ({len(M.forestlib_params.x_bar)}) and x_bar ({len(x_bar)})"
+                for i in M.forestlib_params.x_bar:
+                    M.forestlib_params.x_bar[i].set_value(x_bar[i])
+
+            return M
 
         # 1) create scenario dictionary
         scen_dict = {}
@@ -263,17 +294,30 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 i: EF_model.rootx[i] for i in self.varcuid_to_int.values()
             }
 
+        # 3) Store objective parameters in a common format
+        if cached:
+            params = pyo.Block()
+            A = list(self.int_to_FirstStageVar[b].keys())
+            assert len(A) > 0, f"ERROR: b {b}, {self.int_to_FirstStageVar}"
+            params.rho = pyo.Param(mutable=True, default=0.0, domain=pyo.Reals)
+            params.w = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
+            params.x_bar = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
+            EF_model.forestlib_params = params
+        else:
+            params = munch.Munch(rho=rho, w=w, x_bar=x_bar)
+
         # 3)Create Obj:sum of scenario obj * probability
         obj = sum(
             self.bundles[b].scenario_probability[s] * obj[s].expr for s in scenarios
         )
-        if w is not None:
+        if cached or w is not None:
             obj = (
                 obj
-                + sum(w[i] * x for i, x in self.int_to_FirstStageVar[b].items())
-                + (rho / 2.0)
+                + sum(params.w[i] * x for i, x in self.int_to_FirstStageVar[b].items())
+                + (params.rho / 2.0)
                 * sum(
-                    (x - x_bar[i]) ** 2 for i, x in self.int_to_FirstStageVar[b].items()
+                    (x - params.x_bar[i]) ** 2
+                    for i, x in self.int_to_FirstStageVar[b].items()
                 )
             )
         EF_model.obj = pyo.Objective(expr=obj)
@@ -292,6 +336,10 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                         s,
                     )
                     EF_model.non_ant_cons.add(expr=EF_model.rootx[i] == var)
+
+        # Cache the model if the 'cached' flag has been specified
+        if cached:
+            self._model_cache[b] = EF_model
 
         return EF_model
 
@@ -337,7 +385,7 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
             data[k] = v
         self.model_builder_list[1](M, M.s[s], data, {})
 
-    def create_EF(self, *, w=None, x_bar=None, rho=None, b):
+    def create_EF(self, *, w=None, x_bar=None, rho=None, b, cached=False):
         scenarios = self.bundles[b].scenarios
 
         # 1) create EF model
@@ -379,4 +427,3 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
             root_obj.deactivate()
 
         return EF_model
-

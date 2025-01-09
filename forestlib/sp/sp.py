@@ -7,7 +7,7 @@ import logging
 
 from . import scentobund
 
-#import forestlib.util
+# import forestlib.util
 import forestlib.logs
 
 logger = forestlib.logs.logger
@@ -117,13 +117,13 @@ class StochasticProgram(object):
     def solve(self, M, *, solver_options=None):
         pass
 
-    def create_subproblem(self, b, *, w=None, x_bar=None, rho=None):
-        return self.create_EF(b=b, w=w, x_bar=x_bar, rho=rho)
+    def create_subproblem(self, b, *, w=None, x_bar=None, rho=None, cached=False):
+        return self.create_EF(b=b, w=w, x_bar=x_bar, rho=rho, cached=cached)
 
-    def create_EF(self, *, b, w=None, x_bar=None, rho=None):
+    def create_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
         pass
 
-    def evaluate(self, x, solver_options=None):
+    def evaluate(self, x, solver_options=None, cached=False):
         if solver_options is None:
             solver_options = {}
 
@@ -134,7 +134,7 @@ class StochasticProgram(object):
         obj_value = {}
         M = {}
         for b in self.bundles:
-            M[b] = self.create_subproblem(b)
+            M[b] = self.create_subproblem(b, cached=cached)
             for i, xval in enumerate(x):
                 self.fix_variable(b, i, xval)
             results = self.solve(M[b], solver_options=solver_options)
@@ -155,4 +155,3 @@ class StochasticProgram(object):
 
         # Reset the bundles
         self.bundles = _bundles
-
