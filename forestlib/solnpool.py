@@ -127,7 +127,7 @@ class Solution:
 class SolutionPool:
 
     def __init__(self):
-        self._context_name = "none"
+        self._context_name = None
         self._solutions = {}
         self.set_context(self._context_name)
 
@@ -159,6 +159,14 @@ class SolutionPool:
 
     def set_context(self, name, *, hash_variables=True):
         if name not in self._solutions:
+            # Delete the 'None' context if it isn't being used
+            if (
+                name is not None
+                and None in self._solutions
+                and len(self._solutions[None].solutions) == 0
+            ):
+                del self._solutions[None]
+
             self._solutions[name] = MyMunch(
                 context=MyMunch(context_name=name),
                 solutions={},
@@ -192,9 +200,9 @@ class SolutionPool:
     def to_dict(self):
         return _to_dict(self._solutions)
 
-    def write(self, json_filename, indent=None):
+    def write(self, json_filename, indent=None, sort_keys=True):
         with open(json_filename, "w") as OUTPUT:
-            json.dump(OUTPUT, self.to_dict(), indent=indent)
+            json.dump(self.to_dict(), OUTPUT, indent=indent, sort_keys=sort_keys)
 
     def read(self, json_filename):
         assert os.path.exists(
