@@ -319,6 +319,7 @@ HF_data = HFScen_object.scenario_generator(GlobalData.num_plots, GlobalData.num_
 
 app_data = {"num_plots": GlobalData.num_plots}
 model_data = {"LF": LF_scendata, "HF": HF_data}
+print(HF_data)
 
 
 #
@@ -376,7 +377,7 @@ def LF_model_builder(data, args):
     ### STOCHASTIC DATA
     def Yield_init(m, cropname):
         crop_base_name = cropname.rstrip("0123456789")
-        return data["Yield"][crop_base_name] + random.uniform(0, 1)
+        return data["Yield"][crop_base_name]
 
     model.Yield = pyo.Param(
         model.CROPS,
@@ -537,7 +538,7 @@ def model_builder(data, args):
     ### STOCHASTIC DATA
     def Yield_init(m, cropname, plot):  ### per-plot crop yields
         crop_base_name = cropname.rstrip("0123456789")
-        return data["list_IDs"][plot]["Yield"][crop_base_name] + random.uniform(0, 1)
+        return data["list_IDs"][plot]["Yield"][crop_base_name]
 
     model.Yield = pyo.Param(
         model.CROPS,
