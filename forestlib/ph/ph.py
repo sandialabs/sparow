@@ -15,7 +15,7 @@ def norm(values, p):
     return np.linalg.norm(np.array(values), ord=p)
 
 
-def finalize_ph_results(soln, *, sp, soln_pool, finalize_xbar_by_rounding=True):
+def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
     xbar = [soln.variable(i).value for i in range(len(soln.variables()))]
     assert len(xbar) == len(
         sp.shared_variables()
@@ -30,7 +30,7 @@ def finalize_ph_results(soln, *, sp, soln_pool, finalize_xbar_by_rounding=True):
         #
         sol = sp.evaluate([xbar[x] for x in sp.shared_variables()])
         if sol.feasible:
-            soln_pool.add(
+            solutions.add(
                 variables=soln.variables(),
                 objective=solnpool.Objective(value=sol.objective),
                 suffix=soln.suffix,
@@ -51,13 +51,13 @@ def finalize_ph_results(soln, *, sp, soln_pool, finalize_xbar_by_rounding=True):
                 variables = copy.copy(soln.variables())
                 for v in variables:
                     v.value = tmpx[v.index]
-                soln_pool.add(
+                solutions.add(
                     variables=variables,
                     objective=solnpool.Objective(value=sol.objective),
                     suffix=soln.suffix,
                 )
 
-    return soln_pool
+    return solutions
 
 
 class ProgressiveHedgingSolver(object):
@@ -73,7 +73,7 @@ class ProgressiveHedgingSolver(object):
         self.solver_options = {}
         self.finalize_xbar_by_rounding = True
         self.finalize_all_xbar = False
-        self.solution_pool = None
+        self.solutions = None
 
     def set_options(
         self,
@@ -89,7 +89,7 @@ class ProgressiveHedgingSolver(object):
         loglevel=None,
         finalize_xbar_by_rounding=None,
         finalize_all_xbar=None,
-        solution_pool=None,
+        solution_manager=None,
     ):
         #
         # Misc configuration
@@ -114,8 +114,8 @@ class ProgressiveHedgingSolver(object):
             self.finalize_xbar_by_rounding = finalize_xbar_by_rounding
         if finalize_all_xbar is not None:
             self.finalize_all_xbar = finalize_all_xbar
-        if solution_pool is not None:
-            self.solution_pool = solution_pool
+        if solution_manager is not None:
+            self.solution_manager = solution_manager
 
         if loglevel is not None:
             if loglevel == "DEBUG":
@@ -139,16 +139,17 @@ class ProgressiveHedgingSolver(object):
             print("")
 
         #
-        # Setup solution pool and archive context information
+        # Setup solution manager and archive context information
         #
         # If finalize_all_xbar is True, then we disable hashing of variables to ensure
         # we keep the solution for each iteration of PH.
         #
-        if self.solution_pool is None:
-            self.solution_pool = solnpool.SolutionPool()
-        sp_metadata = self.solution_pool.set_context(
-            "PH Iterations", hash_variables=not self.finalize_all_xbar
-        )
+        if self.solutions is None:
+            self.solutions = solnpool.SolutionManager()
+        if self.finalize_all_xbar:
+            sp_metadata = self.solutions.add_pool("PH Iterations", policy="keep_all")
+        else:
+            sp_metadata = self.solutions.add_pool("PH Iterations", policy="keep_latest")
         sp_metadata.solver = "PH Iteration Results"
         sp_metadata.solver_options = dict(
             rho=self.rho,
@@ -293,7 +294,7 @@ class ProgressiveHedgingSolver(object):
 
             self.update_rho(iteration)
 
-        sp_metadata = self.solution_pool.metadata
+        sp_metadata = self.solutions.metadata
         sp_metadata.iterations = iteration
         sp_metadata.termination_condition = termination_condition
 
@@ -301,30 +302,27 @@ class ProgressiveHedgingSolver(object):
         logger.info("-" * 70)
         logger.info("ProgressiveHedgingSolver - FINALIZING")
         if self.finalize_all_xbar:
-            all_iterations = self.solution_pool.solutions
-            # NOTE: we disable hashing here because we want to keep solutions for each iteration
-            self.solution_pool.set_context(
-                "Finalized All PH Iterations", hash_variables=False
-            )
+            all_iterations = list(self.solutions)
+            self.solutions.add_pool("Finalized All PH Iterations", policy="keep_all")
             for soln in all_iterations:
-                finalize_ph_results(soln, sp=sp, soln_pool=self.solution_pool)
+                finalize_ph_results(soln, sp=sp, solutions=self.solutions)
         else:
-            soln = self.solution_pool[latest_soln]
-            self.solution_pool.set_context("Finalized Last PH Solution")
-            finalize_ph_results(soln, sp=sp, soln_pool=self.solution_pool)
+            soln = self.solutions[latest_soln]
+            self.solutions.add_pool("Finalized Last PH Solution", policy="keep_best")
+            finalize_ph_results(soln, sp=sp, solutions=self.solutions)
 
         logger.info("")
         logger.info("-" * 70)
         logger.info("ProgressiveHedgingSolver - RESULTS")
         if logger.level != logging.NOTSET and logger.level <= logging.VERBOSE:
-            pprint.pprint(self.solution_pool.to_dict())
+            pprint.pprint(self.solutions.to_dict())
             sys.stdout.flush()
 
         logger.info("")
         logger.info("-" * 70)
         logger.info("ProgressiveHedgingSolver - STOP")
 
-        return self.solution_pool
+        return self.solutions
 
     def log_iteration(self, **kwds):
         logger.info("")
@@ -346,7 +344,7 @@ class ProgressiveHedgingSolver(object):
             )
             for i, val in xbar.items()
         ]
-        return self.solution_pool.add(variables=variables, **kwds)
+        return self.solutions.add(variables=variables, **kwds)
 
     def update_rho(self, iteration):
         # TODO HERE

@@ -43,7 +43,9 @@ class ExtensiveFormSolver(object):
         if self.solver_name:
             sp.set_solver(self.solver_name)
 
-        logger.info("ProgressiveHendingSolver - START")
+        logger.info("")
+        logger.info("-" * 70)
+        logger.info("ExtensiveFormSolver - START")
 
         sp.initialize_bundles(scheme="single_bundle")
         assert (
@@ -64,8 +66,8 @@ class ExtensiveFormSolver(object):
         # TODO - show value of subproblem
         logger.debug(f"Optimization Complete")
 
-        solution_pool = forestlib.solnpool.SolutionPool()
-        metadata = solution_pool.metadata
+        solutions = forestlib.solnpool.SolutionManager()
+        metadata = solutions.metadata
         metadata.termination_condition = str(results.termination_condition)
         metadata.status = str(results.status)
 
@@ -80,6 +82,10 @@ class ExtensiveFormSolver(object):
                 for i, _ in enumerate(sp.get_variables())
             ]
             objective = forestlib.solnpool.Objective(value=results.obj_value)
-            solution_pool.add(variables=variables, objective=objective)
+            solutions.add(variables=variables, objective=objective)
 
-        return solution_pool
+        logger.info("")
+        logger.info("-" * 70)
+        logger.info("ExtensiveFormSolver - STOP")
+
+        return solutions
