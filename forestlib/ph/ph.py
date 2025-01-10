@@ -23,7 +23,7 @@ def finalize_ph_results(soln, *, sp, soln_pool, finalize_xbar_by_rounding=True):
     # We use xbar to identify a point that is feasible for all scenarios.
     #
     if sp.continuous_fsv():
-        logger.info("Final solution is continuous")
+        logger.info("Finalizing continuous solution")
         #
         # Evaluate the final xbar, and keep if feasible.
         #
@@ -141,12 +141,13 @@ class ProgressiveHedgingSolver(object):
         #
         # Setup solution pool and archive context information
         #
-        # We disable hashing of variables to ensure we keep the solution for each iteration of PH.
+        # If finalize_all_xbar is True, then we disable hashing of variables to ensure
+        # we keep the solution for each iteration of PH.
         #
         if self.solution_pool is None:
             self.solution_pool = solnpool.SolutionPool()
         sp_metadata = self.solution_pool.set_context(
-            "PH Iterations", hash_variables=False
+            "PH Iterations", hash_variables=not self.finalize_all_xbar
         )
         sp_metadata.solver = "PH Iteration Results"
         sp_metadata.solver_options = dict(
