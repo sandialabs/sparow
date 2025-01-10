@@ -1,9 +1,10 @@
 import sys
 import numpy as np
 import munch
-
 import logging
+
 import forestlib.logs
+import forestlib.solnpool
 
 logger = forestlib.logs.logger
 
@@ -63,16 +64,22 @@ class ExtensiveFormSolver(object):
         # TODO - show value of subproblem
         logger.debug(f"Optimization Complete")
 
-        if results.obj_value is None:
-            return munch.Munch(
-                termination_condition=str(results.termination_condition),
-                status=str(results.status),
-                solutions=[],
-            )
-        else:
-            return munch.Munch(
-                obj_value=results.obj_value,
-                termination_condition=str(results.termination_condition),
-                status=str(results.status),
-                solutions=[sp.get_variables()],
-            )
+        solution_pool = forestlib.solnpool.SolutionPool()
+        metadata = solution_pool.metadata
+        metadata.termination_condition = str(results.termination_condition)
+        metadata.status = str(results.status)
+
+        if results.obj_value is not None:
+            b = next(iter(sp.bundles))
+            variables = [
+                forestlib.solnpool.Variable(
+                    value=sp.get_variable_value(b, i),
+                    index=i,
+                    name=sp.get_variable_name(b, i),
+                )
+                for i, _ in enumerate(sp.get_variables())
+            ]
+            objective = forestlib.solnpool.Objective(value=results.obj_value)
+            solution_pool.add(variables=variables, objective=objective)
+
+        return solution_pool
