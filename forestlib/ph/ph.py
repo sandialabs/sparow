@@ -1,3 +1,4 @@
+import copy
 import sys
 import munch
 import pprint
@@ -35,19 +36,18 @@ def finalize_ph_results(soln, *, sp, soln_pool, finalize_xbar_by_rounding=True):
                 suffix=soln.suffix,
             )
     else:
-        logger.info("Final solution has binary or integer variables")
+        logger.info("Finalizing solution with binary or integer variables")
 
         if finalize_xbar_by_rounding:
             #
             # Round the final xbar, and keep if feasible.
             #
             logger.info(
-                "Rounding xbar values associated with binary and integer variables"
+                "\tRounding xbar values associated with binary and integer variables"
             )
             tmpx = [sp.round(x, xbar[x]) for x in sp.shared_variables()]
             sol = sp.evaluate(tmpx)
             if sol.feasible:
-                solutions.append(sol)
                 variables = copy.copy(soln.variables())
                 for v in variables:
                     v.value = tmpx[v.index]
@@ -271,9 +271,11 @@ class ProgressiveHedgingSolver(object):
             logger.info(f"g = {g}")
 
             # Step 9.1
-            latest_soln = self.archive_solution(
+            tmp = self.archive_solution(
                 sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb, g=g
             )
+            if tmp is not None:
+                latest_soln = tmp
             self.log_iteration(
                 iteration=iteration, obj_lb=obj_lb, xbar=xbar, rho=self.rho
             )

@@ -54,11 +54,8 @@ class Objective:
 
 class Solution:
 
-    _id_counter = 0
-
     def __init__(self, *, variables=None, objectives=None, **kwds):
-        self.id = self._id_counter
-        Solution._id_counter += 1
+        self.id = None
 
         self._variables = []
         self.int_to_variable = {}
@@ -126,6 +123,8 @@ class Solution:
 
 class SolutionPool:
 
+    _id_counter = 0
+
     def __init__(self):
         self._context_name = None
         self._solutions = {}
@@ -190,7 +189,10 @@ class SolutionPool:
             tuple_repn = soln.tuple_repn()
             if tuple_repn in context.unique_solutions:
                 return None
+            context.unique_solutions.add(tuple_repn)
 
+        soln.id = SolutionPool._id_counter
+        SolutionPool._id_counter += 1
         assert (
             soln.id not in context.solutions
         ), f"Solution id {soln.id} already in solution pool context '{self._context_name}'"
@@ -198,7 +200,15 @@ class SolutionPool:
         return soln.id
 
     def to_dict(self):
-        return _to_dict(self._solutions)
+        # return _to_dict(self._solutions)
+        return {
+            cname: dict(
+                context=_to_dict(data.context),
+                solutions=_to_dict(data.solutions),
+                hash_variables=data.hash_variables,
+            )
+            for cname, data in self._solutions.items()
+        }
 
     def write(self, json_filename, indent=None, sort_keys=True):
         with open(json_filename, "w") as OUTPUT:
