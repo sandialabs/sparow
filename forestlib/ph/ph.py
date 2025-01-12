@@ -145,7 +145,7 @@ class ProgressiveHedgingSolver(object):
         # we keep the solution for each iteration of PH.
         #
         if self.solutions is None:
-            self.solutions = solnpool.SolutionManager()
+            self.solutions = solnpool.PoolManager()
         if self.finalize_all_xbar:
             sp_metadata = self.solutions.add_pool("PH Iterations", policy="keep_all")
         else:

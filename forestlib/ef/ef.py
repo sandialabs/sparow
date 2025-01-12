@@ -66,7 +66,7 @@ class ExtensiveFormSolver(object):
         # TODO - show value of subproblem
         logger.debug(f"Optimization Complete")
 
-        solutions = forestlib.solnpool.SolutionManager()
+        solutions = forestlib.solnpool.PoolManager()
         metadata = solutions.metadata
         metadata.termination_condition = str(results.termination_condition)
         metadata.status = str(results.status)
