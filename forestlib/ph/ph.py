@@ -1,3 +1,4 @@
+import copy
 import sys
 import munch
 import pprint
@@ -5,12 +6,59 @@ import numpy as np
 
 import logging
 import forestlib.logs
+from forestlib import solnpool
+import datetime
 
 logger = forestlib.logs.logger
 
 
 def norm(values, p):
     return np.linalg.norm(np.array(values), ord=p)
+
+
+def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
+    xbar = [soln.variable(i).value for i in range(len(soln.variables()))]
+    assert len(xbar) == len(
+        sp.shared_variables()
+    ), "Mismatch between solution variables and SP model variables: {len(xbar)} != {len(sp.shared_variables())}"
+    #
+    # We use xbar to identify a point that is feasible for all scenarios.
+    #
+    if sp.continuous_fsv():
+        logger.info("Finalizing continuous solution")
+        #
+        # Evaluate the final xbar, and keep if feasible.
+        #
+        sol = sp.evaluate([xbar[x] for x in sp.shared_variables()])
+        if sol.feasible:
+            solutions.add(
+                variables=soln.variables(),
+                objective=solnpool.Objective(value=sol.objective),
+                suffix=soln.suffix,
+            )
+    else:
+        logger.info("Finalizing solution with binary or integer variables")
+
+        if finalize_xbar_by_rounding:
+            #
+            # Round the final xbar, and keep if feasible.
+            #
+            logger.info(
+                "\tRounding xbar values associated with binary and integer variables"
+            )
+            tmpx = [sp.round(x, xbar[x]) for x in sp.shared_variables()]
+            sol = sp.evaluate(tmpx)
+            if sol.feasible:
+                variables = copy.copy(soln.variables())
+                for v in variables:
+                    v.value = tmpx[v.index]
+                solutions.add(
+                    variables=variables,
+                    objective=solnpool.Objective(value=sol.objective),
+                    suffix=soln.suffix,
+                )
+
+    return solutions
 
 
 class ProgressiveHedgingSolver(object):
@@ -25,6 +73,8 @@ class ProgressiveHedgingSolver(object):
         self.solver_name = None
         self.solver_options = {}
         self.finalize_xbar_by_rounding = True
+        self.finalize_all_xbar = False
+        self.solutions = None
 
     def set_options(
         self,
@@ -39,6 +89,8 @@ class ProgressiveHedgingSolver(object):
         solver_options=None,
         loglevel=None,
         finalize_xbar_by_rounding=None,
+        finalize_all_xbar=None,
+        solution_manager=None,
     ):
         #
         # Misc configuration
@@ -61,6 +113,10 @@ class ProgressiveHedgingSolver(object):
             self.solver_options = solver_options
         if finalize_xbar_by_rounding is not None:
             self.finalize_xbar_by_rounding = finalize_xbar_by_rounding
+        if finalize_all_xbar is not None:
+            self.finalize_all_xbar = finalize_all_xbar
+        if solution_manager is not None:
+            self.solution_manager = solution_manager
 
         if loglevel is not None:
             if loglevel == "DEBUG":
@@ -68,6 +124,7 @@ class ProgressiveHedgingSolver(object):
             logger.setLevel(loglevel)
 
     def solve(self, sp, **options):
+        start_time = datetime.datetime.now()
         if len(options) > 0:
             self.set_options(**options)
         if logger.isEnabledFor(logging.DEBUG):
@@ -76,11 +133,35 @@ class ProgressiveHedgingSolver(object):
             print(f"  convergence_norm           {self.convergence_norm}")
             print(f"  convergence_tolerance      {self.convergence_tolerance}")
             print(f"  finalize_xbar_by_rounding  {self.finalize_xbar_by_rounding}")
+            print(f"  finalize_all_xbar          {self.finalize_all_xbar}")
             print(f"  max_iterations             {self.max_iterations}")
             print(f"  normalize_convergence_norm {self.normalize_convergence_norm}")
             print(f"  rho                        {self.rho}")
             print(f"  solver_name                {self.solver_name}")
             print("")
+
+        #
+        # Setup solution manager and archive context information
+        #
+        # If finalize_all_xbar is True, then we disable hashing of variables to ensure
+        # we keep the solution for each iteration of PH.
+        #
+        if self.solutions is None:
+            self.solutions = solnpool.PoolManager()
+        if self.finalize_all_xbar:
+            sp_metadata = self.solutions.add_pool("PH Iterations", policy="keep_all")
+        else:
+            sp_metadata = self.solutions.add_pool("PH Iterations", policy="keep_latest")
+        sp_metadata.solver = "PH Iteration Results"
+        sp_metadata.solver_options = dict(
+            rho=self.rho,
+            cached_model_generation=self.cached_model_generation,
+            max_iterations=self.max_iterations,
+            convergence_tolerance=self.convergence_tolerance,
+            normalize_convergence_norm=self.normalize_convergence_norm,
+            solver_name=self.solver_name,
+            solver_options=self.solver_options,
+        )
 
         # The StochProgram object manages the sub-solver interface.  By default, we assume
         #   the user has initialized the sub-solver within the SP object.
@@ -124,16 +205,16 @@ class ProgressiveHedgingSolver(object):
             for x in sfs_variables:
                 w[b][x] = self.rho * (sp.get_variable_value(b, x) - xbar[x])
 
+        # Step 4.1
         iteration = 0
         termination_condition = "Termination: unknown"
+        latest_soln = self.archive_solution(
+            sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb
+        )
+        self.log_iteration(iteration=iteration, obj_lb=obj_lb, time=datetime.datetime.now(), xbar=xbar, rho=self.rho)
+
         while True:
-            logger.info("")
-            logger.info("-" * 70)
-            logger.info(f"Iteration:    {iteration}")
-            logger.info(f"obj_lb:      {obj_lb}")
-            logger.verbose(f"xbar:        {xbar}")
-            logger.verbose(f"rho:         {self.rho}")
-            logger.info("")
+            iteration += 1
 
             # Step 5
             xbar_prev = xbar
@@ -192,13 +273,22 @@ class ProgressiveHedgingSolver(object):
                 g /= len(sfs_variables)
             logger.info(f"g = {g}")
 
+            # Step 9.1
+            tmp = self.archive_solution(
+                sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb, g=g
+            )
+            if tmp is not None:
+                latest_soln = tmp
+            self.log_iteration(
+                iteration=iteration, obj_lb=obj_lb, time=datetime.datetime.now(), xbar=xbar, rho=self.rho
+            )
+
             # Step 10
             if g < self.convergence_tolerance:
                 termination_condition = f"Termination: convergence tolerance ({g} < {self.convergence_tolerance})"
                 logger.info(termination_condition)
                 break
 
-            iteration += 1
             if iteration >= self.max_iterations:
                 termination_condition = f"Termination: max_iterations ({iteration} == {self.max_iterations})"
                 logger.info(termination_condition)
@@ -206,71 +296,65 @@ class ProgressiveHedgingSolver(object):
 
             self.update_rho(iteration)
 
+        end_time = datetime.datetime.now()
+
+        sp_metadata = self.solutions.metadata
+        sp_metadata.iterations = iteration
+        sp_metadata.termination_condition = termination_condition
+        sp_metadata.start_time = str(start_time) 
+
         logger.info("")
         logger.info("-" * 70)
         logger.info("ProgressiveHedgingSolver - FINALIZING")
-        results = self.finalize_results(
-            sp,
-            xbar=xbar,
-            w=w,
-            g=g,
-            iterations=iteration,
-            termination_condition=termination_condition,
-            obj_lb=obj_lb,
-        )
+        if self.finalize_all_xbar:
+            all_iterations = list(self.solutions)
+            self.solutions.add_pool("Finalized All PH Iterations", policy="keep_all")
+            for soln in all_iterations:
+                finalize_ph_results(soln, sp=sp, solutions=self.solutions)
+        else:
+            soln = self.solutions[latest_soln]
+            self.solutions.add_pool("Finalized Last PH Solution", policy="keep_best")
+            finalize_ph_results(soln, sp=sp, solutions=self.solutions)
+
+        sp_metadata.end_time = str(end_time)
+        sp_metadata.time_elapsed = str(end_time - start_time)
+
         logger.info("")
         logger.info("-" * 70)
         logger.info("ProgressiveHedgingSolver - RESULTS")
         if logger.level != logging.NOTSET and logger.level <= logging.VERBOSE:
-            pprint.pprint(results.toDict())
+            pprint.pprint(self.solutions.to_dict())
             sys.stdout.flush()
 
         logger.info("")
         logger.info("-" * 70)
         logger.info("ProgressiveHedgingSolver - STOP")
 
-        return results
+        return self.solutions
+
+    def log_iteration(self, **kwds):
+        logger.info("")
+        logger.info("-" * 70)
+        logger.info(f"Iteration:   {kwds['iteration']}")
+        logger.info(f"obj_lb:      {kwds['obj_lb']}")
+        logger.info(f"time:        {kwds['time']}")
+        logger.verbose(f"xbar:        {kwds['xbar']}")
+        logger.verbose(f"rho:         {kwds['rho']}")
+        logger.info("")
+
+    def archive_solution(self, *, sp, xbar=None, w=None, **kwds):
+        b = next(iter(sp.bundles))
+        variables = [
+            solnpool.Variable(
+                value=val,
+                index=i,
+                name=sp.get_variable_name(b, i),
+                suffix=munch.Munch(w={k: v[i] for k, v in w.items()}),
+            )
+            for i, val in xbar.items()
+        ]
+        return self.solutions.add(variables=variables, **kwds)
 
     def update_rho(self, iteration):
         # TODO HERE
         pass
-
-    def finalize_results(
-        self, sp, *, xbar, w, g, iterations, termination_condition, obj_lb
-    ):
-        #
-        # We use xbar to identify a point that is feasible for all scenarios.
-        #
-        solutions = []
-        if sp.continuous_fsv():
-            logger.info("Final solution is continuous")
-            #
-            # Evaluate the final xbar, and keep if feasible.
-            #
-            sol = sp.evaluate([xbar[x] for x in sp.shared_variables()])
-            if sol.feasible:
-                solutions.append(sol)
-        else:
-            logger.info("Final solution has binary or integer variables")
-
-            if self.finalize_xbar_by_rounding:
-                #
-                # Round the final xbar, and keep if feasible.
-                #
-                logger.info(
-                    "Rounding xbar values associated with binary and integer variables"
-                )
-                tmpx = [sp.round(x, xbar[x]) for x in sp.shared_variables()]
-                sol = sp.evaluate(tmpx)
-                if sol.feasible:
-                    solutions.append(sol)
-
-        return munch.Munch(
-            xbar=xbar,
-            w=w,
-            g=g,
-            iterations=iterations,
-            termination_condition=termination_condition,
-            obj_lb=obj_lb,
-            solutions=solutions,
-        )

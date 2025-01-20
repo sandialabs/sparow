@@ -1,9 +1,11 @@
 import sys
 import numpy as np
 import munch
-
 import logging
+
 import forestlib.logs
+import forestlib.solnpool
+import datetime
 
 logger = forestlib.logs.logger
 
@@ -35,6 +37,7 @@ class ExtensiveFormSolver(object):
             logger.setLevel(loglevel)
 
     def solve(self, sp, **options):
+        start_time = datetime.datetime.now()
         if len(options) > 0:
             self.set_options(**options)
         # The StochProgram object manages the sub-solver interface.  By default, we assume
@@ -42,7 +45,9 @@ class ExtensiveFormSolver(object):
         if self.solver_name:
             sp.set_solver(self.solver_name)
 
-        logger.info("ProgressiveHendingSolver - START")
+        logger.info("")
+        logger.info("-" * 70)
+        logger.info("ExtensiveFormSolver - START")
 
         sp.initialize_bundles(scheme="single_bundle")
         assert (
@@ -62,17 +67,31 @@ class ExtensiveFormSolver(object):
 
         # TODO - show value of subproblem
         logger.debug(f"Optimization Complete")
+        end_time = datetime.datetime.now()
 
-        if results.obj_value is None:
-            return munch.Munch(
-                termination_condition=str(results.termination_condition),
-                status=str(results.status),
-                solutions=[],
-            )
-        else:
-            return munch.Munch(
-                obj_value=results.obj_value,
-                termination_condition=str(results.termination_condition),
-                status=str(results.status),
-                solutions=[sp.get_variables()],
-            )
+        solutions = forestlib.solnpool.PoolManager()
+        metadata = solutions.metadata
+        metadata.termination_condition = str(results.termination_condition)
+        metadata.status = str(results.status)
+        metadata.start_time = str(start_time)
+        metadata.end_time = str(end_time)
+        metadata.time_elapsed = str(end_time - start_time)
+
+        if results.obj_value is not None:
+            b = next(iter(sp.bundles))
+            variables = [
+                forestlib.solnpool.Variable(
+                    value=sp.get_variable_value(b, i),
+                    index=i,
+                    name=sp.get_variable_name(b, i),
+                )
+                for i, _ in enumerate(sp.get_variables())
+            ]
+            objective = forestlib.solnpool.Objective(value=results.obj_value)
+            solutions.add(variables=variables, objective=objective)
+
+        logger.info("")
+        logger.info("-" * 70)
+        logger.info("ExtensiveFormSolver - STOP")
+
+        return solutions

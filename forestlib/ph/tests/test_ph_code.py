@@ -1,3 +1,4 @@
+import pprint
 import pytest
 from IPython import embed
 import random
@@ -10,7 +11,6 @@ from mpisppy.opt.ef import ExtensiveForm
 from mpisppy.opt.ph import PH
 
 from forestlib.sp import stochastic_program
-
 from forestlib.ph import ProgressiveHedgingSolver
 
 random.seed(923874938740938740)
@@ -210,7 +210,8 @@ class TestSolverAgainstMPISPPY(object):
         ph = ProgressiveHedgingSolver()
         results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
 
-        ph_objval = results.obj_lb
+        soln = results.last_solution
+        ph_objval = soln.suffix.obj_lb
         print("PH VALUE")
         print(ph_objval)
         # assert abs(ef_objval - ph_objval) < 1e-5
@@ -242,7 +243,9 @@ class TestSolverAgainstMPISPPY(object):
         ph = ProgressiveHedgingSolver()
         results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
 
-        ph_objval = results.obj_lb
+        soln = results.last_solution
+        #ph_objval = soln.suffix.obj_lb
+        ph_objval = soln.objective().value
         assert abs((mpi_objval - ph_objval) / ph_objval) < 1e-3
 
     def test_PH_model_solve_xbar(self):
@@ -274,10 +277,8 @@ class TestSolverAgainstMPISPPY(object):
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
         results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
-        xbar_ph = []
-        for index in reversed(results.xbar.keys()):
-            xbar_ph.append(results.xbar[index])
-        xbar_ph = np.array(xbar_ph)
+        soln = results.last_solution
+        xbar_ph = np.array([var.value for var in reversed(soln.variables())])
         xbar_mpi = np.array(xbar_list)
         assert np.allclose(xbar_ph, xbar_mpi)
 
@@ -311,15 +312,16 @@ class TestSolverAgainstMPISPPY(object):
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
         results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
-        data = []
+        soln = results.last_solution
 
         scenarios = ["AboveAverageScenario", "AverageScenario", "BelowAverageScenario"]
-
+        data = []
         for scenario in scenarios:
             temp = []
             for i in range(2, -1, -1):
-                temp.append(results.w[scenario][i])
+                temp.append(soln.variable(i).suffix.w[scenario])
             data.append(temp)
-        array1 = np.array(w_bar_mpisppy)
         array2 = np.array(data)
+
+        array1 = np.array(w_bar_mpisppy)
         assert np.allclose(array1, array2)

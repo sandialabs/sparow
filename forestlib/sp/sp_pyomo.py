@@ -86,7 +86,6 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         return pyo.value(self.int_to_FirstStageVar[b][v])
 
     def get_variable_name(self, b, v):
-        # return self.int_to_FirstStageVar[b][v].name
         assert (
             b in self.int_to_FirstStageVarName
         ), f"Missing keys: {b} not in {self.int_to_FirstStageVarName}"
