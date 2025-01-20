@@ -7,6 +7,7 @@ import numpy as np
 import logging
 import forestlib.logs
 from forestlib import solnpool
+import datetime
 
 logger = forestlib.logs.logger
 
@@ -123,6 +124,7 @@ class ProgressiveHedgingSolver(object):
             logger.setLevel(loglevel)
 
     def solve(self, sp, **options):
+        start_time = datetime.datetime.now()
         if len(options) > 0:
             self.set_options(**options)
         if logger.isEnabledFor(logging.DEBUG):
@@ -209,7 +211,7 @@ class ProgressiveHedgingSolver(object):
         latest_soln = self.archive_solution(
             sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb
         )
-        self.log_iteration(iteration=iteration, obj_lb=obj_lb, xbar=xbar, rho=self.rho)
+        self.log_iteration(iteration=iteration, obj_lb=obj_lb, time=datetime.datetime.now(), xbar=xbar, rho=self.rho)
 
         while True:
             iteration += 1
@@ -278,7 +280,7 @@ class ProgressiveHedgingSolver(object):
             if tmp is not None:
                 latest_soln = tmp
             self.log_iteration(
-                iteration=iteration, obj_lb=obj_lb, xbar=xbar, rho=self.rho
+                iteration=iteration, obj_lb=obj_lb, time=datetime.datetime.now(), xbar=xbar, rho=self.rho
             )
 
             # Step 10
@@ -294,9 +296,12 @@ class ProgressiveHedgingSolver(object):
 
             self.update_rho(iteration)
 
+        end_time = datetime.datetime.now()
+
         sp_metadata = self.solutions.metadata
         sp_metadata.iterations = iteration
         sp_metadata.termination_condition = termination_condition
+        sp_metadata.start_time = str(start_time) 
 
         logger.info("")
         logger.info("-" * 70)
@@ -310,6 +315,9 @@ class ProgressiveHedgingSolver(object):
             soln = self.solutions[latest_soln]
             self.solutions.add_pool("Finalized Last PH Solution", policy="keep_best")
             finalize_ph_results(soln, sp=sp, solutions=self.solutions)
+
+        sp_metadata.end_time = str(end_time)
+        sp_metadata.time_elapsed = str(end_time - start_time)
 
         logger.info("")
         logger.info("-" * 70)
@@ -329,6 +337,7 @@ class ProgressiveHedgingSolver(object):
         logger.info("-" * 70)
         logger.info(f"Iteration:   {kwds['iteration']}")
         logger.info(f"obj_lb:      {kwds['obj_lb']}")
+        logger.info(f"time:        {kwds['time']}")
         logger.verbose(f"xbar:        {kwds['xbar']}")
         logger.verbose(f"rho:         {kwds['rho']}")
         logger.info("")
