@@ -6,6 +6,7 @@ import logging
 
 import pyomo.core.base.indexed_component
 import pyomo.environ as pyo
+import pyomo.repn
 import pyomo.util.vars_from_expressions as vfe
 
 import forestlib.logs
@@ -37,6 +38,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         super().__init__()
         self.varcuid_to_int = {}
         self.int_to_FirstStageVar = {}
+        self.int_to_ObjectiveCoef = {}
         self.int_to_FirstStageVarName = {}
         self.solver_options = {}
         self.pyo_solver = None
@@ -206,8 +208,8 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             else:
                 yield varname, comp
 
-    def _create_scenario(self, s):
-        model_name, scenario = s
+    def _create_scenario(self, scenario_tuple):
+        model_name, scenario = scenario_tuple
         data = copy.copy(self.app_data)
         for k, v in self.model_data.get(model_name, {}).items():
             assert k not in data, f"Model data for {k} has already been specified!"
@@ -216,6 +218,50 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             assert k not in data, f"Scenario data for {k} has already been specified!"
             data[k] = v
         return self.model_builder[model_name](data, {})
+
+    def get_objective_coef(self, v, cached=False):
+        if len(self.int_to_ObjectiveCoef) == 0:
+            if cached:
+                #
+                # If we are using the bundle cache, then we generate an expression that is the
+                # weighted sum of the bundle objectives.
+                #
+                # Note that this may not be the same as the objective in the extensive form, since
+                # bundles may include multiple fidelities, and they may include multiple replications of
+                # different scenarios.
+                #
+                obj = sum(self.bundles[b].probability * self._model_cache[b].obj.expr for b in self.bundles)
+
+            else:
+                #
+                # Here we build the extensive form for the 'default' model and keep its objective expression.
+                # This logic mimics the logic of StochasticProgram.evaluate()
+                #
+
+                # Setup single-scenario bundles with the default model
+                _bundles = self.bundles
+                self.initialize_bundles(models=[self.default_model], scheme="single_scenario")
+
+                obj_expr = {}
+                for b in self.bundles:
+                    M = self.create_subproblem(b, cached=False)
+                    obj_expr[b] = find_objective(M).expr
+                obj = sum(self.bundles[b].probability * obj_expr[b] for b in self.bundles)
+
+                # Setup single-scenario bundles with the default model
+                _bundles = self.bundles
+
+            repn = pyomo.repn.generate_standard_repn(obj, quadratic=False)
+
+            for index in self.varcuid_to_int.values():
+                self.int_to_ObjectiveCoef[index] = 0
+
+            for i,var in enumerate(repn.linear_vars):
+                cuid = pyo.ComponentUID(var)
+                if cuid in self.varcuid_to_int:
+                    self.int_to_ObjectiveCoef[ self.varcuid_to_int[cuid] ] = repn.linear_coefs[i]
+        
+        return self.int_to_ObjectiveCoef[v]
 
     def create_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
         scenarios = self.bundles[b].scenarios

@@ -111,6 +111,9 @@ class StochasticProgram(object):
     def shared_variables(self):
         pass
 
+    def get_objective_coef(self, v):
+        pass
+
     def set_solver(self, name):
         self.solver = name
 
