@@ -77,6 +77,8 @@ class TestNewsVendor:
         sp = stochastic_program(first_stage_variables=["x"])
         sp.initialize_model(model_data=model_data, model_builder=model_builder)
 
+        assert sp.get_objective_coef(0) == 0
+
         assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
         assert sp.bundles["1"].probability == 0.2
 

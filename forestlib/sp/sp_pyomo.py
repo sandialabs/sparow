@@ -37,38 +37,42 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
     def __init__(self):
         super().__init__()
         self.varcuid_to_int = {}
-        self.int_to_FirstStageVar = {}
-        self.int_to_ObjectiveCoef = {}
+        self.int_to_FirstStageVar = {}  # indexed by bundle id
         self.int_to_FirstStageVarName = {}
+        self.int_to_ObjectiveCoef = {}
         self.solver_options = {}
         self.pyo_solver = None
-        self._model_cache = {}
+        self._model_cache = {}  # indexed by bundle id
 
     def _first_stage_variables(self, *, M):
         # A generator that yields (name,component) tuples
         pass
 
     def _initialize_cuid_map(self, *, M, b):
+        fsv = list(self._first_stage_variables(M=M))
         if len(self.varcuid_to_int) == 0:
             #
             # self.varcuid_to_int maps the cuids for variables to unique integers (starting with 0).
             #   The variable cuids indexed here are specified by the list self.first_stage_variables.
             #
-            self.varcuid_to_int = {}
-            for varname, var in self._first_stage_variables(M=M):
+            for varname, var in fsv:
                 i = len(self.varcuid_to_int)
-                self.varcuid_to_int[pyo.ComponentUID(var)] = i
+                self.varcuid_to_int[pyo.ComponentUID(var, context=M)] = i
+                self.int_to_FirstStageVarName[i] = varname
                 if var.is_binary() or var.is_integer():
                     self._binary_or_integer_fsv.add(i)
         #
-        # Setup int_to_FirstStageVar and int_to_FirstStageVarName
+        # Setup int_to_FirstStageVarName
         #
-        self.int_to_FirstStageVar[b] = {}
-        self.int_to_FirstStageVarName[b] = {}
-        for varname, var in self._first_stage_variables(M=M):
-            ndx = self.varcuid_to_int[pyo.ComponentUID(var)]
-            self.int_to_FirstStageVar[b][ndx] = var
-            self.int_to_FirstStageVarName[b][ndx] = varname
+        self.int_to_FirstStageVar[b] = {
+            self.varcuid_to_int[pyo.ComponentUID(var, context=M)]: var for _, var in fsv
+        }
+
+    def set_bundles(self, bundles):
+        self.int_to_FirstStageVar = {}
+        self.int_to_FirstStageVarName = {}
+        self._model_cache = {}
+        StochasticProgram.set_bundles(self, bundles)
 
     def continuous_fsv(self):
         assert (
@@ -129,9 +133,9 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
             # Load the results into the model so the user can find them there
             M.solutions.load_from(results)
             if logger.isEnabledFor(logging.DEBUG):
-                print("-"*70)
+                print("-" * 70)
                 print("Solver Results")
-                print("-"*70)
+                print("-" * 70)
                 M.pprint()
                 M.display()
                 sys.stdout.flush()
@@ -179,10 +183,10 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 model_data = json.load(filename)
 
         if name in self.model_data:
-            logger.warning(
-                "Initializing model with name {name}, which already has been initialized!  This may be a bug in the setup of this StochasticProgram instance."
-            )
-
+            if name is not None:
+                logger.warning(
+                    f"Initializing model with name '{name}', which already has been initialized!  This may be a bug in the setup of this StochasticProgram instance."
+                )
         if model_data is not None:
             self.model_data[name] = model_data.get("data", {})
             self.scenario_data[name] = {
@@ -230,7 +234,10 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 # bundles may include multiple fidelities, and they may include multiple replications of
                 # different scenarios.
                 #
-                obj = sum(self.bundles[b].probability * self._model_cache[b].obj.expr for b in self.bundles)
+                obj = sum(
+                    self.bundles[b].probability * self._model_cache[b].obj.expr
+                    for b in self.bundles
+                )
 
             else:
                 #
@@ -240,27 +247,35 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
                 # Setup single-scenario bundles with the default model
                 _bundles = self.bundles
-                self.initialize_bundles(models=[self.default_model], scheme="single_scenario")
+                self.initialize_bundles(
+                    models=[self.default_model], scheme="single_scenario"
+                )
 
                 obj_expr = {}
                 for b in self.bundles:
-                    M = self.create_subproblem(b, cached=False)
+                    s = self.bundles[b].scenarios
+                    M = self._create_scenario(s[0])
+                    self._initialize_cuid_map(M=M, b=b)
                     obj_expr[b] = find_objective(M).expr
-                obj = sum(self.bundles[b].probability * obj_expr[b] for b in self.bundles)
+                obj = sum(
+                    self.bundles[b].probability * obj_expr[b] for b in self.bundles
+                )
 
                 # Setup single-scenario bundles with the default model
-                _bundles = self.bundles
+                self.set_bundles(_bundles)
 
             repn = pyomo.repn.generate_standard_repn(obj, quadratic=False)
 
             for index in self.varcuid_to_int.values():
                 self.int_to_ObjectiveCoef[index] = 0
 
-            for i,var in enumerate(repn.linear_vars):
+            for i, var in enumerate(repn.linear_vars):
                 cuid = pyo.ComponentUID(var)
                 if cuid in self.varcuid_to_int:
-                    self.int_to_ObjectiveCoef[ self.varcuid_to_int[cuid] ] = repn.linear_coefs[i]
-        
+                    self.int_to_ObjectiveCoef[self.varcuid_to_int[cuid]] = (
+                        repn.linear_coefs[i]
+                    )
+
         return self.int_to_ObjectiveCoef[v]
 
     def create_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):

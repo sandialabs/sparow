@@ -43,6 +43,7 @@ class TestPHPyomo(object):
         assert sp1.varcuid_to_int == {pyo.ComponentUID("x"): 0}
         assert list(sp1.int_to_FirstStageVar["1"].keys()) == [0]
         assert sp1.shared_variables() == [0]
+        assert sp1.get_objective_coef(0) == 0.5  # x
 
     def test_simple2(self, sp2):
         M = sp2.create_subproblem("1")
@@ -53,6 +54,8 @@ class TestPHPyomo(object):
         }
         assert list(sorted(sp2.int_to_FirstStageVar["1"].keys())) == [0, 1]
         assert sp2.shared_variables() == [0, 1]
+        assert sp2.get_objective_coef(0) == 0  # y
+        assert sp2.get_objective_coef(1) == 0.5  # x
 
     def test_continuous1(self, sp1):
         M = sp1.create_subproblem("1")
