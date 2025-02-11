@@ -100,14 +100,14 @@ class StochasticProgram(object):
         # Return a dictionary mapping variable name to variable value, for all
         # first stage variables
         return {
-            self.get_variable_name(b, v): self.get_variable_value(b, v)
+            self.get_variable_name(v): self.get_variable_value(b, v)
             for v in self.shared_variables()
         }
 
     def get_variable_value(self, b, v):
         pass
 
-    def get_variable_name(self, b, v):
+    def get_variable_name(self, v):
         pass
 
     def fix_variable(self, b, v, value):
@@ -159,7 +159,9 @@ class StochasticProgram(object):
         obj = sum(self.bundles[b].probability * obj_value[b] for b in self.bundles)
         # Just need to get one of the bundles to collect the variables
 
-        return munch.Munch(feasible=True, objective=obj, variables=self.get_variables())
+        retval = munch.Munch(feasible=True, objective=obj, variables=self.get_variables())
 
         # Reset the bundles
         self.set_bundles(_bundles)
+
+        return retval

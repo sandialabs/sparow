@@ -70,7 +70,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
 
     def set_bundles(self, bundles):
         self.int_to_FirstStageVar = {}
-        self.int_to_FirstStageVarName = {}
+        #self.int_to_FirstStageVarName = {}
         self._model_cache = {}
         StochasticProgram.set_bundles(self, bundles)
 
@@ -91,11 +91,11 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
     def get_variable_value(self, b, v):
         return pyo.value(self.int_to_FirstStageVar[b][v])
 
-    def get_variable_name(self, b, v):
+    def get_variable_name(self, v):
         assert (
-            b in self.int_to_FirstStageVarName
-        ), f"Missing keys: {b} not in {self.int_to_FirstStageVarName}"
-        return self.int_to_FirstStageVarName[b][v]
+            v in self.int_to_FirstStageVarName
+        ), f"Missing keys: {v} not in {self.int_to_FirstStageVarName}"
+        return self.int_to_FirstStageVarName[v]
 
     def shared_variables(self):
         return list(range(len(self.varcuid_to_int)))
@@ -280,7 +280,6 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
     def create_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
         scenarios = self.bundles[b].scenarios
-
         if cached and b in self._model_cache:
             M = self._model_cache[b]
 

@@ -247,7 +247,7 @@ class ProgressiveHedgingSolver(object):
                 xbar[x] = 0.0
                 for b in sp.bundles:
                     logger.debug(
-                        f"Variable: {x} {b} {sp.get_variable_name(b,x)} {sp.get_variable_value(b, x)}"
+                        f"Variable: {x} {b} {sp.get_variable_name(x)} {sp.get_variable_value(b, x)}"
                     )
                     xbar[x] += sp.bundles[b].probability * sp.get_variable_value(b, x)
             logger.debug(f"xbar = {xbar}")
@@ -293,8 +293,6 @@ class ProgressiveHedgingSolver(object):
                 termination_condition = f"Termination: max_iterations ({iteration} == {self.max_iterations})"
                 logger.info(termination_condition)
                 break
-
-            self.update_rho(iteration)
 
         end_time = datetime.datetime.now()
 
@@ -343,18 +341,14 @@ class ProgressiveHedgingSolver(object):
         logger.info("")
 
     def archive_solution(self, *, sp, xbar=None, w=None, **kwds):
-        b = next(iter(sp.bundles))
+        #b = next(iter(sp.bundles))
         variables = [
             solnpool.Variable(
                 value=val,
                 index=i,
-                name=sp.get_variable_name(b, i),
+                name=sp.get_variable_name(i),
                 suffix=munch.Munch(w={k: v[i] for k, v in w.items()}),
             )
             for i, val in xbar.items()
         ]
         return self.solutions.add(variables=variables, **kwds)
-
-    def update_rho(self, iteration):
-        # TODO HERE
-        pass
