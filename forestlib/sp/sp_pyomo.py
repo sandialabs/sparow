@@ -225,44 +225,32 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
     def get_objective_coef(self, v, cached=False):
         if len(self.int_to_ObjectiveCoef) == 0:
-            if cached:
-                #
-                # If we are using the bundle cache, then we generate an expression that is the
-                # weighted sum of the bundle objectives.
-                #
-                # Note that this may not be the same as the objective in the extensive form, since
-                # bundles may include multiple fidelities, and they may include multiple replications of
-                # different scenarios.
-                #
-                obj = sum(
-                    self.bundles[b].probability * self._model_cache[b].obj.expr
-                    for b in self.bundles
-                )
+            #
+            # Here we build the extensive form for the 'default' model and keep its objective expression.
+            # This logic mimics the logic of StochasticProgram.evaluate()
+            #
 
-            else:
-                #
-                # Here we build the extensive form for the 'default' model and keep its objective expression.
-                # This logic mimics the logic of StochasticProgram.evaluate()
-                #
+            # Setup single-scenario bundles with the default model
+            _int_toFirstStageVar = self.int_to_FirstStageVar
+            _model_cache = self._model_cache
+            _bundles = self.bundles
+            #stack.append(StochasticProgram.set_bundles(self, self.bundles))
 
-                # Setup single-scenario bundles with the default model
-                _bundles = self.bundles
-                self.initialize_bundles(
-                    models=[self.default_model], scheme="single_scenario"
-                )
+            self.initialize_bundles(
+                models=[self.default_model], scheme="single_scenario"
+            )
 
-                obj_expr = {}
-                for b in self.bundles:
-                    s = self.bundles[b].scenarios
-                    M = self._create_scenario(s[0])
-                    self._initialize_cuid_map(M=M, b=b)
-                    obj_expr[b] = find_objective(M).expr
-                obj = sum(
-                    self.bundles[b].probability * obj_expr[b] for b in self.bundles
-                )
-
-                # Setup single-scenario bundles with the default model
-                self.set_bundles(_bundles)
+            obj_expr = {}
+            _models = {}
+            for b in self.bundles:
+                s = self.bundles[b].scenarios
+                M = self._create_scenario(s[0])
+                _models[b] = M
+                self._initialize_cuid_map(M=M, b=b)
+                obj_expr[b] = find_objective(M).expr
+            obj = sum(
+                self.bundles[b].probability * obj_expr[b] for b in self.bundles
+            )
 
             repn = pyomo.repn.generate_standard_repn(obj, quadratic=False)
 
@@ -275,6 +263,11 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                     self.int_to_ObjectiveCoef[self.varcuid_to_int[cuid]] = (
                         repn.linear_coefs[i]
                     )
+
+            # Setup single-scenario bundles with the default model
+            self.bundles = _bundles
+            self._model_cache = _model_cache
+            self.int_to_FirstStageVar = _int_toFirstStageVar
 
         return self.int_to_ObjectiveCoef[v]
 
@@ -373,9 +366,8 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             obj = (
                 obj
                 + sum(params.w[i] * x for i, x in self.int_to_FirstStageVar[b].items())
-                + (params.rho / 2.0)
-                * sum(
-                    (x - params.x_bar[i]) ** 2
+                + sum(
+                    ((params.rho[i] / 2.0)*(x - params.x_bar[i])) ** 2
                     for i, x in self.int_to_FirstStageVar[b].items()
                 )
             )

@@ -15,7 +15,7 @@ random.seed(923874938740938740)
 # Global data for the HF model:
 #
 class GlobalData:
-    num_plots = 1
+    num_plots = 20
     num_scens = 3  ### should be >= 3
 
 
@@ -689,8 +689,8 @@ def LF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
         name="LF", model_data=model_data["LF"], model_builder=LF_model_builder
     )
 
-    solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters)
+    solver = ProgressiveHedgingSolver(sp)
+    solver.set_options(solver="gurobi", loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters, rho_updates=True)
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
@@ -706,8 +706,8 @@ def HF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
         name="HF", model_data=model_data["HF"], model_builder=model_builder
     )
 
-    solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters)
+    solver = ProgressiveHedgingSolver(sp)
+    solver.set_options(solver="gurobi", loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters, rho_updates=True)
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
@@ -738,8 +738,8 @@ def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     )
     sp.save_bundles(f"MF_PH_bundle_{bundle_num}.json", indent=4, sort_keys=True)
 
-    solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters)
+    solver = ProgressiveHedgingSolver(sp)
+    solver.set_options(solver="gurobi", loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters, rho_updates=True)
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")

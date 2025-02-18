@@ -123,8 +123,8 @@ def HF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
         name="HF", model_data=model_data["HF"], model_builder=HF_builder
     )
 
-    solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters)
+    solver = ProgressiveHedgingSolver(sp)
+    solver.set_options(solver="gurobi", loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters, rho_updates=True)
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
@@ -140,8 +140,8 @@ def LF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
         name="LF", model_data=model_data["LF"], model_builder=LF_builder
     )
 
-    solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.25, loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters)
+    solver = ProgressiveHedgingSolver(sp)
+    solver.set_options(solver="gurobi", loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters, rho_updates=True)
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
@@ -173,8 +173,8 @@ def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     #pprint.pprint(sp.get_bundles())
     sp.save_bundles(f"MF_PH_bundle_{bundle_num}.json", indent=4, sort_keys=True)
     
-    solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.25, loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters)
+    solver = ProgressiveHedgingSolver(sp)
+    solver.set_options(solver="gurobi", loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters, rho_updates=True)
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
