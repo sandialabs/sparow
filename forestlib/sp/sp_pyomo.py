@@ -70,7 +70,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
 
     def set_bundles(self, bundles):
         self.int_to_FirstStageVar = {}
-        #self.int_to_FirstStageVarName = {}
+        # self.int_to_FirstStageVarName = {}
         self._model_cache = {}
         StochasticProgram.set_bundles(self, bundles)
 
@@ -234,7 +234,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             _int_toFirstStageVar = self.int_to_FirstStageVar
             _model_cache = self._model_cache
             _bundles = self.bundles
-            #stack.append(StochasticProgram.set_bundles(self, self.bundles))
+            # stack.append(StochasticProgram.set_bundles(self, self.bundles))
 
             self.initialize_bundles(
                 models=[self.default_model], scheme="single_scenario"
@@ -248,9 +248,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 _models[b] = M
                 self._initialize_cuid_map(M=M, b=b)
                 obj_expr[b] = find_objective(M).expr
-            obj = sum(
-                self.bundles[b].probability * obj_expr[b] for b in self.bundles
-            )
+            obj = sum(self.bundles[b].probability * obj_expr[b] for b in self.bundles)
 
             repn = pyomo.repn.generate_standard_repn(obj, quadratic=False)
 
@@ -367,7 +365,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 obj
                 + sum(params.w[i] * x for i, x in self.int_to_FirstStageVar[b].items())
                 + sum(
-                    ((params.rho[i] / 2.0)*(x - params.x_bar[i])) ** 2
+                    ((params.rho[i] / 2.0) * (x - params.x_bar[i])) ** 2
                     for i, x in self.int_to_FirstStageVar[b].items()
                 )
             )

@@ -1,6 +1,7 @@
 import json
 import munch
 import random
+import numpy as np
 
 """
 bundle is a dictionary of dictionaries
@@ -42,6 +43,47 @@ def scen_name(model, scenario):
 
 def scen_key(model, scenario):
     return (model, scenario)
+
+
+def similar_partitions(data, model_weight=None, models=None, bundle_args=None):
+    """
+    - ONLY SUPPORTED FOR 2 FIDELITIES
+    - DOESN'T CURRENTLY SUPPORT MODEL WEIGHTS
+    - bundles can be different sizes
+    """
+    model0 = models[0]
+    model1 = models[1]
+    HFscenarios = list(data[model0].keys())
+    LFscenarios = list(data[model1].keys())
+
+    LFmap = (
+        {}
+    )  # map each LF scenario to closest HF scenario using 1-norm of demand difference
+    for ls in LFscenarios:
+        demand_diffs = [
+            sum(abs(data[model0][HFkey]["Demand"] - data[model1][ls]["Demand"])
+            for HFkey in HFscenarios)
+        ]
+        LFmap[ls] = HFscenarios[demand_diffs.index(min(demand_diffs))]
+
+    bundle = {}
+    for hs in HFscenarios:
+        bundle[f"{model0}_{hs}"] = dict(
+            scenarios={scen_key(model0, hs): model_weight[model0]/sum(model_weight.values())},
+            Probability=data[model0][hs]["Probability"]
+        )
+        ls_keys = [ls for ls, hs_value in LFmap.items() if hs_value == hs]
+        for ls in ls_keys:
+            bundle[f"{model0}_{hs}"]["scenarios"][scen_key(model1, ls)] = data[model1][ls]["Probability"]
+        prob_norm = sum(bundle[f"{model0}_{hs}"]["scenarios"].values())
+        for b_key in bundle[f"{model0}_{hs}"]["scenarios"].keys():
+            bundle[f"{model0}_{hs}"]["scenarios"][b_key] *= (1/prob_norm)
+
+    return bundle
+
+
+def similar_groups(data, model_weight=None, models=None, bundle_args=None):
+    pass
 
 
 def mf_paired(data, model_weight, models=None, bundle_args=None):
@@ -456,6 +498,7 @@ scheme = {
     "mf_random_nested": mf_random_nested,
     "mf_random": mf_random,
     "mf_ordered": mf_ordered,
+    "similar_partitions": similar_partitions,
 }
 
 

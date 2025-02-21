@@ -8,6 +8,7 @@ from forestlib.sp.scentobund import (
     mf_paired,
     mf_random_nested,
     mf_random,
+    similar_partitions,
 )
 
 
@@ -164,6 +165,21 @@ def imbalanced_data():
 
 
 class TestBundleFunctions(object):
+
+    def test_similar_partitions(self, MF_data):
+        assert similar_partitions(
+            MF_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["HF", "LF"]
+        ) == {
+            "HF_scen_1": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.3333333333333333,
+                    ("LF", "scen_3"): 0.13333333333333333,
+                    ("LF", "scen_2"): 0.5333333333333333,
+                },
+                "Probability": 0.4,
+            },
+            "HF_scen_0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.6},
+        }
 
     def test_mf_paired(self, MFpaired_data, imbalanced_data):
         assert mf_paired(

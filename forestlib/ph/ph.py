@@ -63,7 +63,7 @@ def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
 
 class ProgressiveHedgingSolver(object):
 
-    def __init__(self,sp):
+    def __init__(self, sp):
         self.rho = {}
         self.cached_model_generation = True
         self.max_iterations = 100
@@ -158,7 +158,7 @@ class ProgressiveHedgingSolver(object):
             sp_metadata = self.solutions.add_pool("PH Iterations", policy="keep_latest")
         sp_metadata.solver = "PH Iteration Results"
         sp_metadata.solver_options = dict(
-            #rho=self.rho,
+            # rho=self.rho,
             cached_model_generation=self.cached_model_generation,
             max_iterations=self.max_iterations,
             convergence_tolerance=self.convergence_tolerance,
@@ -216,7 +216,13 @@ class ProgressiveHedgingSolver(object):
         latest_soln = self.archive_solution(
             sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb
         )
-        self.log_iteration(iteration=iteration, obj_lb=obj_lb, time=datetime.datetime.now(), xbar=xbar, rho=self.rho)
+        self.log_iteration(
+            iteration=iteration,
+            obj_lb=obj_lb,
+            time=datetime.datetime.now(),
+            xbar=xbar,
+            rho=self.rho,
+        )
 
         while True:
             iteration += 1
@@ -287,7 +293,11 @@ class ProgressiveHedgingSolver(object):
             if tmp is not None:
                 latest_soln = tmp
             self.log_iteration(
-                iteration=iteration, obj_lb=obj_lb, time=datetime.datetime.now(), xbar=xbar, rho=self.rho
+                iteration=iteration,
+                obj_lb=obj_lb,
+                time=datetime.datetime.now(),
+                xbar=xbar,
+                rho=self.rho,
             )
 
             # Step 10
@@ -306,7 +316,7 @@ class ProgressiveHedgingSolver(object):
         sp_metadata = self.solutions.metadata
         sp_metadata.iterations = iteration
         sp_metadata.termination_condition = termination_condition
-        sp_metadata.start_time = str(start_time) 
+        sp_metadata.start_time = str(start_time)
 
         logger.info("")
         logger.info("-" * 70)
@@ -348,7 +358,7 @@ class ProgressiveHedgingSolver(object):
         logger.info("")
 
     def archive_solution(self, *, sp, xbar=None, w=None, **kwds):
-        #b = next(iter(sp.bundles))
+        # b = next(iter(sp.bundles))
         variables = [
             solnpool.Variable(
                 value=val,
@@ -365,10 +375,19 @@ class ProgressiveHedgingSolver(object):
         if self.rho_updates == True:
             for x in sfs_variables:
                 if abs(sp.get_objective_coef(x)) > 0:
-                    self.rho[x] = abs(sp.get_objective_coef(x))/max(sum(sp.bundles[b].probability * abs(sp.get_variable_value(b,x) - xbar[x]) for b in sp.bundles),1)
+                    self.rho[x] = abs(sp.get_objective_coef(x)) / max(
+                        sum(
+                            sp.bundles[b].probability
+                            * abs(sp.get_variable_value(b, x) - xbar[x])
+                            for b in sp.bundles
+                        ),
+                        1,
+                    )
                 else:
                     self.rho[x] = 1.5
-                    logger.warning(f"Variable objective coefficient is 0; rho{x} set to 1.5")
+                    logger.warning(
+                        f"Variable objective coefficient is 0; rho{x} set to 1.5"
+                    )
         else:
             for x in sfs_variables:
                 self.rho[x] = 1.5
