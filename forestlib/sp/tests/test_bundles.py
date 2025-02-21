@@ -167,18 +167,30 @@ def imbalanced_data():
 class TestBundleFunctions(object):
 
     def test_similar_partitions(self, MF_data):
-        assert similar_partitions(
-            MF_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["HF", "LF"]
-        ) == {
+        assert similar_partitions(MF_data, models=["HF", "LF"]) == {
             "HF_scen_1": {
                 "scenarios": {
-                    ("HF", "scen_1"): 0.3333333333333333,
-                    ("LF", "scen_3"): 0.13333333333333333,
-                    ("LF", "scen_2"): 0.5333333333333333,
+                    ("HF", "scen_1"): 0.2857142857142857,
+                    ("LF", "scen_3"): 0.14285714285714285,
+                    ("LF", "scen_2"): 0.5714285714285714,
                 },
                 "Probability": 0.4,
             },
             "HF_scen_0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.6},
+        }
+
+        assert similar_partitions(
+            MF_data, model_weight={"HF": 3, "LF": 1}, models=["HF", "LF"]
+        ) == {
+            "HF_scen_1": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.6000000000000001,
+                    ("LF", "scen_3"): 0.2,
+                    ("LF", "scen_2"): 0.2,
+                },
+                "Probability": 0.5,
+            },
+            "HF_scen_0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.5},
         }
 
     def test_mf_paired(self, MFpaired_data, imbalanced_data):
