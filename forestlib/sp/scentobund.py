@@ -47,26 +47,29 @@ def scen_key(model, scenario):
 
 def similar_partitions(data, model_weight=None, models=None, bundle_args=None):
     """
-    - ONLY SUPPORTED FOR 2 FIDELITIES
     - USING MODEL WEIGHTS WILL IGNORE THE SCENARIO PROBABILITIES
     - bundles can be different sizes
     """
-    model0 = models[0]
-    model1 = models[1]
+    assert len(models) > 1, "Expecting multiple models for similar_partitions"
+
+    model0 = models[0]  # the first model in models is assumed to be the HF model
     HFscenarios = list(data[model0].keys())
-    LFscenarios = list(data[model1].keys())
+    LFscenarios = {}    # all other models are LF
+    for model in models[1:]:
+        LFscenarios[model] = list(data[model].keys())
 
     LFmap = (
         {}
     )  # map each LF scenario to closest HF scenario using 1-norm of demand difference
-    for ls in LFscenarios:
-        demand_diffs = [
-            sum(
-                abs(data[model0][HFkey]["Demand"] - data[model1][ls]["Demand"])
-                for HFkey in HFscenarios
-            )
-        ]
-        LFmap[ls] = HFscenarios[demand_diffs.index(min(demand_diffs))]
+    for model in models[1:]:
+        for ls in LFscenarios[model]:
+            demand_diffs = [
+                sum(
+                    abs(data[model0][HFkey]["Demand"] - data[model][ls]["Demand"])
+                    for HFkey in HFscenarios
+                )
+            ]
+            LFmap[scen_key(model, ls)] = HFscenarios[demand_diffs.index(min(demand_diffs))]
 
     bundle = {}
     for hs in HFscenarios:
@@ -80,16 +83,16 @@ def similar_partitions(data, model_weight=None, models=None, bundle_args=None):
                 scenarios={scen_key(model0, hs): data[model0][hs]["Probability"]},
                 Probability=data[model0][hs]["Probability"],
             )
-        ls_keys = [ls for ls, hs_value in LFmap.items() if hs_value == hs]
+        ls_keys = [scen_key(model, ls) for (model, ls), hs_value in LFmap.items() if hs_value == hs]
         for ls in ls_keys:
             if model_weight:
-                bundle[f"{model0}_{hs}"]["scenarios"][scen_key(model1, ls)] = (
-                    model_weight[model1]
+                bundle[f"{model0}_{hs}"]["scenarios"][scen_key(ls[0], ls[1])] = (
+                    model_weight[ls[0]]
                 )
             else:
-                bundle[f"{model0}_{hs}"]["scenarios"][scen_key(model1, ls)] = data[
-                    model1
-                ][ls]["Probability"]
+                bundle[f"{model0}_{hs}"]["scenarios"][scen_key(ls[0], ls[1])] = data[
+                    ls[0]
+                ][ls[1]]["Probability"]
         norm_factor = sum(bundle[f"{model0}_{hs}"]["scenarios"].values())
         for b_key in bundle[f"{model0}_{hs}"]["scenarios"].keys():
             bundle[f"{model0}_{hs}"]["scenarios"][b_key] *= 1 / norm_factor
