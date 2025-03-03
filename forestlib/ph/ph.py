@@ -119,7 +119,7 @@ class ProgressiveHedgingSolver(object):
             self.solution_manager = solution_manager
 
         if loglevel is not None:
-            if loglevel == "DEBUG":
+            if loglevel == "DEBUG" or loglevel == "VERBOSE":
                 forestlib.logs.use_debugging_formatter()
             logger.setLevel(loglevel)
 
@@ -208,9 +208,10 @@ class ProgressiveHedgingSolver(object):
         # Step 4.1
         iteration = 0
         termination_condition = "Termination: unknown"
-        latest_soln = self.archive_solution(
-            sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb
-        )
+        if self.finalize_all_xbar:
+            latest_soln = self.archive_solution(
+                sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb
+            )
         self.log_iteration(iteration=iteration, obj_lb=obj_lb, time=datetime.datetime.now(), xbar=xbar, rho=self.rho)
 
         while True:
@@ -274,9 +275,12 @@ class ProgressiveHedgingSolver(object):
             logger.info(f"g = {g}")
 
             # Step 9.1
-            tmp = self.archive_solution(
-                sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb, g=g
-            )
+            if self.finalize_all_xbar:
+                tmp = self.archive_solution(
+                    sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb, g=g
+                )
+            else:
+                tmp=None
             if tmp is not None:
                 latest_soln = tmp
             self.log_iteration(
@@ -295,7 +299,11 @@ class ProgressiveHedgingSolver(object):
                 break
 
             self.update_rho(iteration)
-
+        
+        if not self.finalize_all_xbar:
+            latest_soln = self.archive_solution(
+                sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb, g=g
+                )
         end_time = datetime.datetime.now()
 
         sp_metadata = self.solutions.metadata

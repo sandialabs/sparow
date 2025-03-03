@@ -10,6 +10,7 @@ import pyomo.util.vars_from_expressions as vfe
 
 import forestlib.logs
 from .sp import StochasticProgram
+from IPython import embed
 
 logger = forestlib.logs.logger
 
@@ -135,11 +136,18 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
                 sys.stdout.flush()
 
             # Return the value of the 'first' objective
-            return munch.Munch(
-                obj_value=list(results.Solution[0].Objective.values())[0]["Value"],
+         
+            if self.solver=='ipopt':
+                return munch.Munch(
+                obj_value=pyo.value(M.obj),
                 termination_condition=results.solver.termination_condition,
-                status=results.solver.status,
-            )
+                status=results.solver.status,)
+            else:
+                return munch.Munch(
+                    obj_value=list(results.Solution[0].Objective.values())[0]["Value"],
+                    termination_condition=results.solver.termination_condition,
+                    status=results.solver.status,
+                )
 
 
 class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
