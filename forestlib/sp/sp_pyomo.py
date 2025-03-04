@@ -275,9 +275,11 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             M = self._model_cache[b]
 
             if rho is None:
-                M.forestlib_params.rho.set_value(0.0)
+                for i, x in self.int_to_FirstStageVar[b].items():
+                    M.forestlib_params.rho[i].set_value(0.0)
             else:
-                M.forestlib_params.rho.set_value(rho)
+                for i, x in self.int_to_FirstStageVar[b].items():
+                    M.forestlib_params.rho[i].set_value(rho[i])
 
             if w is None:
                 for i in M.forestlib_params.w:
@@ -349,7 +351,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             params = pyo.Block()
             A = list(self.int_to_FirstStageVar[b].keys())
             assert len(A) > 0, f"ERROR: b {b}, {self.int_to_FirstStageVar}"
-            params.rho = pyo.Param(mutable=True, default=0.0, domain=pyo.Reals)
+            params.rho = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
             params.w = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
             params.x_bar = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
             EF_model.forestlib_params = params
@@ -466,9 +468,8 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
             obj = (
                 obj
                 + sum(w[i] * x for i, x in self.int_to_FirstStageVar[b].items())
-                + (rho / 2.0)
-                * sum(
-                    (x - x_bar[i]) ** 2 for i, x in self.int_to_FirstStageVar[b].items()
+                + sum(
+                    (rho[i] / 2.0)*((x - x_bar[i]) ** 2) for i, x in self.int_to_FirstStageVar[b].items()
                 )
             )
         EF_model.obj = pyo.Objective(expr=obj)
