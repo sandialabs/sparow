@@ -112,6 +112,31 @@ def LF_EF():
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
 
+def dist_map(data, models):
+    model0 = models[0]
+    
+    HFscenarios = list(data[model0].keys())
+    LFscenarios = {}  # all other models are LF
+    for model in models[1:]:
+        LFscenarios[model] = list(data[model].keys())
+
+    HFdemands = {HFkey: data[model0][HFkey]["d"] for HFkey in HFscenarios}
+    LFdemands = {ls: data[model][ls]["d"] for ls in LFscenarios[model] for model in models[1:]}
+    #LFdemands = {model: {ls: data[model][ls]["d"] for ls in LFscenarios[model]} for model in models[1:]}
+
+    # map each LF scenario to closest HF scenario using 1-norm of demand difference
+    demand_diffs = {}
+    for i in HFdemands: 
+        if type(HFdemands[i]) is list:
+            for j in LFdemands:
+                demand_diffs[(i,j)] = sum(abs(HFdemands[i][ind] - LFdemands[j][ind]) for ind in range(len(HFdemands[i])))
+        else:
+            for j in LFdemands:
+                demand_diffs[(i,j)] = abs(HFdemands[i] - LFdemands[j])
+
+    ## TODO: doesn't currently handle more than 1 LF model
+
+    return demand_diffs
 
 def HF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     print("-" * 60)
@@ -165,7 +190,8 @@ def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
 
     bundle_num = 0
     sp.initialize_bundles(
-        scheme="mf_random_nested",
+        scheme="similar_partitions",
+        distance_function=dist_map,
         LF=2,
         seed=1234567890,
         model_weight={"HF": 2.0, "LF": 1.0},

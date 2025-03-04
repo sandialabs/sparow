@@ -1,14 +1,36 @@
 import json
 import munch
 import random
-import numpy as np
+import types
 
 """
-bundle is a dictionary of dictionaries
-    - keys are names of bundles
-    - for each dictionary in bundle, keys are 'IDs' (i.e., which scenarios are in the bundle) and 'Probability'
+* specify which bundling scheme (function) is used via "bundle_scheme" in sp.py
 
-specify which bundling scheme (function) is used via "bundle_scheme" in sp.py
+* bundle is a dictionary of dictionaries
+    - keys are names of bundles
+    - each key corresponds to a dictionary, with keys:
+        - 'scenarios' (i.e., which scenarios are in the bundle)
+            - 'scenarios' is itself a dictionary containing keys: (model fidelity, scenario name) pairs,
+               and values: model fidelity weight (if model_weight=True) or scenario probability otherwise
+        - 'Probability' (the bundle probability)
+
+* example of a multi-fidelity bundle:
+    {
+    "bundle_0": {
+                "scenarios": {
+                    ("HF", "scen_0"): 0.6,
+                    ("LF", "scen_2"): 0.25,
+                    ("LF", "scen_3"): 0.15,
+                },
+                "Probability": 0.4,
+            },
+    "bundle_1": {"scenarios": {
+                    ("HF", "scen_1"): 0.7
+                    ("LF", "scen_4"): 0.3,
+                }, 
+                "Probability": 0.6
+            },
+    }
 """
 
 
@@ -32,6 +54,8 @@ def JSencoded(item, dict_key=False):
         return {JSencoded(key, True): JSencoded(value) for key, value in item.items()}
     elif isinstance(item, set):
         return list(item)
+    elif type(item) is types.FunctionType:
+        return None
     return item
 
 
@@ -45,31 +69,38 @@ def scen_key(model, scenario):
     return (model, scenario)
 
 
+"""
+******************* MULTI-FIDELITY SCHEMES *******************
+"""
+
+
 def similar_partitions(data, model_weight=None, models=None, bundle_args=None):
     """
     - USING MODEL WEIGHTS WILL IGNORE THE SCENARIO PROBABILITIES
     - bundles can be different sizes
+    - assumes LF and HF scenarios are the same length
     """
     assert len(models) > 1, "Expecting multiple models for similar_partitions"
 
+    distance_function = bundle_args['distance_function']
+
     model0 = models[0]  # the first model in models is assumed to be the HF model
     HFscenarios = list(data[model0].keys())
-    LFscenarios = {}    # all other models are LF
+    LFscenarios = {}  # all other models are LF
     for model in models[1:]:
         LFscenarios[model] = list(data[model].keys())
 
-    LFmap = (
-        {}
-    )  # map each LF scenario to closest HF scenario using 1-norm of demand difference
+    demand_diffs = distance_function(data, models)
+    HFmap = {}
     for model in models[1:]:
-        for ls in LFscenarios[model]:
-            demand_diffs = [
-                sum(
-                    abs(data[model0][HFkey]["Demand"] - data[model][ls]["Demand"])
-                    for HFkey in HFscenarios
-                )
-            ]
-            LFmap[scen_key(model, ls)] = HFscenarios[demand_diffs.index(min(demand_diffs))]
+        for hs in HFscenarios:
+            min_key = None
+            min_value = 1719238734727643452342
+            for ls in LFscenarios[model]:
+                if demand_diffs[(hs,ls)] < min_value and demand_diffs[(hs,ls)] != 0:
+                    min_key = ls
+                    min_value = demand_diffs[(hs,ls)]
+            HFmap[hs] = [scen_key(model, min_key)]
 
     bundle = {}
     for hs in HFscenarios:
@@ -83,8 +114,13 @@ def similar_partitions(data, model_weight=None, models=None, bundle_args=None):
                 scenarios={scen_key(model0, hs): data[model0][hs]["Probability"]},
                 Probability=data[model0][hs]["Probability"],
             )
-        ls_keys = [scen_key(model, ls) for (model, ls), hs_value in LFmap.items() if hs_value == hs]
-        for ls in ls_keys:
+        #ls_keys = [
+        #    scen_key(model, ls)
+        #    for (model, ls), hs_value in HFmap.items()
+        #    if hs_value == hs
+        #]
+        #for ls in ls_keys:
+        for ls in HFmap[hs]:
             if model_weight:
                 bundle[f"{model0}_{hs}"]["scenarios"][scen_key(ls[0], ls[1])] = (
                     model_weight[ls[0]]
@@ -99,8 +135,11 @@ def similar_partitions(data, model_weight=None, models=None, bundle_args=None):
 
     return bundle
 
+def dissimilar_partitions(data, distance_function, model_weight=None, models=None, bundle_args=None):
+    pass
 
-def similar_groups(data, model_weight=None, models=None, bundle_args=None):
+
+def similar_cover(data, model_weight=None, models=None, bundle_args=None):
     pass
 
 
@@ -270,23 +309,23 @@ def mf_random(data, model_weight, models, bundle_args=None):
 
 # ordered=False will randomize; default is True.
 # assumes all scenario probs within each fidelity sum to 1!!!
-def mf_ordered(data, model_weight, models=None, bundle_args=None):
+def mf_ordered(data, model_weight=None, models=None, bundle_args=None):
     """
     Scenarios are paired according to their models
     """
     if models is None:
         models = list(data.keys())
-    assert len(models) > 1, "Expecting multiple models for mf_paired"
+    assert len(models) > 1, "Expecting multiple models for mf_ordered"
 
     if bundle_args is None:
-        bundle_args = {"paired": True}
+        bundle_args = {"ordered": True}
 
     # keys are model names, and values are how many scenarios for that model
     counts = {model: len(data[model]) for model in models}
 
     bundle = {}
 
-    if bundle_args.get("ordered", False):
+    if bundle_args.get("ordered", True):
         #
         # scenarios from each model are paired by order they appear in scenario list
         #
@@ -321,6 +360,27 @@ def mf_ordered(data, model_weight, models=None, bundle_args=None):
     # TODO: add random method
 
     return bundle
+
+
+def bundle_by_fidelity(data, model_weight, models=None, bundle_args=None):
+    """
+    Scenarios are bundled according to their fidelities
+    """
+    if models is None:
+        models = list(data.keys())
+
+    bundle = {}
+    for fid in models:
+        bundle[fid] = single_bundle(data, model_weight, models=[fid])["bundle"]
+        # each bundle assumed to have same probability
+        bundle[fid]["Probability"] = 1.0 / len(models)
+
+    return bundle
+
+
+"""
+******************* SINGLE-FIDELITY SCHEMES *******************
+"""
 
 
 def single_scenario(data, model_weight, models=None, bundle_args=None):
@@ -398,22 +458,6 @@ def single_bundle(data, model_weight, models=None, bundle_args=None):
                 scenarios[scen_key(model, s)] = 1.0 / total
 
     bundle = dict(bundle=dict(scenarios=scenarios, Probability=1.0))
-
-    return bundle
-
-
-def bundle_by_fidelity(data, model_weight, models=None, bundle_args=None):
-    """
-    Scenarios are bundled according to their fidelities
-    """
-    if models is None:
-        models = list(data.keys())
-
-    bundle = {}
-    for fid in models:
-        bundle[fid] = single_bundle(data, model_weight, models=[fid])["bundle"]
-        # each bundle assumed to have same probability
-        bundle[fid]["Probability"] = 1.0 / len(models)
 
     return bundle
 
@@ -517,6 +561,7 @@ scheme = {
     "mf_random": mf_random,
     "mf_ordered": mf_ordered,
     "similar_partitions": similar_partitions,
+    "dissimilar_partitions": dissimilar_partitions,
 }
 
 
