@@ -135,8 +135,66 @@ def similar_partitions(data, model_weight=None, models=None, bundle_args=None):
 
     return bundle
 
-def dissimilar_partitions(data, distance_function, model_weight=None, models=None, bundle_args=None):
-    pass
+def dissimilar_partitions(data, model_weight=None, models=None, bundle_args=None):
+    """
+    - USING MODEL WEIGHTS WILL IGNORE THE SCENARIO PROBABILITIES
+    - bundles can be different sizes
+    - assumes LF and HF scenarios are the same length
+    """
+    assert len(models) > 1, "Expecting multiple models for similar_partitions"
+
+    distance_function = bundle_args['distance_function']
+
+    model0 = models[0]  # the first model in models is assumed to be the HF model
+    HFscenarios = list(data[model0].keys())
+    LFscenarios = {}  # all other models are LF
+    for model in models[1:]:
+        LFscenarios[model] = list(data[model].keys())
+
+    demand_diffs = distance_function(data, models)
+    HFmap = {}
+    for model in models[1:]:
+        for hs in HFscenarios:
+            max_key = None
+            max_value = 0
+            for ls in LFscenarios[model]:
+                if demand_diffs[(hs,ls)] > max_value:
+                    max_key = ls
+                    max_value = demand_diffs[(hs,ls)]
+            HFmap[hs] = [scen_key(model, max_key)]
+
+    bundle = {}
+    for hs in HFscenarios:
+        if model_weight:
+            bundle[f"{model0}_{hs}"] = dict(
+                scenarios={scen_key(model0, hs): model_weight[model0]},
+                Probability=1 / len(HFscenarios),
+            )
+        else:
+            bundle[f"{model0}_{hs}"] = dict(
+                scenarios={scen_key(model0, hs): data[model0][hs]["Probability"]},
+                Probability=data[model0][hs]["Probability"],
+            )
+        #ls_keys = [
+        #    scen_key(model, ls)
+        #    for (model, ls), hs_value in HFmap.items()
+        #    if hs_value == hs
+        #]
+        #for ls in ls_keys:
+        for ls in HFmap[hs]:
+            if model_weight:
+                bundle[f"{model0}_{hs}"]["scenarios"][scen_key(ls[0], ls[1])] = (
+                    model_weight[ls[0]]
+                )
+            else:
+                bundle[f"{model0}_{hs}"]["scenarios"][scen_key(ls[0], ls[1])] = data[
+                    ls[0]
+                ][ls[1]]["Probability"]
+        norm_factor = sum(bundle[f"{model0}_{hs}"]["scenarios"].values())
+        for b_key in bundle[f"{model0}_{hs}"]["scenarios"].keys():
+            bundle[f"{model0}_{hs}"]["scenarios"][b_key] *= 1 / norm_factor
+
+    return bundle
 
 
 def similar_cover(data, model_weight=None, models=None, bundle_args=None):
