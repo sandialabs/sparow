@@ -76,6 +76,7 @@ class ProgressiveHedgingSolver(object):
         self.finalize_all_xbar = False
         self.solutions = None
         self.rho_updates = False
+        self.default_rho = None
 
     def set_options(
         self,
@@ -93,6 +94,7 @@ class ProgressiveHedgingSolver(object):
         finalize_all_xbar=None,
         solution_manager=None,
         rho_updates=False,
+        default_rho=None,
     ):
         #
         # Misc configuration
@@ -101,6 +103,8 @@ class ProgressiveHedgingSolver(object):
             self.rho = rho
         if rho_updates == True:
             self.rho_updates = rho_updates
+        if default_rho:
+            self.default_rho = default_rho
         if cached_model_generation is not None:
             self.cached_model_generation = cached_model_generation
         if max_iterations is not None:
@@ -384,10 +388,16 @@ class ProgressiveHedgingSolver(object):
                         1,
                     )
                 else:
-                    self.rho[x] = 1.5
-                    logger.warning(
-                        f"Variable objective coefficient is 0; rho{x} set to 1.5"
-                    )
+                    if self.default_rho:
+                        self.rho[x] = self.default_rho
+                    else:
+                        self.rho[x] = 1.5
+                        logger.warning(
+                            f"Variable objective coefficient is 0; rho{x} set to 1.5"
+                        )
         else:
             for x in sfs_variables:
-                self.rho[x] = 1.5
+                if self.default_rho:
+                    self.rho[x] = self.default_rho
+                else:
+                    self.rho[x] = 1.5

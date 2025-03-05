@@ -346,7 +346,7 @@ def mf_random(data, model_weight, models, bundle_args=None):
             random.shuffle(index)
             k = 0
             while k < min(N, n[model]):
-                s_ = scenario_keys[k]
+                s_ = scenario_keys[index[k]]
                 bundle_scen[b][scen_key(model, s_)] = model_weight[model]
                 k += 1
     #
