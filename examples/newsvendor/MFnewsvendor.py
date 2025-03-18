@@ -14,21 +14,21 @@ app_data = dict(c=1.0, b=1.5, h=0.1)
 model_data = {
     "LF": {
         "scenarios": [
-            {"ID": "1", "d": 15},
-            {"ID": "2", "d": 60},
-            {"ID": "3", "d": 72},
-            {"ID": "4", "d": 78},
-            {"ID": "5", "d": 82},
+            {"ID": "1", "d": 15, "Probability": 0.1},
+            {"ID": "2", "d": 60, "Probability": 0.3},
+            {"ID": "3", "d": 72, "Probability": 0.15},
+            {"ID": "4", "d": 78, "Probability": 0.25},
+            {"ID": "5", "d": 82, "Probability": 0.2},
         ]
     },
     "HF": {
         "data": {"B": 0.9},
         "scenarios": [
-            {"ID": "1", "d": 15, "C": 1.4},
-            {"ID": "2", "d": 60, "C": 1.3},
-            {"ID": "3", "d": 72, "C": 1.2},
-            {"ID": "4", "d": 78, "C": 1.1},
-            {"ID": "5", "d": 82, "C": 1.0},
+            {"ID": "1", "d": 15, "C": 1.4, "Probability": 0.05},
+            {"ID": "2", "d": 60, "C": 1.3, "Probability": 0.4},
+            {"ID": "3", "d": 72, "C": 1.2, "Probability": 0.1},
+            {"ID": "4", "d": 78, "C": 1.1, "Probability": 0.35},
+            {"ID": "5", "d": 82, "C": 1.0, "Probability": 0.1},
         ],
     },
 }
@@ -154,21 +154,14 @@ def dist_map(data, models):
     for model in models[1:]:
         LFscenarios[model] = list(data[model].keys())
 
-    HFdemands = {HFkey: data[model0][HFkey]["d"] for HFkey in HFscenarios}
-    LFdemands = {ls: data[model][ls]["d"] for ls in LFscenarios[model] for model in models[1:]}
-    #LFdemands = {model: {ls: data[model][ls]["d"] for ls in LFscenarios[model]} for model in models[1:]}
+    HFdemands = list(data[model0][HFkey]["d"] for HFkey in HFscenarios)
+    LFdemands = list(data[model][ls]["d"] for ls in LFscenarios[model] for model in models[1:])
 
     # map each LF scenario to closest HF scenario using 1-norm of demand difference
     demand_diffs = {}
-    for i in HFdemands: 
-        if type(HFdemands[i]) is list:
-            for j in LFdemands:
-                demand_diffs[(i,j)] = sum(abs(HFdemands[i][ind] - LFdemands[j][ind]) for ind in range(len(HFdemands[i])))
-        else:
-            for j in LFdemands:
-                demand_diffs[(i,j)] = abs(HFdemands[i] - LFdemands[j])
-
-    ## TODO: doesn't currently handle more than 1 LF model
+    for i in range(len(HFdemands)):
+        for j in range(len(LFdemands)):
+            demand_diffs[(i,j)] = abs(HFdemands[i] - LFdemands[j])
 
     return demand_diffs
 
