@@ -14,21 +14,21 @@ app_data = dict(c=1.0, b=1.5, h=0.1)
 model_data = {
     "LF": {
         "scenarios": [
-            {"ID": "1", "d": 15},
-            {"ID": "2", "d": 60},
-            {"ID": "3", "d": 72},
-            {"ID": "4", "d": 78},
-            {"ID": "5", "d": 82},
+            {"ID": "1", "d": 15, "Probability": 0.1},
+            {"ID": "2", "d": 60, "Probability": 0.3},
+            {"ID": "3", "d": 72, "Probability": 0.15},
+            {"ID": "4", "d": 78, "Probability": 0.25},
+            {"ID": "5", "d": 82, "Probability": 0.2},
         ]
     },
     "HF": {
         "data": {"B": 0.9},
         "scenarios": [
-            {"ID": "1", "d": 15, "C": 1.4},
-            {"ID": "2", "d": 60, "C": 1.3},
-            {"ID": "3", "d": 72, "C": 1.2},
-            {"ID": "4", "d": 78, "C": 1.1},
-            {"ID": "5", "d": 82, "C": 1.0},
+            {"ID": "1", "d": 15, "C": 1.4, "Probability": 0.05},
+            {"ID": "2", "d": 60, "C": 1.3, "Probability": 0.4},
+            {"ID": "3", "d": 72, "C": 1.2, "Probability": 0.1},
+            {"ID": "4", "d": 78, "C": 1.1, "Probability": 0.35},
+            {"ID": "5", "d": 82, "C": 1.0, "Probability": 0.1},
         ],
     },
 }
@@ -112,7 +112,6 @@ def LF_EF():
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
 
-
 def HF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     print("-" * 60)
     print("Running HF_PH")
@@ -123,8 +122,8 @@ def HF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
         name="HF", model_data=model_data["HF"], model_builder=HF_builder
     )
 
-    solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters)
+    solver = ProgressiveHedgingSolver(sp)
+    solver.set_options(solver="gurobi", loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters, rho_updates=True)
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
@@ -140,12 +139,31 @@ def LF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
         name="LF", model_data=model_data["LF"], model_builder=LF_builder
     )
 
-    solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.25, loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters)
+    solver = ProgressiveHedgingSolver(sp)
+    solver.set_options(solver="gurobi", loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters, rho_updates=True)
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
 
+
+def dist_map(data, models):
+    model0 = models[0]
+    
+    HFscenarios = list(data[model0].keys())
+    LFscenarios = {}  # all other models are LF
+    for model in models[1:]:
+        LFscenarios[model] = list(data[model].keys())
+
+    HFdemands = list(data[model0][HFkey]["d"] for HFkey in HFscenarios)
+    LFdemands = list(data[model][ls]["d"] for ls in LFscenarios[model] for model in models[1:])
+
+    # map each LF scenario to closest HF scenario using 1-norm of demand difference
+    demand_diffs = {}
+    for i in range(len(HFdemands)):
+        for j in range(len(LFdemands)):
+            demand_diffs[(i,j)] = abs(HFdemands[i] - LFdemands[j])
+
+    return demand_diffs
 
 def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     print("-" * 60)
@@ -165,7 +183,8 @@ def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
 
     bundle_num = 0
     sp.initialize_bundles(
-        scheme="mf_random_nested",
+        scheme="dissimilar_partitions",
+        distance_function=dist_map,
         LF=2,
         seed=1234567890,
         model_weight={"HF": 2.0, "LF": 1.0},
@@ -173,8 +192,8 @@ def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     #pprint.pprint(sp.get_bundles())
     sp.save_bundles(f"MF_PH_bundle_{bundle_num}.json", indent=4, sort_keys=True)
     
-    solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.25, loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters)
+    solver = ProgressiveHedgingSolver(sp)
+    solver.set_options(solver="gurobi", loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters, rho_updates=True)
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")

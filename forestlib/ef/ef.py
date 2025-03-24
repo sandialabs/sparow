@@ -83,7 +83,7 @@ class ExtensiveFormSolver(object):
                 forestlib.solnpool.Variable(
                     value=sp.get_variable_value(b, i),
                     index=i,
-                    name=sp.get_variable_name(b, i),
+                    name=sp.get_variable_name(i),
                 )
                 for i, _ in enumerate(sp.get_variables())
             ]

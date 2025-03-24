@@ -6,6 +6,7 @@ import logging
 
 import pyomo.core.base.indexed_component
 import pyomo.environ as pyo
+import pyomo.repn
 import pyomo.util.vars_from_expressions as vfe
 
 import forestlib.logs
@@ -37,37 +38,42 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
     def __init__(self):
         super().__init__()
         self.varcuid_to_int = {}
-        self.int_to_FirstStageVar = {}
+        self.int_to_FirstStageVar = {}  # indexed by bundle id
         self.int_to_FirstStageVarName = {}
+        self.int_to_ObjectiveCoef = {}
         self.solver_options = {}
         self.pyo_solver = None
-        self._model_cache = {}
+        self._model_cache = {}  # indexed by bundle id
 
     def _first_stage_variables(self, *, M):
         # A generator that yields (name,component) tuples
         pass
 
     def _initialize_cuid_map(self, *, M, b):
+        fsv = list(self._first_stage_variables(M=M))
         if len(self.varcuid_to_int) == 0:
             #
             # self.varcuid_to_int maps the cuids for variables to unique integers (starting with 0).
             #   The variable cuids indexed here are specified by the list self.first_stage_variables.
             #
-            self.varcuid_to_int = {}
-            for varname, var in self._first_stage_variables(M=M):
+            for varname, var in fsv:
                 i = len(self.varcuid_to_int)
-                self.varcuid_to_int[pyo.ComponentUID(var)] = i
+                self.varcuid_to_int[pyo.ComponentUID(var, context=M)] = i
+                self.int_to_FirstStageVarName[i] = varname
                 if var.is_binary() or var.is_integer():
                     self._binary_or_integer_fsv.add(i)
         #
-        # Setup int_to_FirstStageVar and int_to_FirstStageVarName
+        # Setup int_to_FirstStageVarName
         #
-        self.int_to_FirstStageVar[b] = {}
-        self.int_to_FirstStageVarName[b] = {}
-        for varname, var in self._first_stage_variables(M=M):
-            ndx = self.varcuid_to_int[pyo.ComponentUID(var)]
-            self.int_to_FirstStageVar[b][ndx] = var
-            self.int_to_FirstStageVarName[b][ndx] = varname
+        self.int_to_FirstStageVar[b] = {
+            self.varcuid_to_int[pyo.ComponentUID(var, context=M)]: var for _, var in fsv
+        }
+
+    def set_bundles(self, bundles):
+        self.int_to_FirstStageVar = {}
+        # self.int_to_FirstStageVarName = {}
+        self._model_cache = {}
+        StochasticProgram.set_bundles(self, bundles)
 
     def continuous_fsv(self):
         assert (
@@ -86,11 +92,11 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
     def get_variable_value(self, b, v):
         return pyo.value(self.int_to_FirstStageVar[b][v])
 
-    def get_variable_name(self, b, v):
+    def get_variable_name(self, v):
         assert (
-            b in self.int_to_FirstStageVarName
-        ), f"Missing keys: {b} not in {self.int_to_FirstStageVarName}"
-        return self.int_to_FirstStageVarName[b][v]
+            v in self.int_to_FirstStageVarName
+        ), f"Missing keys: {v} not in {self.int_to_FirstStageVarName}"
+        return self.int_to_FirstStageVarName[v]
 
     def shared_variables(self):
         return list(range(len(self.varcuid_to_int)))
@@ -128,9 +134,9 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
             # Load the results into the model so the user can find them there
             M.solutions.load_from(results)
             if logger.isEnabledFor(logging.DEBUG):
-                print("-"*70)
+                print("-" * 70)
                 print("Solver Results")
-                print("-"*70)
+                print("-" * 70)
                 M.pprint()
                 M.display()
                 sys.stdout.flush()
@@ -185,10 +191,10 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 model_data = json.load(filename)
 
         if name in self.model_data:
-            logger.warning(
-                "Initializing model with name {name}, which already has been initialized!  This may be a bug in the setup of this StochasticProgram instance."
-            )
-
+            if name is not None:
+                logger.warning(
+                    f"Initializing model with name '{name}', which already has been initialized!  This may be a bug in the setup of this StochasticProgram instance."
+                )
         if model_data is not None:
             self.model_data[name] = model_data.get("data", {})
             self.scenario_data[name] = {
@@ -214,8 +220,8 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             else:
                 yield varname, comp
 
-    def _create_scenario(self, s):
-        model_name, scenario = s
+    def _create_scenario(self, scenario_tuple):
+        model_name, scenario = scenario_tuple
         data = copy.copy(self.app_data)
         for k, v in self.model_data.get(model_name, {}).items():
             assert k not in data, f"Model data for {k} has already been specified!"
@@ -225,16 +231,63 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             data[k] = v
         return self.model_builder[model_name](data, {})
 
+    def get_objective_coef(self, v, cached=False):
+        if len(self.int_to_ObjectiveCoef) == 0:
+            #
+            # Here we build the extensive form for the 'default' model and keep its objective expression.
+            # This logic mimics the logic of StochasticProgram.evaluate()
+            #
+
+            # Setup single-scenario bundles with the default model
+            _int_toFirstStageVar = self.int_to_FirstStageVar
+            _model_cache = self._model_cache
+            _bundles = self.bundles
+            # stack.append(StochasticProgram.set_bundles(self, self.bundles))
+
+            self.initialize_bundles(
+                models=[self.default_model], scheme="single_scenario"
+            )
+
+            obj_expr = {}
+            _models = {}
+            for b in self.bundles:
+                s = self.bundles[b].scenarios
+                M = self._create_scenario(s[0])
+                _models[b] = M
+                self._initialize_cuid_map(M=M, b=b)
+                obj_expr[b] = find_objective(M).expr
+            obj = sum(self.bundles[b].probability * obj_expr[b] for b in self.bundles)
+
+            repn = pyomo.repn.generate_standard_repn(obj, quadratic=False)
+
+            for index in self.varcuid_to_int.values():
+                self.int_to_ObjectiveCoef[index] = 0
+
+            for i, var in enumerate(repn.linear_vars):
+                cuid = pyo.ComponentUID(var)
+                if cuid in self.varcuid_to_int:
+                    self.int_to_ObjectiveCoef[self.varcuid_to_int[cuid]] = (
+                        repn.linear_coefs[i]
+                    )
+
+            # Setup single-scenario bundles with the default model
+            self.bundles = _bundles
+            self._model_cache = _model_cache
+            self.int_to_FirstStageVar = _int_toFirstStageVar
+
+        return self.int_to_ObjectiveCoef[v]
+
     def create_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
         scenarios = self.bundles[b].scenarios
-
         if cached and b in self._model_cache:
             M = self._model_cache[b]
 
             if rho is None:
-                M.forestlib_params.rho.set_value(0.0)
+                for i, x in self.int_to_FirstStageVar[b].items():
+                    M.forestlib_params.rho[i].set_value(0.0)
             else:
-                M.forestlib_params.rho.set_value(rho)
+                for i, x in self.int_to_FirstStageVar[b].items():
+                    M.forestlib_params.rho[i].set_value(rho[i])
 
             if w is None:
                 for i in M.forestlib_params.w:
@@ -306,7 +359,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             params = pyo.Block()
             A = list(self.int_to_FirstStageVar[b].keys())
             assert len(A) > 0, f"ERROR: b {b}, {self.int_to_FirstStageVar}"
-            params.rho = pyo.Param(mutable=True, default=0.0, domain=pyo.Reals)
+            params.rho = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
             params.w = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
             params.x_bar = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
             EF_model.forestlib_params = params
@@ -321,9 +374,8 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             obj = (
                 obj
                 + sum(params.w[i] * x for i, x in self.int_to_FirstStageVar[b].items())
-                + (params.rho / 2.0)
-                * sum(
-                    (x - params.x_bar[i]) ** 2
+                + sum(
+                    ((params.rho[i] / 2.0) * (x - params.x_bar[i])) ** 2
                     for i, x in self.int_to_FirstStageVar[b].items()
                 )
             )
@@ -424,9 +476,8 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
             obj = (
                 obj
                 + sum(w[i] * x for i, x in self.int_to_FirstStageVar[b].items())
-                + (rho / 2.0)
-                * sum(
-                    (x - x_bar[i]) ** 2 for i, x in self.int_to_FirstStageVar[b].items()
+                + sum(
+                    (rho[i] / 2.0)*((x - x_bar[i]) ** 2) for i, x in self.int_to_FirstStageVar[b].items()
                 )
             )
         EF_model.obj = pyo.Objective(expr=obj)

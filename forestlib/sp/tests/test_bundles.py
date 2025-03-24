@@ -1,13 +1,13 @@
 import random
 import pytest
 from forestlib.sp.scentobund import (
-    bundle_by_fidelity,
     single_scenario,
     single_bundle,
     bundle_random_partition,
     mf_paired,
     mf_random_nested,
     mf_random,
+    similar_partitions,
 )
 
 
@@ -164,6 +164,60 @@ def imbalanced_data():
 
 
 class TestBundleFunctions(object):
+
+    def dist_map(self, data, models):
+        model0 = models[0]
+        
+        HFscenarios = list(data[model0].keys())
+        LFscenarios = {}  # all other models are LF
+        for model in models[1:]:
+            LFscenarios[model] = list(data[model].keys())
+
+        HFdemands = list(data[model0][HFkey]["Demand"] for HFkey in HFscenarios)
+        LFdemands = list(data[model][ls]["Demand"] for ls in LFscenarios[model] for model in models[1:])
+
+        # map each LF scenario to closest HF scenario using 1-norm of demand difference
+        demand_diffs = {}
+        for i in range(len(HFdemands)):
+            for j in range(len(LFdemands)):
+                demand_diffs[(i,j)] = abs(HFdemands[i] - LFdemands[j])
+
+        return demand_diffs
+
+    def test_similar_partitions(self, MF_data):
+        assert similar_partitions(MF_data, models=["HF", "LF"], bundle_args={"distance_function": self.dist_map}) == {
+            "HF_scen_1": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.6666666666666666,
+                    ("LF", "scen_3"): 0.3333333333333333,
+                },
+                "Probability": 0.5,
+            },
+            "HF_scen_0": {
+                "scenarios": {
+                    ("HF", "scen_0"): 0.42857142857142855,
+                    ("LF", "scen_2"): 0.5714285714285715,
+                    }, 
+                    "Probability": 0.5},
+        }
+
+        assert similar_partitions(
+            MF_data, model_weight={"HF": 3, "LF": 1}, models=["HF", "LF"], bundle_args={"distance_function": self.dist_map}
+        ) == {
+            "HF_scen_1": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.8571428571428572,
+                    ("LF", "scen_3"): 0.14285714285714285,
+                },
+                "Probability": 0.5,
+            },
+            "HF_scen_0": {
+                "scenarios": {
+                    ("HF", "scen_0"): 0.6923076923076924, 
+                    ("LF", "scen_2"): 0.30769230769230776,
+                }, 
+                "Probability": 0.5},
+        }
 
     def test_mf_paired(self, MFpaired_data, imbalanced_data):
         assert mf_paired(
@@ -328,28 +382,6 @@ class TestBundleFunctions(object):
                     ("LF", "scen_2"): 0.3333333333333333,
                     ("LF", "scen_3"): 0.3333333333333333,
                 },
-            },
-        }
-
-    def test_bundle_by_fidelity(self, MF_data):
-        # check that nonempty bundle_args returns the same bundle as empty bundle_args
-        assert bundle_by_fidelity(
-            MF_data,
-            model_weight={"HF": 1.0, "LF": 1.0},
-            bundle_args={"test_arg": "test_arg"},
-        ) == bundle_by_fidelity(
-            MF_data, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args=None
-        )
-
-        # check that scenarios are partitioned into bundles by their fidelities
-        assert bundle_by_fidelity(MF_data, model_weight={"HF": 1.0, "LF": 1.0}) == {
-            "HF": {
-                "scenarios": {("HF", "scen_1"): 0.4, ("HF", "scen_0"): 0.6},
-                "Probability": 0.5,
-            },
-            "LF": {
-                "scenarios": {("LF", "scen_3"): 0.2, ("LF", "scen_2"): 0.8},
-                "Probability": 0.5,
             },
         }
 

@@ -68,13 +68,18 @@ class StochasticProgram(object):
                 model: mdata.get("_model_weight_", 1.0)
                 for model, mdata in self.model_data.items()
             }
-        self.bundles = scentobund.BundleObj(
-            data=self.scenario_data,
-            models=models,
-            model_weight=model_weight,
-            scheme=scheme,
-            bundle_args=kwargs,
+        self.set_bundles(
+            scentobund.BundleObj(
+                data=self.scenario_data,
+                models=models,
+                model_weight=model_weight,
+                scheme=scheme,
+                bundle_args=kwargs,
+            )
         )
+
+    def set_bundles(self, bundles):
+        self.bundles = bundles
 
     def get_bundles(self):
         if self.bundles is None:
@@ -85,7 +90,7 @@ class StochasticProgram(object):
         self.bundles.dump(json_filename, indent=indent, sort_keys=sort_keys)
 
     def load_bundles(self, json_filename):
-        self.bundles = scentobund.load_bundles(json_filename)
+        self.set_bundles(scentobund.load_bundles(json_filename))
 
     def get_variables(self, b=None):
         if b is None:
@@ -95,20 +100,23 @@ class StochasticProgram(object):
         # Return a dictionary mapping variable name to variable value, for all
         # first stage variables
         return {
-            self.get_variable_name(b, v): self.get_variable_value(b, v)
+            self.get_variable_name(v): self.get_variable_value(b, v)
             for v in self.shared_variables()
         }
 
     def get_variable_value(self, b, v):
         pass
 
-    def get_variable_name(self, b, v):
+    def get_variable_name(self, v):
         pass
 
     def fix_variable(self, b, v, value):
         pass
 
     def shared_variables(self):
+        pass
+
+    def get_objective_coef(self, v):
         pass
 
     def set_solver(self, name):
@@ -151,7 +159,11 @@ class StochasticProgram(object):
         obj = sum(self.bundles[b].probability * obj_value[b] for b in self.bundles)
         # Just need to get one of the bundles to collect the variables
 
-        return munch.Munch(feasible=True, objective=obj, variables=self.get_variables())
+        retval = munch.Munch(
+            feasible=True, objective=obj, variables=self.get_variables()
+        )
 
         # Reset the bundles
-        self.bundles = _bundles
+        self.set_bundles(_bundles)
+
+        return retval
