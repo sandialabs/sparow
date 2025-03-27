@@ -11,6 +11,7 @@ import pyomo.util.vars_from_expressions as vfe
 
 import forestlib.logs
 from .sp import StochasticProgram
+from IPython import embed
 
 logger = forestlib.logs.logger
 
@@ -70,7 +71,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
 
     def set_bundles(self, bundles):
         self.int_to_FirstStageVar = {}
-        #self.int_to_FirstStageVarName = {}
+        # self.int_to_FirstStageVarName = {}
         self._model_cache = {}
         StochasticProgram.set_bundles(self, bundles)
 
@@ -141,11 +142,18 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
                 sys.stdout.flush()
 
             # Return the value of the 'first' objective
-            return munch.Munch(
-                obj_value=list(results.Solution[0].Objective.values())[0]["Value"],
+         
+            if self.solver=='ipopt':
+                return munch.Munch(
+                obj_value=pyo.value(M.obj),
                 termination_condition=results.solver.termination_condition,
-                status=results.solver.status,
-            )
+                status=results.solver.status,)
+            else:
+                return munch.Munch(
+                    obj_value=list(results.Solution[0].Objective.values())[0]["Value"],
+                    termination_condition=results.solver.termination_condition,
+                    status=results.solver.status,
+                )
 
 
 class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
@@ -225,44 +233,30 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
     def get_objective_coef(self, v, cached=False):
         if len(self.int_to_ObjectiveCoef) == 0:
-            if cached:
-                #
-                # If we are using the bundle cache, then we generate an expression that is the
-                # weighted sum of the bundle objectives.
-                #
-                # Note that this may not be the same as the objective in the extensive form, since
-                # bundles may include multiple fidelities, and they may include multiple replications of
-                # different scenarios.
-                #
-                obj = sum(
-                    self.bundles[b].probability * self._model_cache[b].obj.expr
-                    for b in self.bundles
-                )
+            #
+            # Here we build the extensive form for the 'default' model and keep its objective expression.
+            # This logic mimics the logic of StochasticProgram.evaluate()
+            #
 
-            else:
-                #
-                # Here we build the extensive form for the 'default' model and keep its objective expression.
-                # This logic mimics the logic of StochasticProgram.evaluate()
-                #
+            # Setup single-scenario bundles with the default model
+            _int_toFirstStageVar = self.int_to_FirstStageVar
+            _model_cache = self._model_cache
+            _bundles = self.bundles
+            # stack.append(StochasticProgram.set_bundles(self, self.bundles))
 
-                # Setup single-scenario bundles with the default model
-                _bundles = self.bundles
-                self.initialize_bundles(
-                    models=[self.default_model], scheme="single_scenario"
-                )
+            self.initialize_bundles(
+                models=[self.default_model], scheme="single_scenario"
+            )
 
-                obj_expr = {}
-                for b in self.bundles:
-                    s = self.bundles[b].scenarios
-                    M = self._create_scenario(s[0])
-                    self._initialize_cuid_map(M=M, b=b)
-                    obj_expr[b] = find_objective(M).expr
-                obj = sum(
-                    self.bundles[b].probability * obj_expr[b] for b in self.bundles
-                )
-
-                # Setup single-scenario bundles with the default model
-                self.set_bundles(_bundles)
+            obj_expr = {}
+            _models = {}
+            for b in self.bundles:
+                s = self.bundles[b].scenarios
+                M = self._create_scenario(s[0])
+                _models[b] = M
+                self._initialize_cuid_map(M=M, b=b)
+                obj_expr[b] = find_objective(M).expr
+            obj = sum(self.bundles[b].probability * obj_expr[b] for b in self.bundles)
 
             repn = pyomo.repn.generate_standard_repn(obj, quadratic=False)
 
@@ -276,6 +270,11 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                         repn.linear_coefs[i]
                     )
 
+            # Setup single-scenario bundles with the default model
+            self.bundles = _bundles
+            self._model_cache = _model_cache
+            self.int_to_FirstStageVar = _int_toFirstStageVar
+
         return self.int_to_ObjectiveCoef[v]
 
     def create_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
@@ -284,9 +283,11 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             M = self._model_cache[b]
 
             if rho is None:
-                M.forestlib_params.rho.set_value(0.0)
+                for i, x in self.int_to_FirstStageVar[b].items():
+                    M.forestlib_params.rho[i].set_value(0.0)
             else:
-                M.forestlib_params.rho.set_value(rho)
+                for i, x in self.int_to_FirstStageVar[b].items():
+                    M.forestlib_params.rho[i].set_value(rho[i])
 
             if w is None:
                 for i in M.forestlib_params.w:
@@ -358,7 +359,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             params = pyo.Block()
             A = list(self.int_to_FirstStageVar[b].keys())
             assert len(A) > 0, f"ERROR: b {b}, {self.int_to_FirstStageVar}"
-            params.rho = pyo.Param(mutable=True, default=0.0, domain=pyo.Reals)
+            params.rho = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
             params.w = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
             params.x_bar = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
             EF_model.forestlib_params = params
@@ -373,9 +374,8 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             obj = (
                 obj
                 + sum(params.w[i] * x for i, x in self.int_to_FirstStageVar[b].items())
-                + (params.rho / 2.0)
-                * sum(
-                    (x - params.x_bar[i]) ** 2
+                + sum(
+                    ((params.rho[i] / 2.0) * (x - params.x_bar[i])) ** 2
                     for i, x in self.int_to_FirstStageVar[b].items()
                 )
             )
@@ -476,9 +476,8 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
             obj = (
                 obj
                 + sum(w[i] * x for i, x in self.int_to_FirstStageVar[b].items())
-                + (rho / 2.0)
-                * sum(
-                    (x - x_bar[i]) ** 2 for i, x in self.int_to_FirstStageVar[b].items()
+                + sum(
+                    (rho[i] / 2.0)*((x - x_bar[i]) ** 2) for i, x in self.int_to_FirstStageVar[b].items()
                 )
             )
         EF_model.obj = pyo.Objective(expr=obj)

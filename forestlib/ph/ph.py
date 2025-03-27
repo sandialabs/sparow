@@ -63,8 +63,8 @@ def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
 
 class ProgressiveHedgingSolver(object):
 
-    def __init__(self):
-        self.rho = 1.5
+    def __init__(self, sp):
+        self.rho = {}
         self.cached_model_generation = True
         self.max_iterations = 100
         self.convergence_tolerance = 1e-3
@@ -75,6 +75,8 @@ class ProgressiveHedgingSolver(object):
         self.finalize_xbar_by_rounding = True
         self.finalize_all_xbar = False
         self.solutions = None
+        self.rho_updates = False
+        self.default_rho = None
 
     def set_options(
         self,
@@ -91,12 +93,18 @@ class ProgressiveHedgingSolver(object):
         finalize_xbar_by_rounding=None,
         finalize_all_xbar=None,
         solution_manager=None,
+        rho_updates=False,
+        default_rho=None,
     ):
         #
         # Misc configuration
         #
         if rho:
             self.rho = rho
+        if rho_updates == True:
+            self.rho_updates = rho_updates
+        if default_rho:
+            self.default_rho = default_rho
         if cached_model_generation is not None:
             self.cached_model_generation = cached_model_generation
         if max_iterations is not None:
@@ -119,7 +127,7 @@ class ProgressiveHedgingSolver(object):
             self.solution_manager = solution_manager
 
         if loglevel is not None:
-            if loglevel == "DEBUG":
+            if loglevel == "DEBUG" or loglevel == "VERBOSE":
                 forestlib.logs.use_debugging_formatter()
             logger.setLevel(loglevel)
 
@@ -154,7 +162,7 @@ class ProgressiveHedgingSolver(object):
             sp_metadata = self.solutions.add_pool("PH Iterations", policy="keep_latest")
         sp_metadata.solver = "PH Iteration Results"
         sp_metadata.solver_options = dict(
-            rho=self.rho,
+            # rho=self.rho,
             cached_model_generation=self.cached_model_generation,
             max_iterations=self.max_iterations,
             convergence_tolerance=self.convergence_tolerance,
@@ -197,13 +205,14 @@ class ProgressiveHedgingSolver(object):
             xbar[x] = 0.0
             for b in sp.bundles:
                 xbar[x] += sp.bundles[b].probability * sp.get_variable_value(b, x)
+        self.update_rho(sfs_variables, xbar, sp)
 
         # Step 4
         w = {}
         for b in sp.bundles:
             w[b] = {}
             for x in sfs_variables:
-                w[b][x] = self.rho * (sp.get_variable_value(b, x) - xbar[x])
+                w[b][x] = self.rho[x] * (sp.get_variable_value(b, x) - xbar[x])
 
         # Step 4.1
         iteration = 0
@@ -211,7 +220,13 @@ class ProgressiveHedgingSolver(object):
         latest_soln = self.archive_solution(
             sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb
         )
-        self.log_iteration(iteration=iteration, obj_lb=obj_lb, time=datetime.datetime.now(), xbar=xbar, rho=self.rho)
+        self.log_iteration(
+            iteration=iteration,
+            obj_lb=obj_lb,
+            time=datetime.datetime.now(),
+            xbar=xbar,
+            rho=self.rho,
+        )
 
         while True:
             iteration += 1
@@ -251,13 +266,15 @@ class ProgressiveHedgingSolver(object):
                     )
                     xbar[x] += sp.bundles[b].probability * sp.get_variable_value(b, x)
             logger.debug(f"xbar = {xbar}")
+            self.update_rho(sfs_variables, xbar, sp)
+            logger.info(f"rho = {self.rho}")
 
             # Step 8
             w = {}
             for b in sp.bundles:
                 w[b] = {}
                 for x in sfs_variables:
-                    w[b][x] = w_prev[b][x] + self.rho * (
+                    w[b][x] = w_prev[b][x] + self.rho[x] * (
                         sp.get_variable_value(b, x) - xbar[x]
                     )
                 logger.debug(f"w[{b}] = {w[b]}")
@@ -274,13 +291,20 @@ class ProgressiveHedgingSolver(object):
             logger.info(f"g = {g}")
 
             # Step 9.1
-            tmp = self.archive_solution(
-                sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb, g=g
-            )
+            if self.finalize_all_xbar:
+                tmp = self.archive_solution(
+                    sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb, g=g
+                )
+            else:
+                tmp=None
             if tmp is not None:
                 latest_soln = tmp
             self.log_iteration(
-                iteration=iteration, obj_lb=obj_lb, time=datetime.datetime.now(), xbar=xbar, rho=self.rho
+                iteration=iteration,
+                obj_lb=obj_lb,
+                time=datetime.datetime.now(),
+                xbar=xbar,
+                rho=self.rho,
             )
 
             # Step 10
@@ -299,7 +323,7 @@ class ProgressiveHedgingSolver(object):
         sp_metadata = self.solutions.metadata
         sp_metadata.iterations = iteration
         sp_metadata.termination_condition = termination_condition
-        sp_metadata.start_time = str(start_time) 
+        sp_metadata.start_time = str(start_time)
 
         logger.info("")
         logger.info("-" * 70)
@@ -341,7 +365,7 @@ class ProgressiveHedgingSolver(object):
         logger.info("")
 
     def archive_solution(self, *, sp, xbar=None, w=None, **kwds):
-        #b = next(iter(sp.bundles))
+        # b = next(iter(sp.bundles))
         variables = [
             solnpool.Variable(
                 value=val,
@@ -352,3 +376,31 @@ class ProgressiveHedgingSolver(object):
             for i, val in xbar.items()
         ]
         return self.solutions.add(variables=variables, **kwds)
+
+    def update_rho(self, sfs_variables, xbar, sp):
+        # this function is scenario-independent, but will need to be updated for integer x
+        if self.rho_updates == True:
+            for x in sfs_variables:
+                if abs(sp.get_objective_coef(x)) > 0:
+                    self.rho[x] = abs(sp.get_objective_coef(x)) / max(
+                        sum(
+                            sp.bundles[b].probability
+                            * abs(sp.get_variable_value(b, x) - xbar[x])
+                            for b in sp.bundles
+                        ),
+                        1,
+                    )
+                else:
+                    if self.default_rho:
+                        self.rho[x] = self.default_rho
+                    else:
+                        self.rho[x] = 1.5
+                        logger.warning(
+                            f"Variable objective coefficient is 0; rho{x} set to 1.5"
+                        )
+        else:
+            for x in sfs_variables:
+                if self.default_rho:
+                    self.rho[x] = self.default_rho
+                else:
+                    self.rho[x] = 1.5

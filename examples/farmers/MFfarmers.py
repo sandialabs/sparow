@@ -15,7 +15,7 @@ random.seed(923874938740938740)
 # Global data for the HF model:
 #
 class GlobalData:
-    num_plots = 1
+    num_plots = 20
     num_scens = 3  ### should be >= 3
 
 
@@ -318,7 +318,7 @@ HF_data = HFScen_object.scenario_generator(GlobalData.num_plots, GlobalData.num_
 
 app_data = {"num_plots": GlobalData.num_plots}
 model_data = {"LF": LF_scendata, "HF": HF_data}
-#print(HF_data)
+# print(HF_data)
 
 
 #
@@ -405,19 +405,28 @@ def LF_model_builder(data, args):
     ### CONSTRAINTS
     def ConstrainPerPlotAcreage_rule(model):
         return (
-            sum(sum(model.DevotedAcreage[c, j] for j in model.PLOTS) for c in model.CROPS)
+            sum(
+                sum(model.DevotedAcreage[c, j] for j in model.PLOTS)
+                for c in model.CROPS
+            )
             <= model.TOTAL_ACREAGE
         )
 
-    model.ConstrainPerPlotAcreage = pyo.Constraint(
-        rule=ConstrainPerPlotAcreage_rule
-    )
+    model.ConstrainPerPlotAcreage = pyo.Constraint(rule=ConstrainPerPlotAcreage_rule)
 
     if len(model.PLOTS) > 1:
 
         def ConsistentPerPlotAcreage_rule(model):
             return (
-                0, sum(sum(model.DevotedAcreage[c, j] for j in range(1,len(model.PLOTS)-1)) for c in model.CROPS), 0
+                0,
+                sum(
+                    sum(
+                        model.DevotedAcreage[c, j]
+                        for j in range(1, len(model.PLOTS) - 1)
+                    )
+                    for c in model.CROPS
+                ),
+                0,
             )
 
         model.ConsistentPerPlotAcreage = pyo.Constraint(
@@ -645,6 +654,7 @@ def model_builder(data, args):
 #
 # options to solve, LF, HF, or MF models with PH or EF:
 #
+
 def HF_EF():
     print("-" * 60)
     print("Running HF_EF")
@@ -689,8 +699,15 @@ def LF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
         name="LF", model_data=model_data["LF"], model_builder=LF_model_builder
     )
 
-    solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters)
+    solver = ProgressiveHedgingSolver(sp)
+    solver.set_options(
+        solver="gurobi",
+        loglevel=loglevel,
+        cached_model_generation=cache,
+        max_iterations=max_iter,
+        finalize_all_xbar=finalize_all_iters,
+        rho_updates=True,
+    )
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
@@ -706,12 +723,18 @@ def HF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
         name="HF", model_data=model_data["HF"], model_builder=model_builder
     )
 
-    solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters)
+    solver = ProgressiveHedgingSolver(sp)
+    solver.set_options(
+        solver="gurobi",
+        loglevel=loglevel,
+        cached_model_generation=cache,
+        max_iterations=max_iter,
+        finalize_all_xbar=finalize_all_iters,
+        rho_updates=True,
+    )
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
-
 
 def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     print("-" * 60)
@@ -738,12 +761,18 @@ def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     )
     sp.save_bundles(f"MF_PH_bundle_{bundle_num}.json", indent=4, sort_keys=True)
 
-    solver = ProgressiveHedgingSolver()
-    solver.set_options(solver="gurobi", rho=0.0125, loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters)
+    solver = ProgressiveHedgingSolver(sp)
+    solver.set_options(
+        solver="gurobi",
+        loglevel=loglevel,
+        cached_model_generation=cache,
+        max_iterations=max_iter,
+        finalize_all_xbar=finalize_all_iters,
+        rho_updates=True,
+    )
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
-
 
 
 parser = argparse.ArgumentParser()
@@ -753,7 +782,9 @@ parser.add_argument("--hf-ph", action="store_true")
 parser.add_argument("--lf-ph", action="store_true")
 parser.add_argument("--mf-ph", action="store_true")
 parser.add_argument("--cache", action="store_true", default=False)
-parser.add_argument("-f", "--finalize_all_iterations", action="store_true", default=False)
+parser.add_argument(
+    "-f", "--finalize_all_iterations", action="store_true", default=False
+)
 parser.add_argument("--max-iter", action="store", default=100, type=int)
 parser.add_argument("-l", "--loglevel", action="store", default="INFO")
 args = parser.parse_args()  # parse sys.argv
@@ -763,11 +794,25 @@ if args.lf_ef:
 elif args.hf_ef:
     HF_EF()
 elif args.hf_ph:
-    HF_PH(cache=args.cache, max_iter=args.max_iter, loglevel=args.loglevel, finalize_all_iters=args.finalize_all_iterations)
+    HF_PH(
+        cache=args.cache,
+        max_iter=args.max_iter,
+        loglevel=args.loglevel,
+        finalize_all_iters=args.finalize_all_iterations,
+    )
 elif args.lf_ph:
-    LF_PH(cache=args.cache, max_iter=args.max_iter, loglevel=args.loglevel, finalize_all_iters=args.finalize_all_iterations)
+    LF_PH(
+        cache=args.cache,
+        max_iter=args.max_iter,
+        loglevel=args.loglevel,
+        finalize_all_iters=args.finalize_all_iterations,
+    )
 elif args.mf_ph:
-    MF_PH(cache=args.cache, max_iter=args.max_iter, loglevel=args.loglevel, finalize_all_iters=args.finalize_all_iterations)
+    MF_PH(
+        cache=args.cache,
+        max_iter=args.max_iter,
+        loglevel=args.loglevel,
+        finalize_all_iters=args.finalize_all_iterations,
+    )
 else:
     parser.print_help()
-

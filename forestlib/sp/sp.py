@@ -159,7 +159,9 @@ class StochasticProgram(object):
         obj = sum(self.bundles[b].probability * obj_value[b] for b in self.bundles)
         # Just need to get one of the bundles to collect the variables
 
-        retval = munch.Munch(feasible=True, objective=obj, variables=self.get_variables())
+        retval = munch.Munch(
+            feasible=True, objective=obj, variables=self.get_variables()
+        )
 
         # Reset the bundles
         self.set_bundles(_bundles)

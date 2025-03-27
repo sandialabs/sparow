@@ -4,86 +4,116 @@ import munch
 import pyomo.environ as pyo
 from forestlib.sp import stochastic_program
 from forestlib.ef import ExtensiveFormSolver
-from forestlib.ph import ProgressiveHedgingSolver
+from forestlib.ph import ProgressiveHedgingSolver 
 
 
 #
-# Data for a simple newsvendor example
+# Data for AC production problem - reference Birge and Louveaux???
 #
-app_data = dict(c=1.0, b=1.5, h=0.1)
+app_data = {'c': [1, 3, 0.5], 'h': [1, 3, 0], 'T': 3}
+
 model_data = {
     "LF": {
         "scenarios": [
-            {"ID": "1", "d": 15, "Probability": 0.1},
-            {"ID": "2", "d": 60, "Probability": 0.3},
-            {"ID": "3", "d": 72, "Probability": 0.15},
-            {"ID": "4", "d": 78, "Probability": 0.25},
-            {"ID": "5", "d": 82, "Probability": 0.2},
+            {"ID": "LowLow", "Demand": [1, 1, 1], "Probability": 0.25},
+            {"ID": "LowHigh", "Demand": [1, 1, 3], "Probability": 0.25},
+            {"ID": "HighLow", "Demand": [1, 3, 1], "Probability": 0.25},
+            {"ID": "HighHigh", "Demand": [1, 3, 3], "Probability": 0.25},
         ]
     },
     "HF": {
-        "data": {"B": 0.9},
         "scenarios": [
-            {"ID": "1", "d": 15, "C": 1.4, "Probability": 0.05},
-            {"ID": "2", "d": 60, "C": 1.3, "Probability": 0.4},
-            {"ID": "3", "d": 72, "C": 1.2, "Probability": 0.1},
-            {"ID": "4", "d": 78, "C": 1.1, "Probability": 0.35},
-            {"ID": "5", "d": 82, "C": 1.0, "Probability": 0.1},
-        ],
+            {"ID": "LowLow", "Demand": [1, 1, 1], "Probability": 0.25},
+            {"ID": "LowHigh", "Demand": [1, 1, 3], "Probability": 0.25},
+            {"ID": "HighLow", "Demand": [1, 3, 1], "Probability": 0.25},
+            {"ID": "HighHigh", "Demand": [1, 3, 3], "Probability": 0.25},
+        ]
     },
 }
 
-
-#
-# Function that constructs a newsvendor model
-# including a single second stage
-#
 def LF_builder(data, args):
-    b = data["b"]
-    c = data["c"]
-    h = data["h"]
-    d = data["d"]
+    c = data['c']
+    h = data['h']
+    T = data['T']
 
-    M = pyo.ConcreteModel(data["ID"])
+    ### STOCHASTIC DATA
+    d = data['Demand']
 
-    M.x = pyo.Var(within=pyo.NonNegativeReals)
+    model = pyo.ConcreteModel(data["ID"])
 
-    M.y = pyo.Var()
-    M.greater = pyo.Constraint(expr=M.y >= (c - b) * M.x + b * d)
-    M.less = pyo.Constraint(expr=M.y >= (c + h) * M.x - h * d)
+    ### PARAMETERS
+    model.T = pyo.Set(initialize=[i for i in range(T)])
 
-    M.o = pyo.Objective(expr=M.y)
+    ### VARIABLES
+    model.x = pyo.Var(model.T, bounds=[0,2])
+    model.w = pyo.Var(model.T, within=pyo.NonNegativeReals)
+    model.y = pyo.Var(model.T, within=pyo.NonNegativeReals)
 
-    return M
+    ### CONSTRAINTS
+    def MeetInitDemand_rule(model):
+        return model.x[0] + model.w[0] - model.y[0] == 1 
+    model.MeetInitDemand = pyo.Constraint(rule=MeetInitDemand_rule)
 
+    def MeetDemand_rule(model, t):
+        return model.y[t-1] + model.x[t] + model.w[t] - model.y[t] == d[t]
+    model.MeetDemand = pyo.Constraint(pyo.Set(initialize=[i for i in range(1, T)]), rule=MeetDemand_rule)
+
+    ### OBJECTIVE
+    def Obj_rule(model):
+        expr = c[0]*model.x[0] + c[1]*model.w[0] + c[2]*model.y[0]
+        expr += sum(c[0]*model.x[t] + c[1]*model.w[t] + c[2]*model.y[t] for t in range(1,T-1))
+        expr += h[0]*model.x[T-1] + h[1]*model.w[T-1] + h[2]*model.y[T-1]
+        return expr
+    model.obj = pyo.Objective(rule=Obj_rule, sense=pyo.minimize)
+
+    return model
 
 def HF_builder(data, args):
-    b = data["b"]
-    B = data["B"]
-    c = data["c"]
-    C = data["C"]
-    h = data["h"]
-    d = data["d"]
+    c = data['c']
+    h = data['h']
+    T = data['T']
 
-    M = pyo.ConcreteModel(data["ID"])
+    ### STOCHASTIC DATA
+    d = data['Demand']
 
-    M.x = pyo.Var(within=pyo.NonNegativeReals)
+    model = pyo.ConcreteModel(data["ID"])
 
-    M.y = pyo.Var()
-    M.greater = pyo.Constraint(expr=M.y >= (c - b) * M.x + b * d)
-    M.greaterX = pyo.Constraint(expr=M.y >= (C - B) * M.x + B * d)
-    M.less = pyo.Constraint(expr=M.y >= (c + h) * M.x - h * d)
+    ### PARAMETERS
+    model.T = pyo.Set(initialize=[i for i in range(T)])
 
-    M.o = pyo.Objective(expr=M.y)
+    ### VARIABLES
+    model.x = pyo.Var(model.T, within=pyo.NonNegativeIntegers, bounds=[0,2])
+    model.w = pyo.Var(model.T, within=pyo.NonNegativeIntegers)
+    model.y = pyo.Var(model.T, within=pyo.NonNegativeIntegers)
 
-    return M
+    ### CONSTRAINTS
+    def MeetInitDemand_rule(model):
+        return model.x[0] + model.w[0] - model.y[0] == 1 
+    model.MeetInitDemand = pyo.Constraint(rule=MeetInitDemand_rule)
 
+    def MeetDemand_rule(model, t):
+        return model.y[t-1] + model.x[t] + model.w[t] - model.y[t] == d[t]
+    model.MeetDemand = pyo.Constraint(pyo.Set(initialize=[i for i in range(1, T)]), rule=MeetDemand_rule)
+
+    ### OBJECTIVE
+    def Obj_rule(model):
+        expr = c[0]*model.x[0] + c[1]*model.w[0] + c[2]*model.y[0]
+        expr += sum(c[0]*model.x[t] + c[1]*model.w[t] + c[2]*model.y[t] for t in range(1,T-1))
+        expr += h[0]*model.x[T-1] + h[1]*model.w[T-1] + h[2]*model.y[T-1]
+        return expr
+    model.obj = pyo.Objective(rule=Obj_rule, sense=pyo.minimize)
+
+    return model
+
+#
+# options to solve, LF, HF, or MF models with PH or EF:
+#
 
 def HF_EF():
     print("-" * 60)
     print("Running HF_EF")
     print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["x"])
+    sp = stochastic_program(first_stage_variables=["x[0]", "w[0]", "y[0]"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
         name="HF", model_data=model_data["HF"], model_builder=HF_builder
@@ -100,7 +130,7 @@ def LF_EF():
     print("-" * 60)
     print("Running LF_EF")
     print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["x"])
+    sp = stochastic_program(first_stage_variables=["x[0]", "w[0]", "y[0]"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
         name="LF", model_data=model_data["LF"], model_builder=LF_builder
@@ -116,7 +146,7 @@ def HF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     print("-" * 60)
     print("Running HF_PH")
     print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["x"])
+    sp = stochastic_program(first_stage_variables=["x[0]", "w[0]", "y[0]"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
         name="HF", model_data=model_data["HF"], model_builder=HF_builder
@@ -133,7 +163,7 @@ def LF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     print("-" * 60)
     print("Running LF_PH")
     print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["x"])
+    sp = stochastic_program(first_stage_variables=["x[0]", "w[0]", "y[0]"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
         name="LF", model_data=model_data["LF"], model_builder=LF_builder
@@ -169,7 +199,7 @@ def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     print("-" * 60)
     print("Running MF_PH")
     print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["x"])
+    sp = stochastic_program(first_stage_variables=["x[0]", "w[0]", "y[0]"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
         name="HF", model_data=model_data["HF"], model_builder=HF_builder
@@ -183,8 +213,8 @@ def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
 
     bundle_num = 0
     sp.initialize_bundles(
-        scheme="dissimilar_partitions",
-        distance_function=dist_map,
+        scheme="mf_random", #dissimilar_partitions",
+        #distance_function=dist_map,
         LF=2,
         seed=1234567890,
         model_weight={"HF": 2.0, "LF": 1.0},
@@ -223,4 +253,3 @@ elif args.mf_ph:
     MF_PH(cache=args.cache, max_iter=args.max_iter, loglevel=args.loglevel, finalize_all_iters=args.finalize_all_iterations)
 else:
     parser.print_help()
-
