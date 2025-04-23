@@ -1,5 +1,5 @@
 from .sp_pyomo import (
-    StochasticProgram_Pyomo_MultistageBuilder,
+    #StochasticProgram_Pyomo_MultistageBuilder,
     StochasticProgram_Pyomo_NamedBuilder,
 )
 
@@ -20,7 +20,7 @@ def stochastic_program(
     """
     if aml == "pyomo":
         if model_builder_list is not None:
-            return StochasticProgram_Pyomo_MultistageBuilder(
+            return StochasticProgram_Pyomo_NamedBuilder(
                 model_builder_list=model_builder_list
             )
         else:

@@ -2,6 +2,9 @@ import json
 import munch
 import random
 import types
+from sklearn.cluster import KMeans
+import numpy as np
+import numbers
 
 """
 * specify which bundling scheme (function) is used via "bundle_scheme" in sp.py
@@ -263,10 +266,6 @@ def dissimilar_partitions(data, model_weight=None, models=None, bundle_args=None
             bundle[f"{model0}_{hs}"]["scenarios"][b_key] *= 1 / norm_factor
 
     return bundle
-
-
-def similar_cover(data, model_weight=None, models=None, bundle_args=None):
-    pass
 
 
 def mf_paired(data, model_weight, models=None, bundle_args=None):
@@ -589,6 +588,118 @@ def single_bundle(data, model_weight, models=None, bundle_args=None):
     return bundle
 
 
+def kmeans_similar(data, model_weight, models=None, bundle_args=None):
+    """
+    Each scenario is paired by closest distance
+        - bun_size (approx. size of each bundle) can be passed into bundle_args. default is 2.
+        - ensure there are no duplicate/redundant scenarios before using this! 
+        - all scenarios must have unique names! 
+    """
+    if models is None:
+        models = list(data.keys())
+
+    if "bun_size" in bundle_args:     # default bundle size is 2
+        bun_size = bundle_args['bun_size']
+    else:
+        bun_size = 2
+
+    num_scens = sum(len(data[model]) for model in models)   # total number of scenarios
+    if bun_size > num_scens:
+        raise ValueError(f"Bundle size cannot exceed number of scenarios")
+
+    num_centers = -(num_scens// -bun_size)  # number of bundle centers (NOT NECESSARILY the same as number of bundles!!)
+    all_scens = {sname: sval for model in models for (sname, sval) in data[model].items()}
+
+    if isinstance(data[models[0]][next(iter(all_scens))]['Demand'], numbers.Number) == True:
+        arr = np.array([all_scens[s]['Demand'] for s in all_scens.keys()])
+        X = arr.reshape(-1,1)   # array of scenario demands needs to be reshaped if demand is a number
+    else:
+        X = np.array([all_scens[s]['Demand'] for s in all_scens.keys()])
+
+    kmeans = KMeans(n_clusters=num_centers, random_state=0, n_init="auto").fit(X)   # find bundle centers
+    s_assign = kmeans.labels_   # list of closest bundle centers
+    sbmap = {s: int(s_assign[ind_s]) for ind_s, s in enumerate(iter(all_scens))}    # map scenarios to closest bundle center
+
+    bundle = {}
+    for model in models:
+        for s in data[model]:
+            if f"bundle_{sbmap[s]}" in bundle:  # ensures empty bundles aren't created if centers have no mapped scenarios
+                bundle[f"bundle_{sbmap[s]}"]["scenarios"].update({scen_key(model, s): data[model][s]['Probability']})
+            else:
+                bundle[f"bundle_{sbmap[s]}"] = dict(
+                    scenarios = {scen_key(model, s): data[model][s]['Probability']},
+                    Probability = 1/num_centers
+                )
+
+    # normalization term for if some centers have no mapped scenarios
+    fewer_centers_norm = sum(bundle[bkey]["Probability"] for bkey in bundle.keys())
+    for bkey in bundle.keys():
+        bundle[bkey]["Probability"] *= (1/fewer_centers_norm)
+        norm_factor = sum(bundle[bkey]["scenarios"].values())   # normalizing bundle probabilities
+        for skey in bundle[bkey]["scenarios"].keys():
+            bundle[bkey]["scenarios"][skey] *= (1/norm_factor)
+
+    return bundle
+
+
+def kmeans_dissimilar(data, model_weight, models=None, bundle_args=None):
+    """
+    Each scenario is paired by furthest distance
+        - bun_size (approx. size of each bundle) can be passed into bundle_args. default is 2.
+        - ensure there are no duplicate/redundant scenarios before using this! 
+        - all scenarios must have unique names! 
+    """
+    if models is None:
+        models = list(data.keys())
+
+    if "bun_size" in bundle_args:    # default bundle size is 2
+        bun_size = bundle_args['bun_size']
+    else:
+        bun_size = 2
+
+    num_scens = sum(len(data[model]) for model in models)   # total number of scenarios
+    if bun_size > num_scens:
+        raise ValueError(f"Bundle size cannot exceed number of scenarios")
+
+    num_centers = -(num_scens// -bun_size)  # number of bundle centers (NOT NECESSARILY the same as number of bundles!!)
+    all_scens = {sname: sval for model in models for (sname, sval) in data[model].items()}
+
+    if isinstance(data[models[0]][next(iter(all_scens))]['Demand'], numbers.Number) == True:
+        arr = np.array([all_scens[s]['Demand'] for s in all_scens.keys()])
+        X = arr.reshape(-1,1)   # array of scenario demands needs to be reshaped if demand is a number
+    else:
+        X = np.array([all_scens[s]['Demand'] for s in all_scens.keys()])
+
+    kmeans = KMeans(n_clusters=num_centers, random_state=0, n_init="auto").fit(X)   # find bundle centers
+    centers = kmeans.cluster_centers_  # list of bundle centers
+
+    max_diffs = {}
+    for s in all_scens:    # map scenarios to furthest bundle center
+        diffs = [float(np.linalg.norm(centers[i] - all_scens[s]['Demand'])) for i in range(len(centers))]
+        max_diffs[s] = diffs.index(max(diffs))
+
+    bundle = {}
+    for model in models:
+        for s in data[model]:
+            if f"bundle_{max_diffs[s]}" in bundle:  # ensures empty bundles aren't created if centers have no mapped scenarios
+                bundle[f"bundle_{max_diffs[s]}"]["scenarios"].update({scen_key(model, s): data[model][s]['Probability']})
+            else:
+                bundle[f"bundle_{max_diffs[s]}"] = dict(
+                    scenarios = {scen_key(model, s): data[model][s]['Probability']},
+                    Probability = 1/num_centers
+                )
+
+    # normalization term for if some centers have no mapped scenarios
+    fewer_centers_norm = sum(bundle[bkey]["Probability"] for bkey in bundle.keys())
+    for bkey in bundle.keys():
+        bundle[bkey]["Probability"] *= (1/fewer_centers_norm)
+        norm_factor = sum(bundle[bkey]["scenarios"].values())   # normalizing bundle probabilities
+        for skey in bundle[bkey]["scenarios"].keys():
+            bundle[bkey]["scenarios"][skey] *= (1/norm_factor)
+
+    return bundle
+
+
 def bundle_random_partition(data, model_weight, models=None, bundle_args=None):
     """
     Each scenario is randomly assigned to a single bundle
@@ -688,6 +799,8 @@ scheme = {
     "mf_ordered": mf_ordered,
     "similar_partitions": similar_partitions,
     "dissimilar_partitions": dissimilar_partitions,
+    "kmeans_similar": kmeans_similar, 
+    "kmeans_dissimilar": kmeans_dissimilar
 }
 
 
