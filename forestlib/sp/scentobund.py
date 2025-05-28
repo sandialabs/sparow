@@ -113,6 +113,60 @@ def scen_key(model, scenario):
 ******************* MULTI-FIDELITY SCHEMES *******************
 """
 
+### THIS SCHEME ISN'T WORKING YET, DO NOT USE! TODO: fix this -R
+def mf_kmeans_similar(data, model_weight, models=None, bundle_args=None):
+    """
+    LF scenarios are bundled with closest HF scenario; HF scenarios are bundle centers
+        - bun_size (approx. size of each bundle) can be passed into bundle_args. default is 2.
+        - ensure there are no duplicate/redundant scenarios before using this! 
+        - all scenarios must have unique names! 
+    """
+    if models is None:
+        models = list(data.keys())
+
+    if "bun_size" in bundle_args:     # default bundle size is 2
+        bun_size = bundle_args['bun_size']
+    else:
+        bun_size = 2
+
+    num_scens = sum(len(data[model]) for model in models)   # total number of scenarios
+    if bun_size > num_scens:
+        raise ValueError(f"Bundle size cannot exceed number of scenarios")
+
+    num_centers = -(num_scens// -bun_size)  # number of bundle centers (NOT NECESSARILY the same as number of bundles!!)
+    all_scens = {sname: sval for model in models for (sname, sval) in data[model].items()}
+
+    if isinstance(data[models[0]][next(iter(all_scens))]['Demand'], numbers.Number) == True:
+        arr = np.array([all_scens[s]['Demand'] for s in all_scens.keys()])
+        X = arr.reshape(-1,1)   # array of scenario demands needs to be reshaped if demand is a number
+    else:
+        X = np.array([all_scens[s]['Demand'] for s in all_scens.keys()])
+
+    kmeans = KMeans(n_clusters=num_centers, random_state=0, n_init="auto").fit(X)   # find bundle centers
+    s_assign = kmeans.labels_   # list of closest bundle centers
+    sbmap = {s: int(s_assign[ind_s]) for ind_s, s in enumerate(iter(all_scens))}    # map scenarios to closest bundle center
+
+    bundle = {}
+    for model in models:
+        for s in data[model]:
+            if f"bundle_{sbmap[s]}" in bundle:  # ensures empty bundles aren't created if centers have no mapped scenarios
+                bundle[f"bundle_{sbmap[s]}"]["scenarios"].update({scen_key(model, s): data[model][s]['Probability']})
+            else:
+                bundle[f"bundle_{sbmap[s]}"] = dict(
+                    scenarios = {scen_key(model, s): data[model][s]['Probability']},
+                    Probability = 1/num_centers
+                )
+
+    # normalization term for if some centers have no mapped scenarios
+    fewer_centers_norm = sum(bundle[bkey]["Probability"] for bkey in bundle.keys())
+    for bkey in bundle.keys():
+        bundle[bkey]["Probability"] *= (1/fewer_centers_norm)
+        norm_factor = sum(bundle[bkey]["scenarios"].values())   # normalizing bundle probabilities
+        for skey in bundle[bkey]["scenarios"].keys():
+            bundle[bkey]["scenarios"][skey] *= (1/norm_factor)
+
+    return bundle
+
 
 def similar_partitions(data, model_weight=None, models=None, bundle_args=None):
     """
@@ -708,23 +762,21 @@ def bundle_random_partition(data, model_weight, models=None, bundle_args=None):
     if models is None:
         models = list(data.keys())
 
+    if "num_buns" not in bundle_args:
+        raise RuntimeError(f"Need to include the number of bundles (num_buns) in bundle_args")
+
     # user can optionally set random seed
     seed_value = 972819128347298
     if bundle_args != None:
         seed_value = bundle_args.get("seed", seed_value)
+        num_buns = bundle_args["num_buns"]
     random.seed(seed_value)
 
-    fid = data.keys()
-    if len(fid) > 1:
-        raise RuntimeError(
-            f"bundle_random_partition scheme supports only 1 model fidelity"
-        )
-
-    scens = [data[fid]]
+    scens = [data[fid] for fid in data.keys()]
+    #scens = {sname: sval for model in models for (sname, sval) in data[model].items()}
 
     # extracting number of bundles from bundle_args
     num_buns = bundle_args["num_buns"]
-
     if num_buns > len(scens):  # can't construct more bundles than num. of scenarios
         raise RuntimeError(f"Number of bundles must be <= number of scenarios")
 
@@ -763,7 +815,7 @@ def bundle_random_partition(data, model_weight, models=None, bundle_args=None):
         temp_bundle.append(temp_list)
         for temp_scen_idx in temp_list:
             scen_idx.remove(temp_scen_idx)
-
+    print(scens[temp_bundle[0][0]])
     if len(scen_idx) != 0:  # check that each scenario is assigned to a bundle
         raise RuntimeError(f"Scenarios {scen_idx} are not assigned to a bundle")
 
