@@ -754,29 +754,27 @@ def kmeans_dissimilar(data, model_weight, models=None, bundle_args=None):
     return bundle
 
 
-def bundle_random_partition(data, model_weight, models=None, bundle_args=None):
+def sf_random(data, model_weight, models=None, bundle_args=None):
     """
-    Each scenario is randomly assigned to a single bundle
-        - Need to pass number of bundles (num_buns) to bundle_args
+    Scenarios are randomly grouped into bundles of approx. same size
+        - Can specify bundle size in bundle_args as "bun_size"
+        - Bundle size will default to 2-3 scenarios per bundle by default
     """
     if models is None:
         models = list(data.keys())
 
-    if "num_buns" not in bundle_args:
-        raise RuntimeError(f"Need to include the number of bundles (num_buns) in bundle_args")
+    scens = {sname: sval for model in models for (sname, sval) in data[model].items()}
 
     # user can optionally set random seed
     seed_value = 972819128347298
     if bundle_args != None:
         seed_value = bundle_args.get("seed", seed_value)
-        num_buns = bundle_args["num_buns"]
+        num_buns = bundle_args.get("num_buns", (-len(scens) // -2)) # defaults to 2-3 scens per bundle
     random.seed(seed_value)
 
-    scens = [data[fid] for fid in data.keys()]
-    #scens = {sname: sval for model in models for (sname, sval) in data[model].items()}
+    if bundle_args == None:
+        num_buns = (-len(scens) // -2) # defaults to 2-3 scens per bundle
 
-    # extracting number of bundles from bundle_args
-    num_buns = bundle_args["num_buns"]
     if num_buns > len(scens):  # can't construct more bundles than num. of scenarios
         raise RuntimeError(f"Number of bundles must be <= number of scenarios")
 
@@ -804,34 +802,30 @@ def bundle_random_partition(data, model_weight, models=None, bundle_args=None):
             raise RuntimeError(f"No bundle size specified for bundle {i}")
 
     scen_idx = []  # temporary list
-    for idx, _ in enumerate(
-        scens
-    ):  # using indices rather than IDs to allow for non-numeric scenario IDs
-        scen_idx.append(idx)
+    for skey in scens:  # using indices rather than IDs to allow for non-numeric scenario IDs
+        scen_idx.append(skey)
 
-    temp_bundle = []  # randomly assign scenarios to bundles
+    temp_bundle = {}  # randomly assign scenarios to bundles
     for bun_idx in range(num_buns):
         temp_list = random.sample(scen_idx, bunsize[bun_idx])
-        temp_bundle.append(temp_list)
+        temp_bundle[bun_idx] = (temp_list)
         for temp_scen_idx in temp_list:
             scen_idx.remove(temp_scen_idx)
-    print(scens[temp_bundle[0][0]])
     if len(scen_idx) != 0:  # check that each scenario is assigned to a bundle
         raise RuntimeError(f"Scenarios {scen_idx} are not assigned to a bundle")
 
     bundle = {}
     for bun_idx in range(num_buns):
         bun_prob = sum(
-            scens[temp_bundle[bun_idx][l]]["Probability"]
-            for l in range(len(temp_bundle[bun_idx]))
+            scens[f'{temp_bundle[bun_idx][l]}']["Probability"]
+            for l,_ in enumerate(temp_bundle[bun_idx])
         )
         bundle[f"rand_{bun_idx}"] = {
             "scenarios": {
-                scens[temp_bundle[bun_idx][l]]["ID"]: scens[temp_bundle[bun_idx][l]][
+                temp_bundle[bun_idx][l]: scens[f'{temp_bundle[bun_idx][l]}'][
                     "Probability"
-                ]
-                / bun_prob
-                for l in range(len(temp_bundle[bun_idx]))
+                ] / bun_prob
+                for l,_ in enumerate(temp_bundle[bun_idx])
             },
             "Probability": bun_prob,
         }
@@ -844,7 +838,7 @@ def bundle_random_partition(data, model_weight, models=None, bundle_args=None):
 scheme = {
     "single_scenario": single_scenario,
     "single_bundle": single_bundle,
-    "bundle_random_partition": bundle_random_partition,
+    "sf_random": sf_random,
     "mf_paired": mf_paired,
     "mf_random_nested": mf_random_nested,
     "mf_random": mf_random,
