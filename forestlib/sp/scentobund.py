@@ -113,19 +113,21 @@ def scen_key(model, scenario):
 ******************* MULTI-FIDELITY SCHEMES *******************
 """
 
-### THIS SCHEME ISN'T WORKING YET, DO NOT USE! TODO: fix this -R
+### TODO: flexibility for fewer bundle centers than HF scenarios -R 
 def mf_kmeans_similar(data, model_weight, models=None, bundle_args=None):
     """
     LF scenarios are bundled with closest HF scenario; HF scenarios are bundle centers
         - bun_size (approx. size of each bundle) can be passed into bundle_args. default is 2.
         - ensure there are no duplicate/redundant scenarios before using this! 
         - all scenarios must have unique names! 
+        - ignores model weights for now!!!
     """
-    if models is None:
-        models = list(data.keys())
 
-    if "bun_size" in bundle_args:     # default bundle size is 2
-        bun_size = bundle_args['bun_size']
+    if models is None:
+            models = list(data.keys())
+
+    if bundle_args is not None: # default bundle size is 2
+        bun_size = bundle_args.get("bun_size", 2)
     else:
         bun_size = 2
 
@@ -133,26 +135,97 @@ def mf_kmeans_similar(data, model_weight, models=None, bundle_args=None):
     if bun_size > num_scens:
         raise ValueError(f"Bundle size cannot exceed number of scenarios")
 
-    num_centers = -(num_scens// -bun_size)  # number of bundle centers (NOT NECESSARILY the same as number of bundles!!)
+    num_centers = len(data[models[0]])  # number of bundle centers (NOT NECESSARILY the same as number of bundles!!)
     all_scens = {sname: sval for model in models for (sname, sval) in data[model].items()}
 
     if isinstance(data[models[0]][next(iter(all_scens))]['Demand'], numbers.Number) == True:
-        arr = np.array([all_scens[s]['Demand'] for s in all_scens.keys()])
+        arr = np.array([data[models[0]][skey]['Demand'] for skey in data[models[0]].keys()])
         X = arr.reshape(-1,1)   # array of scenario demands needs to be reshaped if demand is a number
     else:
-        X = np.array([all_scens[s]['Demand'] for s in all_scens.keys()])
+        X = np.array([data[models[0]][skey]['Demand'] for skey in data[models[0]].keys()])
 
     kmeans = KMeans(n_clusters=num_centers, random_state=0, n_init="auto").fit(X)   # find bundle centers
-    s_assign = kmeans.labels_   # list of closest bundle centers
-    sbmap = {s: int(s_assign[ind_s]) for ind_s, s in enumerate(iter(all_scens))}    # map scenarios to closest bundle center
+    centers = kmeans.cluster_centers_  # list of bundle centers
+
+    diffs = {}
+    for s in all_scens:    # map scenarios to furthest bundle center
+        dem_diffs = [float(np.linalg.norm(centers[i] - all_scens[s]['Demand'])) for i in range(len(centers))]
+        diffs[s] = dem_diffs.index(min(dem_diffs))
 
     bundle = {}
     for model in models:
         for s in data[model]:
-            if f"bundle_{sbmap[s]}" in bundle:  # ensures empty bundles aren't created if centers have no mapped scenarios
-                bundle[f"bundle_{sbmap[s]}"]["scenarios"].update({scen_key(model, s): data[model][s]['Probability']})
+            if f"bundle_{diffs[s]}" in bundle:  # ensures empty bundles aren't created if centers have no mapped scenarios
+                bundle[f"bundle_{diffs[s]}"]["scenarios"].update({scen_key(model, s): data[model][s]['Probability']})
             else:
-                bundle[f"bundle_{sbmap[s]}"] = dict(
+                bundle[f"bundle_{diffs[s]}"] = dict(
+                    scenarios = {scen_key(model, s): data[model][s]['Probability']},
+                    Probability = 1/num_centers
+                )
+
+    # normalization term for if some centers have no mapped scenarios
+    fewer_centers_norm = sum(bundle[bkey]["Probability"] for bkey in bundle.keys())
+    for bkey in bundle.keys():
+        bundle[bkey]["Probability"] *= (1/fewer_centers_norm)
+        norm_factor = sum(bundle[bkey]["scenarios"].values())   # normalizing bundle probabilities
+        for skey in bundle[bkey]["scenarios"].keys():
+            bundle[bkey]["scenarios"][skey] *= (1/norm_factor)
+
+    return bundle
+
+
+### TODO: clean up extra variables, variable names -R
+def mf_kmeans_dissimilar(data, model_weight, models=None, bundle_args=None):
+    """
+    LF scenarios are bundled with furthest HF scenario; HF scenarios are bundle centers
+        - bun_size (approx. size of each bundle) can be passed into bundle_args. default is 2.
+        - ensure there are no duplicate/redundant scenarios before using this! 
+        - all scenarios must have unique names! 
+        - ignores model weights for now!!!
+    """
+
+    if models is None:
+        models = list(data.keys())
+
+    if bundle_args is not None: # default bundle size is 2
+        bun_size = bundle_args.get("bun_size", 2)
+    else:
+        bun_size = 2
+
+    num_scens = sum(len(data[model]) for model in models)   # total number of scenarios
+    if bun_size > num_scens:
+        raise ValueError(f"Bundle size cannot exceed number of scenarios")
+
+    num_centers = len(data[models[0]])  # number of bundle centers (NOT NECESSARILY the same as number of bundles!!)
+    all_scens = {sname: sval for model in models for (sname, sval) in data[model].items()}
+    hf_scens = {sname: sval for (sname, sval) in data[models[0]].items()}
+    lf_scens = {sname: sval for model in models[1:] for (sname, sval) in data[model].items()}
+
+    if isinstance(data[models[0]][next(iter(all_scens))]['Demand'], numbers.Number) == True:
+        arr = np.array([data[models[0]][skey]['Demand'] for skey in data[models[0]].keys()])
+        X = arr.reshape(-1,1)   # array of scenario demands needs to be reshaped if demand is a number
+    else:
+        X = np.array([data[models[0]][skey]['Demand'] for skey in data[models[0]].keys()])
+
+    kmeans = KMeans(n_clusters=num_centers, random_state=0, n_init="auto").fit(X)   # find bundle centers
+    centers = kmeans.cluster_centers_  # list of bundle centers
+
+    diffs = {}
+    for hs in hf_scens:    # map scenarios to furthest bundle center
+        dem_diffs = [float(np.linalg.norm(centers[i] - hf_scens[hs]['Demand'])) for i in range(len(centers))]
+        diffs[hs] = dem_diffs.index(min(dem_diffs))
+
+    for ls in lf_scens:
+        dem_diffs = [float(np.linalg.norm(centers[i] - lf_scens[ls]['Demand'])) for i in range(len(centers))]
+        diffs[ls] = dem_diffs.index(max(dem_diffs))
+
+    bundle = {}
+    for model in models:
+        for s in data[model]:
+            if f"bundle_{diffs[s]}" in bundle:  # ensures empty bundles aren't created if centers have no mapped scenarios
+                bundle[f"bundle_{diffs[s]}"]["scenarios"].update({scen_key(model, s): data[model][s]['Probability']})
+            else:
+                bundle[f"bundle_{diffs[s]}"] = dict(
                     scenarios = {scen_key(model, s): data[model][s]['Probability']},
                     Probability = 1/num_centers
                 )
@@ -846,7 +919,9 @@ scheme = {
     "similar_partitions": similar_partitions,
     "dissimilar_partitions": dissimilar_partitions,
     "kmeans_similar": kmeans_similar, 
-    "kmeans_dissimilar": kmeans_dissimilar
+    "kmeans_dissimilar": kmeans_dissimilar,
+    "mf_kmeans_dissimilar": mf_kmeans_dissimilar,
+    "mf_kmeans_similar": mf_kmeans_similar
 }
 
 
