@@ -875,8 +875,9 @@ def sf_random(data, model_weight, models=None, bundle_args=None):
             raise RuntimeError(f"No bundle size specified for bundle {i}")
 
     scen_idx = []  # temporary list
-    for skey in scens:  # using indices rather than IDs to allow for non-numeric scenario IDs
-        scen_idx.append(skey)
+    for model in models:
+        for skey in data[model]:  # using indices rather than IDs to allow for non-numeric scenario IDs
+            scen_idx.append(scen_key(model, skey))
 
     temp_bundle = {}  # randomly assign scenarios to bundles
     for bun_idx in range(num_buns):
@@ -890,12 +891,12 @@ def sf_random(data, model_weight, models=None, bundle_args=None):
     bundle = {}
     for bun_idx in range(num_buns):
         bun_prob = sum(
-            scens[f'{temp_bundle[bun_idx][l]}']["Probability"]
+            scens[f'{temp_bundle[bun_idx][l][1]}']["Probability"]
             for l,_ in enumerate(temp_bundle[bun_idx])
         )
         bundle[f"rand_{bun_idx}"] = {
             "scenarios": {
-                temp_bundle[bun_idx][l]: scens[f'{temp_bundle[bun_idx][l]}'][
+                temp_bundle[bun_idx][l]: scens[f'{temp_bundle[bun_idx][l][1]}'][
                     "Probability"
                 ] / bun_prob
                 for l,_ in enumerate(temp_bundle[bun_idx])
