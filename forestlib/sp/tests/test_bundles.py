@@ -3,11 +3,18 @@ import pytest
 from forestlib.sp.scentobund import (
     single_scenario,
     single_bundle,
-    bundle_random_partition,
+    sf_random,
     mf_paired,
+    mf_ordered,
     mf_random_nested,
     mf_random,
     similar_partitions,
+    dissimilar_partitions,
+    mf_kmeans_similar,
+    mf_kmeans_dissimilar,
+    kmeans_similar,
+    kmeans_dissimilar,
+    check_data_dict_keys
 )
 
 
@@ -163,6 +170,108 @@ def imbalanced_data():
     }
 
 
+@pytest.fixture 
+def weird_key_names():
+    return {
+        "HF": {
+            "s_1": {
+                "weird_key_d": [3, 3],
+                "weird_key_p": 0.5,
+            },
+            "s_0": {
+                "weird_key_d": [1, 1],
+                "weird_key_p": 0.5,
+            },
+        },
+        "LF": {
+            "s_2": {
+                "weird_key_d": [4, 4],
+                "weird_key_p": 0.2,
+            },
+            "s_3": {
+                "weird_key_d": [1.5, 1.5],
+                "weird_key_p": 0.6,
+            },
+            "s_4": {
+                "weird_key_d": [5, 5],
+                "weird_key_p": 0.2,
+            },
+        },
+    }
+
+
+@pytest.fixture 
+def probable_key_names():
+    return {
+        "HF": {
+            "s_1": {
+                "d": [3, 3],
+                "Pr": 0.5,
+            },
+            "s_0": {
+                "d": [1, 1],
+                "Pr": 0.5,
+            },
+        },
+        "LF": {
+            "s_2": {
+                "d": [4, 4],
+                "Pr": 0.2,
+            },
+            "s_3": {
+                "d": [1.5, 1.5],
+                "Pr": 0.6,
+            },
+            "s_4": {
+                "d": [5, 5],
+                "Pr": 0.2,
+            },
+        },
+    }
+
+
+@pytest.fixture
+def similar_scenarios():
+    return {
+        "HF": {
+            "scen_0": {
+                "Demand": 4,
+                "Probability": 0.2,
+            },
+            "scen_1": {
+                "Demand": 1,
+                "Probability": 0.2,
+            },
+            "scen_2": {
+                "Demand": 2,
+                "Probability": 0.3,
+            },
+            "scen_3": {
+                "Demand": 5,
+                "Probability": 0.3,
+            },
+        },
+        "LF": {
+            "scen_4": {
+                "Demand": 5,
+                "Probability": 0.2,
+            },
+            "scen_5": {
+                "Demand": 2,
+                "Probability": 0.3,
+            },
+            "scen_6": {
+                "Demand": 1,
+                "Probability": 0.3,
+            },
+            "scen_7": {
+                "Demand": 4,
+                "Probability": 0.2,
+            },
+        },
+    }
+
+
 class TestBundleFunctions(object):
 
     def dist_map(self, data, models):
@@ -183,6 +292,153 @@ class TestBundleFunctions(object):
                 demand_diffs[(i,j)] = abs(HFdemands[i] - LFdemands[j])
 
         return demand_diffs
+    
+
+    def test_check_data_dict_keys(self, weird_key_names, probable_key_names):
+        assert single_scenario(probable_key_names) == {
+            "HF_s_1": {
+                "scenarios": {
+                    ("HF", "s_1"): 1.0,
+                },
+                "Probability": 0.25,
+            },
+            "HF_s_0": {
+                "scenarios": {
+                    ("HF", "s_0"): 1.0,
+                },
+                "Probability": 0.25,
+            },
+            "LF_s_2": {
+                "scenarios": {
+                    ("LF", "s_2"): 1.0,
+                },
+                "Probability": 0.1,
+            },
+            "LF_s_3": {
+                "scenarios": {
+                    ("LF", "s_3"): 1.0,
+                },
+                "Probability": 0.3,
+            },
+            "LF_s_4": {
+                "scenarios": {
+                    ("LF", "s_4"): 1.0,
+                },
+                "Probability": 0.1,
+            }
+        }
+
+        assert single_scenario(weird_key_names, bundle_args={"demand_key": "weird_key_d", "probability_key": "weird_key_p"}) == {
+            "HF_s_1": {
+                "scenarios": {
+                    ("HF", "s_1"): 1.0,
+                },
+                "Probability": 0.25,
+            },
+            "HF_s_0": {
+                "scenarios": {
+                    ("HF", "s_0"): 1.0,
+                },
+                "Probability": 0.25,
+            },
+            "LF_s_2": {
+                "scenarios": {
+                    ("LF", "s_2"): 1.0,
+                },
+                "Probability": 0.1,
+            },
+            "LF_s_3": {
+                "scenarios": {
+                    ("LF", "s_3"): 1.0,
+                },
+                "Probability": 0.3,
+            },
+            "LF_s_4": {
+                "scenarios": {
+                    ("LF", "s_4"): 1.0,
+                },
+                "Probability": 0.1,
+            }
+        }
+
+        with pytest.raises(RuntimeError) as excinfo:
+            single_scenario(
+                weird_key_names, bundle_args={"demand_key": "weird_key_d"}
+            )
+        assert excinfo.type is RuntimeError
+
+        with pytest.raises(RuntimeError) as excinfo:
+            single_scenario(
+                weird_key_names, bundle_args={"probability_key": "weird_key_p"}
+            )
+        assert excinfo.type is RuntimeError
+
+
+    def test_mf_kmeans_similar(self, similar_scenarios):
+        assert mf_kmeans_similar(similar_scenarios) == {
+            "bundle_4.0": {
+                "scenarios": {
+                    ("HF", "scen_0"): 0.5,
+                    ("LF", "scen_7"): 0.5,
+                },
+                "Probability": 0.25,
+            },
+            "bundle_1.0": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.4,
+                    ("LF", "scen_6"): 0.6,
+                },
+                "Probability": 0.25,
+            },
+            "bundle_2.0": {
+                "scenarios": {
+                    ("HF", "scen_2"): 0.5,
+                    ("LF", "scen_5"): 0.5,
+                },
+                "Probability": 0.25,
+            },
+            "bundle_5.0": {
+                "scenarios": {
+                    ("HF", "scen_3"): 0.6,
+                    ("LF", "scen_4"): 0.4,
+                },
+                "Probability": 0.25,
+            },
+        }
+
+
+    def test_mf_kmeans_dissimilar(self, similar_scenarios):
+        assert mf_kmeans_dissimilar(similar_scenarios) == {
+            "bundle_4.0": {
+                "scenarios": {
+                    ("HF", "scen_0"): 1.0,
+                },
+                "Probability": 0.25,
+            },
+            "bundle_1.0": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.3333333333333333,
+                    ("LF", "scen_7"): 0.3333333333333333,
+                    ("LF", "scen_4"): 0.3333333333333333,
+                },
+                "Probability": 0.25,
+            },
+            "bundle_2.0": {
+                "scenarios": {
+                    ("HF", "scen_2"): 1.0,
+                },
+                "Probability": 0.25,
+            },
+            "bundle_5.0": {
+                "scenarios": {
+                    ("HF", "scen_3"): 0.3333333333333333,
+                    ("LF", "scen_6"): 0.3333333333333333,
+                    ("LF", "scen_5"): 0.3333333333333333,
+                },
+                "Probability": 0.25,
+            },
+        }
+
 
     def test_similar_partitions(self, MF_data):
         assert similar_partitions(MF_data, models=["HF", "LF"], bundle_args={"distance_function": self.dist_map}) == {
@@ -219,6 +475,73 @@ class TestBundleFunctions(object):
                 "Probability": 0.5},
         }
 
+
+    def test_dissimilar_partitions(self, similar_scenarios):
+        assert dissimilar_partitions(similar_scenarios, models=["HF", "LF"], bundle_args={"distance_function": self.dist_map}) == {
+            "HF_scen_0": {
+                "scenarios": {
+                    ("HF", "scen_0"): 0.4,
+                    ("LF", "scen_6"): 0.6,
+                },
+                "Probability": 0.25,
+            },
+            "HF_scen_1": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.5,
+                    ("LF", "scen_4"): 0.5,
+                },
+                "Probability": 0.25,
+            },
+            "HF_scen_2": {
+                "scenarios": {
+                    ("HF", "scen_2"): 0.6,
+                    ("LF", "scen_4"): 0.4,
+                },
+                "Probability": 0.25,
+            },
+            "HF_scen_3": {
+                "scenarios": {
+                    ("HF", "scen_3"): 0.5,
+                    ("LF", "scen_6"): 0.5,
+                },
+                "Probability": 0.25,
+            },
+        }
+
+        assert dissimilar_partitions(
+            similar_scenarios, model_weight={"HF": 3, "LF": 1}, models=["HF", "LF"], bundle_args={"distance_function": self.dist_map}
+        ) == {
+            "HF_scen_0": {
+                "scenarios": {
+                    ("HF", "scen_0"): 0.6666666666666666,
+                    ("LF", "scen_6"): 0.33333333333333326,
+                },
+                "Probability": 0.25,
+            },
+            "HF_scen_1": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.7500000000000001,
+                    ("LF", "scen_4"): 0.25,
+                },
+                "Probability": 0.25,
+            },
+            "HF_scen_2": {
+                "scenarios": {
+                    ("HF", "scen_2"): 0.8181818181818181,
+                    ("LF", "scen_4"): 0.18181818181818185,
+                },
+                "Probability": 0.25,
+            },
+            "HF_scen_3": {
+                "scenarios": {
+                    ("HF", "scen_3"): 0.75,
+                    ("LF", "scen_6"): 0.25,
+                },
+                "Probability": 0.25,
+            },
+        }
+
+
     def test_mf_paired(self, MFpaired_data, imbalanced_data):
         assert mf_paired(
             MFpaired_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["HF", "LF"]
@@ -240,6 +563,7 @@ class TestBundleFunctions(object):
                 "scenarios": {("HF", "scen_3"): 0.5, ("LF", "scen_3"): 0.5},
             },
         }
+
 
     def test_mf_random_nested(self, MFpaired_data, imbalanced_data):
         assert mf_random_nested(
@@ -328,6 +652,7 @@ class TestBundleFunctions(object):
             },
         }
 
+
     def test_mf_random(self, MF_data, imbalanced_data):
         assert mf_random(
             MF_data,
@@ -385,6 +710,10 @@ class TestBundleFunctions(object):
             },
         }
 
+
+    ## TODO: test for mf_ordered
+
+
     def test_single_scenario(self, SF_data, MF_data):
         # checking logic with no bundle_args
         assert single_scenario(
@@ -412,6 +741,7 @@ class TestBundleFunctions(object):
         ) == single_scenario(
             SF_data, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args=None
         )
+
 
     def test_single_bundle(self, SF_data, MF_data):
         # check logic with no bundle args
@@ -447,6 +777,13 @@ class TestBundleFunctions(object):
         ) == single_bundle(
             SF_data, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args=None
         )
+
+
+    ## TODO: tests for kmeans_similar/dissimilar
+
+
+    ## TODO: tests for sf_random
+
 
     def Xtest_bundle_random_partition(self, rand_data, rand_data_MF):
         # check that no "num_buns" in bundle args returns error
