@@ -63,7 +63,7 @@ def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
 
 class ProgressiveHedgingSolver(object):
 
-    def __init__(self, sp):
+    def __init__(self):
         self.rho = {}
         self.cached_model_generation = True
         self.max_iterations = 100
@@ -101,7 +101,7 @@ class ProgressiveHedgingSolver(object):
         #
         if rho:
             self.rho = rho
-        if rho_updates == True:
+        if rho_updates:
             self.rho_updates = rho_updates
         if default_rho:
             self.default_rho = default_rho
@@ -379,7 +379,7 @@ class ProgressiveHedgingSolver(object):
 
     def update_rho(self, sfs_variables, xbar, sp):
         # this function is scenario-independent, but will need to be updated for integer x
-        if self.rho_updates == True:
+        if self.rho_updates:
             for x in sfs_variables:
                 if abs(sp.get_objective_coef(x)) > 0:
                     self.rho[x] = abs(sp.get_objective_coef(x)) / max(
