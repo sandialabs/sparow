@@ -208,7 +208,7 @@ class TestSolverAgainstMPISPPY(object):
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
+        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", default_rho=10)
 
         soln = results.last_solution
         ph_objval = soln.suffix.obj_lb
@@ -241,7 +241,7 @@ class TestSolverAgainstMPISPPY(object):
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
+        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", default_rho=10)
 
         soln = results.last_solution
         #ph_objval = soln.suffix.obj_lb
@@ -276,10 +276,12 @@ class TestSolverAgainstMPISPPY(object):
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
+        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi") #default_rho=10)
         soln = results.last_solution
         xbar_ph = np.array([var.value for var in reversed(soln.variables())])
+        print("xbar_ph:", xbar_ph)
         xbar_mpi = np.array(xbar_list)
+        print("xbar_mpi:", xbar_mpi)
         assert np.allclose(xbar_ph, xbar_mpi)
 
     def test_PH_model_solve_w_scen(self):
@@ -311,7 +313,7 @@ class TestSolverAgainstMPISPPY(object):
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", rho=10)
+        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", default_rho=10)
         soln = results.last_solution
 
         scenarios = ["AboveAverageScenario", "AverageScenario", "BelowAverageScenario"]
