@@ -375,7 +375,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 obj
                 + sum(params.w[i] * x for i, x in self.int_to_FirstStageVar[b].items())
                 + sum(
-                    ((params.rho[i] / 2.0) * (x - params.x_bar[i])) ** 2
+                    (params.rho[i] / 2.0) * ((x - params.x_bar[i]) ** 2)
                     for i, x in self.int_to_FirstStageVar[b].items()
                 )
             )

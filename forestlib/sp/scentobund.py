@@ -696,32 +696,29 @@ def mf_ordered(data, model_weight=None, models=None, bundle_args=None):
 """
 
 
-def single_scenario(data, model_weight=None, models=None, bundle_args=None):
+def single_scenario(data, model_weight, models=None, bundle_args=None):
     """
     Each scenario is its own bundle (i.e., no bundling)
     """
     if models is None:
         models = list(data.keys())
 
-    model0 = models[0]
-    pkey = check_data_dict_keys(data, model0, bundle_args)[1]
-
     if all(
-        pkey in sdata for model in models for sdata in data[model].values()
+        "Probability" in sdata for model in models for sdata in data[model].values()
     ):
         #
         # Probability values have been specified for all scenarios, so we use the relative weight
         # of these probabilities
         #
         total_prob = sum(
-            sdata[pkey] for model in models for sdata in data[model].values()
+            sdata["Probability"] for model in models for sdata in data[model].values()
         )
         bundle = {}
         for model in models:
             for s, sdata in data[model].items():
                 bundle[scen_name(model, s)] = dict(
                     scenarios={scen_key(model, s): 1.0},
-                    Probability=sdata[pkey] / total_prob,
+                    Probability=sdata["Probability"] / total_prob,
                 )
     else:
         #
