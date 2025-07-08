@@ -13,6 +13,13 @@ from mpisppy.opt.ph import PH
 from forestlib.sp import stochastic_program
 from forestlib.ph import ProgressiveHedgingSolver
 
+verbose=False
+if verbose:
+    loglevel="DEBUG"
+else:
+    loglevel="WARN"
+iters=7
+
 random.seed(923874938740938740)
 
 
@@ -80,30 +87,30 @@ def scenario_creator(scenario_name):
     return model
 
 
-Test_MPI_EF = False
+#Test_MPI_EF = False
+#
+#if Test_MPI_EF:
+#    options = {"solver": "gurobi"}
+#    all_scenario_names = ["good", "average", "bad"]
+#    ef = ExtensiveForm(options, all_scenario_names, scenario_creator)
+#    results = ef.solve_extensive_form(tee=True)
+#
+#    objval = ef.get_objective_value()
+#    print("EXTENSIVE FORM OBJECTIVE")
+#    print(f"{objval:.1f}")
 
-if Test_MPI_EF:
-    options = {"solver": "gurobi"}
-    all_scenario_names = ["good", "average", "bad"]
-    ef = ExtensiveForm(options, all_scenario_names, scenario_creator)
-    results = ef.solve_extensive_form(tee=True)
 
-    objval = ef.get_objective_value()
-    print("EXTENSIVE FORM OBJECTIVE")
-    print(f"{objval:.1f}")
-
-
-options = {
-    "solver_name": "gurobi",
-    "PHIterLimit": 10,
-    "defaultPHrho": 10,
-    "convthresh": 1e-3,
-    "verbose": True,
-    "display_progress": True,
-    "display_timing": False,
-    "iter0_solver_options": dict(),
-    "iterk_solver_options": dict(),
-}
+#options = {
+#    "solver_name": "gurobi",
+#    "PHIterLimit": 10,
+#    "defaultPHrho": 10,
+#    "convthresh": 1e-3,
+#    "verbose": True,
+#    "display_progress": True,
+#    "display_timing": False,
+#    "iter0_solver_options": dict(),
+#    "iterk_solver_options": dict(),
+#}
 # all_scenario_names = ["good", "average", "bad"]
 # ph = PH(
 #    options,
@@ -169,8 +176,8 @@ def model_builder(scen, scen_args):
     return model
 
 
-FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
-FarmerSP.initialize_model(model_builder=model_builder)
+#FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
+#FarmerSP.initialize_model(model_builder=model_builder)
 
 model_data = {
     "scenarios": [
@@ -203,28 +210,31 @@ class TestSolverAgainstMPISPPY(object):
         ef = ExtensiveForm(options, all_scenario_names, scenario_creator)
         results = ef.solve_extensive_form(tee=False)
         ef_objval = ef.get_objective_value()
-        print("EF VALUE")
-        print(ef_objval)
+        if verbose:
+            print("EF VALUE")
+            print(ef_objval)
+
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", default_rho=10)
+        results = ph.solve(FarmerSP, max_iterations=iters-1, solver="gurobi", loglevel=loglevel, default_rho=10)
 
         soln = results.last_solution
-        ph_objval = soln.suffix.obj_lb
-        print("PH VALUE")
-        print(ph_objval)
+        ph_objval = soln.objective().value
+        if verbose:
+            print("PH VALUE")
+            print(ph_objval)
         # assert abs(ef_objval - ph_objval) < 1e-5
         pass
 
     def test_PH_model_solve_obj(self):
         options = {
             "solver_name": "gurobi",
-            "PHIterLimit": 10,
+            "PHIterLimit": iters,
             "defaultPHrho": 10,
             "convthresh": 1e-3,
-            "verbose": True,
-            "display_progress": True,
+            "verbose": verbose,
+            "display_progress": verbose,
             "display_timing": False,
             "iter0_solver_options": dict(),
             "iterk_solver_options": dict(),
@@ -241,26 +251,34 @@ class TestSolverAgainstMPISPPY(object):
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", default_rho=10)
+        results = ph.solve(FarmerSP, max_iterations=iters-1, solver="gurobi", loglevel=loglevel, default_rho=10)
 
         soln = results.last_solution
-        #ph_objval = soln.suffix.obj_lb
         ph_objval = soln.objective().value
+        if verbose:
+            print("mpi_objval:", mpi_objval)
+            print("ph_objval: ", ph_objval)
         assert abs((mpi_objval - ph_objval) / ph_objval) < 1e-3
 
     def test_PH_model_solve_xbar(self):
+        if verbose:
+            print("="*60)
+            print("Running MPISPPY")
+            print("="*60)
+
         options = {
             "solver_name": "gurobi",
-            "PHIterLimit": 10,
+            "PHIterLimit": iters,
             "defaultPHrho": 10,
             "convthresh": 1e-3,
-            "verbose": True,
-            "display_progress": True,
+            "verbose": verbose,
+            "display_progress": verbose,
             "display_timing": False,
             "iter0_solver_options": dict(),
             "iterk_solver_options": dict(),
         }
         all_scenario_names = ["good", "average", "bad"]
+
         ph = PH(
             options,
             all_scenario_names,
@@ -272,26 +290,33 @@ class TestSolverAgainstMPISPPY(object):
             xbar_list.append(
                 pyo.value(ph.local_scenarios["good"]._mpisppy_model.xbars[index])
             )
+        xbar_mpi = np.array(xbar_list)
+
+        if verbose:
+            print("="*60)
+            print("Running Forestlib.ph")
+            print("="*60)
 
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi") #default_rho=10)
+        results = ph.solve(FarmerSP, max_iterations=iters-1, solver="gurobi", loglevel=loglevel, default_rho=10)
         soln = results.last_solution
         xbar_ph = np.array([var.value for var in reversed(soln.variables())])
-        print("xbar_ph:", xbar_ph)
-        xbar_mpi = np.array(xbar_list)
-        print("xbar_mpi:", xbar_mpi)
+
+        if verbose:
+            print("xbar_mpi:", xbar_mpi)
+            print("xbar_ph:", xbar_ph)
         assert np.allclose(xbar_ph, xbar_mpi)
 
     def test_PH_model_solve_w_scen(self):
         options = {
             "solver_name": "gurobi",
-            "PHIterLimit": 10,
+            "PHIterLimit": iters,
             "defaultPHrho": 10,
             "convthresh": 1e-3,
-            "verbose": True,
-            "display_progress": True,
+            "verbose": verbose,
+            "display_progress": verbose,
             "display_timing": False,
             "iter0_solver_options": dict(),
             "iterk_solver_options": dict(),
@@ -313,7 +338,7 @@ class TestSolverAgainstMPISPPY(object):
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results = ph.solve(FarmerSP, max_iterations=10, solver="gurobi", default_rho=10)
+        results = ph.solve(FarmerSP, max_iterations=iters-1, solver="gurobi", loglevel=loglevel, default_rho=10)
         soln = results.last_solution
 
         scenarios = ["AboveAverageScenario", "AverageScenario", "BelowAverageScenario"]
