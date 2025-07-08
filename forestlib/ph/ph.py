@@ -291,14 +291,9 @@ class ProgressiveHedgingSolver(object):
             logger.info(f"g = {g}")
 
             # Step 9.1
-            if self.finalize_all_xbar:
-                tmp = self.archive_solution(
+            latest_soln = self.archive_solution(
                     sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb, g=g
                 )
-            else:
-                tmp=None
-            if tmp is not None:
-                latest_soln = tmp
             self.log_iteration(
                 iteration=iteration,
                 obj_lb=obj_lb,
