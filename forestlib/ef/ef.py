@@ -17,13 +17,7 @@ class ExtensiveFormSolver(object):
         self.solver_name = None
         self.solver_options = {}
 
-    def set_options(
-        self,
-        *,
-        solver=None,
-        solver_options=None,
-        loglevel=None,
-    ):
+    def set_options(self, *, solver=None, solver_options=None, loglevel=None):
         #
         # Misc configuration
         #
@@ -52,7 +46,7 @@ class ExtensiveFormSolver(object):
         if logger.isEnabledFor(logging.VERBOSE):
             print(f"  Solver: {self.solver_name}")
             print(f"  Solver Options")
-            for k,v in self.solver_options.items():
+            for k, v in self.solver_options.items():
                 print(f"    {k}= {v}")
         tic(None)
 

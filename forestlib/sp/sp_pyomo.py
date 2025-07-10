@@ -111,7 +111,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
             self.solver = solver
         pyo_solver = pyo.SolverFactory(self.solver)
         if options:
-            for k,v in options.items():
+            for k, v in options.items():
                 pyo_solver.options[k] = v
 
         results = pyo_solver.solve(M, tee=tee, load_solutions=False)
@@ -142,12 +142,13 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
                 sys.stdout.flush()
 
             # Return the value of the 'first' objective
-         
-            if self.solver=='ipopt':
+
+            if self.solver == "ipopt":
                 return munch.Munch(
-                obj_value=pyo.value(M.obj),
-                termination_condition=results.solver.termination_condition,
-                status=results.solver.status,)
+                    obj_value=pyo.value(M.obj),
+                    termination_condition=results.solver.termination_condition,
+                    status=results.solver.status,
+                )
             else:
                 return munch.Munch(
                     obj_value=list(results.Solution[0].Objective.values())[0]["Value"],
@@ -158,11 +159,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
 
 class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
-    def __init__(
-        self,
-        *,
-        first_stage_variables,
-    ):
+    def __init__(self, *, first_stage_variables):
         super().__init__()
         #
         # A list of string names of variables, such as:
@@ -477,7 +474,8 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
                 obj
                 + sum(w[i] * x for i, x in self.int_to_FirstStageVar[b].items())
                 + sum(
-                    (rho[i] / 2.0)*((x - x_bar[i]) ** 2) for i, x in self.int_to_FirstStageVar[b].items()
+                    (rho[i] / 2.0) * ((x - x_bar[i]) ** 2)
+                    for i, x in self.int_to_FirstStageVar[b].items()
                 )
             )
         EF_model.obj = pyo.Objective(expr=obj)

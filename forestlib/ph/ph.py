@@ -242,7 +242,11 @@ class ProgressiveHedgingSolver(object):
             w_prev = w
 
             # Step 6
-            tic(f"Subproblems for iteration {iteration}", logger=logger, level=logging.VERBOSE)
+            tic(
+                f"Subproblems for iteration {iteration}",
+                logger=logger,
+                level=logging.VERBOSE,
+            )
             obj_value = {}
             for b in sp.bundles:
                 logger.debug(f"  b: {b}  w: {w[b]}")
@@ -253,14 +257,24 @@ class ProgressiveHedgingSolver(object):
                     rho=self.rho,
                     cached=self.cached_model_generation,
                 )
-                toc("Created subproblem %s", str(b), logger=logger, level=logging.VERBOSE)
+                toc(
+                    "Created subproblem %s",
+                    str(b),
+                    logger=logger,
+                    level=logging.VERBOSE,
+                )
 
                 results = sp.solve(M, solver_options=self.solver_options)
                 assert (
                     results.obj_value is not None
                 ), f"ERROR solving bundle {b} in iteration {iteration}"
                 obj_value[b] = results.obj_value
-                toc("Optimized subproblem %s", str(b), logger=logger, level=logging.VERBOSE)
+                toc(
+                    "Optimized subproblem %s",
+                    str(b),
+                    logger=logger,
+                    level=logging.VERBOSE,
+                )
             obj_lb = sum(sp.bundles[b].probability * obj_value[b] for b in sp.bundles)
 
             # Step 7
@@ -298,10 +312,12 @@ class ProgressiveHedgingSolver(object):
             logger.info(f"g = {g}")
 
             # Step 9.1
-            tic(f"Archiving solution: {iteration}", logger=logger, level=logging.VERBOSE)
+            tic(
+                f"Archiving solution: {iteration}", logger=logger, level=logging.VERBOSE
+            )
             latest_soln = self.archive_solution(
-                    sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb, g=g
-                )
+                sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb, g=g
+            )
             toc(f"Archiving solution - DONE", logger=logger, level=logging.VERBOSE)
 
             time_last_iter = iteration_timer.toc(None)
@@ -352,7 +368,7 @@ class ProgressiveHedgingSolver(object):
         logger.info("-" * 70)
         logger.info("ProgressiveHedgingSolver - RESULTS")
         if logger.isEnabledFor(logging.DEBUG):
-            #if logger.level != logging.NOTSET and logger.level <= logging.VERBOSE:
+            # if logger.level != logging.NOTSET and logger.level <= logging.VERBOSE:
             pprint.pprint(self.solutions.to_dict())
             sys.stdout.flush()
 
@@ -370,7 +386,7 @@ class ProgressiveHedgingSolver(object):
         logger.info(f"time:             {kwds['time']}")
         logger.info(f"time_last_iter:   {kwds['time_last_iter']}")
         if logger.isEnabledFor(logging.VERBOSE):
-            _xbar = kwds['xbar']
+            _xbar = kwds["xbar"]
             if len(_xbar) > 10:
                 _vals = list(_xbar.values())
                 logger.verbose(f"xbar_min:         {min(_vals)}")
@@ -379,7 +395,7 @@ class ProgressiveHedgingSolver(object):
             else:
                 logger.verbose(f"xbar:             {kwds['xbar']}")
 
-            _rho = kwds['rho']
+            _rho = kwds["rho"]
             if len(_rho) > 10:
                 _vals = list(_rho.values())
                 logger.verbose(f"rho_min:          {min(_vals)}")

@@ -250,7 +250,9 @@ class SolutionPool_KeepLatestUnique(SolutionPoolBase):
         return dict(
             metadata=_to_dict(self.metadata),
             solutions=_to_dict(self._solutions),
-            pool_config=dict(policy="keep_latest_unique", max_pool_size=self.max_pool_size),
+            pool_config=dict(
+                policy="keep_latest_unique", max_pool_size=self.max_pool_size
+            ),
         )
 
 
@@ -327,14 +329,14 @@ class SolutionPool_KeepBest(SolutionPoolBase):
             self._solutions[soln.id] = soln
             #
             item = HeapItem(value=-value if self.keep_min else value, id=soln.id)
-            #print(f"ADD {item.id} {item.value}")
+            # print(f"ADD {item.id} {item.value}")
             if self.max_pool_size is None or len(self.heap) < self.max_pool_size:
                 # There is room in the pool, so we just add it
                 heapq.heappush(self.heap, item)
             else:
                 # We add the item to the pool and pop the worst item in the pool
                 item = heapq.heappushpop(self.heap, item)
-                #print(f"DELETE {item.id} {item.value}")
+                # print(f"DELETE {item.id} {item.value}")
                 del self._solutions[item.id]
 
             if new_best_value:
@@ -358,7 +360,7 @@ class SolutionPool_KeepBest(SolutionPoolBase):
                     ):
                         tmp.append(item)
                     else:
-                        #print(f"DELETE? {item.id} {item.value}")
+                        # print(f"DELETE? {item.id} {item.value}")
                         del self._solutions[item.id]
                 heapq.heapify(tmp)
                 self.heap = tmp

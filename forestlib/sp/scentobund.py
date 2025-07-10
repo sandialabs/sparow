@@ -141,11 +141,14 @@ def similar_partitions(data, model_weight=None, models=None, bundle_args=None):
     for model in models[1:]:
         for hs_ind, hs in enumerate(HFscenarios):
             min_key = None
-            min_value = float('inf')
+            min_value = float("inf")
             for ls_ind, ls in enumerate(LFscenarios[model]):
-                if demand_diffs[(hs_ind,ls_ind)] < min_value and demand_diffs[(hs_ind,ls_ind)] != 0:
+                if (
+                    demand_diffs[(hs_ind, ls_ind)] < min_value
+                    and demand_diffs[(hs_ind, ls_ind)] != 0
+                ):
                     min_key = ls
-                    min_value = demand_diffs[(hs_ind,ls_ind)]
+                    min_value = demand_diffs[(hs_ind, ls_ind)]
             HFmap[hs] = [scen_key(model, min_key)]
 
     #
@@ -155,20 +158,30 @@ def similar_partitions(data, model_weight=None, models=None, bundle_args=None):
     for hs in HFscenarios:  # each HF scenario belongs to its own bundle
         if model_weight:
             bundle[f"{model0}_{hs}"] = dict(
-                scenarios={scen_key(model0, hs): model_weight[model0]*data[model0][hs]['Probability']},
-                Probability=1 / len(HFscenarios), ###################### assuming uniform probs for now!!!!!!!!!!!!!!!!!
+                scenarios={
+                    scen_key(model0, hs): model_weight[model0]
+                    * data[model0][hs]["Probability"]
+                },
+                Probability=1
+                / len(
+                    HFscenarios
+                ),  ###################### assuming uniform probs for now!!!!!!!!!!!!!!!!!
             )
         else:
             bundle[f"{model0}_{hs}"] = dict(
                 scenarios={scen_key(model0, hs): data[model0][hs]["Probability"]},
-                Probability=1 / len(HFscenarios), ###################### assuming uniform probs for now!!!!!!!!!!!!!!!!!,
-        )
+                Probability=1
+                / len(
+                    HFscenarios
+                ),  ###################### assuming uniform probs for now!!!!!!!!!!!!!!!!!,
+            )
         for ls in HFmap[
             hs
         ]:  # map the LF scenarios that are used to corresponding bundle
             if model_weight:
                 bundle[f"{model0}_{hs}"]["scenarios"][scen_key(ls[0], ls[1])] = (
-                    model_weight[ls[0]]*data[ls[0]][ls[1]]["Probability"])
+                    model_weight[ls[0]] * data[ls[0]][ls[1]]["Probability"]
+                )
             else:
                 bundle[f"{model0}_{hs}"]["scenarios"][scen_key(ls[0], ls[1])] = data[
                     ls[0]
@@ -221,9 +234,9 @@ def dissimilar_partitions(data, model_weight=None, models=None, bundle_args=None
             max_key = None
             max_value = 0
             for ls_ind, ls in enumerate(LFscenarios[model]):
-                if demand_diffs[(hs_ind,ls_ind)] > max_value:
+                if demand_diffs[(hs_ind, ls_ind)] > max_value:
                     max_key = ls
-                    max_value = demand_diffs[(hs_ind,ls_ind)]
+                    max_value = demand_diffs[(hs_ind, ls_ind)]
             HFmap[hs] = [scen_key(model, max_key)]
 
     #
@@ -233,7 +246,10 @@ def dissimilar_partitions(data, model_weight=None, models=None, bundle_args=None
     for hs in HFscenarios:  # each HF scenario belongs to its own bundle
         if model_weight:
             bundle[f"{model0}_{hs}"] = dict(
-                scenarios={scen_key(model0, hs): model_weight[model0]*data[model0][hs]['Probability']},
+                scenarios={
+                    scen_key(model0, hs): model_weight[model0]
+                    * data[model0][hs]["Probability"]
+                },
                 Probability=1 / len(HFscenarios),
             )
         else:
@@ -246,7 +262,7 @@ def dissimilar_partitions(data, model_weight=None, models=None, bundle_args=None
         ]:  # map the LF scenarios that are used to corresponding bundle
             if model_weight:
                 bundle[f"{model0}_{hs}"]["scenarios"][scen_key(ls[0], ls[1])] = (
-                    model_weight[ls[0]]*data[ls[0]][ls[1]]["Probability"]
+                    model_weight[ls[0]] * data[ls[0]][ls[1]]["Probability"]
                 )
             else:
                 bundle[f"{model0}_{hs}"]["scenarios"][scen_key(ls[0], ls[1])] = data[
@@ -255,7 +271,10 @@ def dissimilar_partitions(data, model_weight=None, models=None, bundle_args=None
                 model_weight = {}
                 for model in models:
                     model_weight[model] = 1
-        model_weight_factor = sum(model_weight[model0] + model_weight[model]*len(HFmap[hs]) for model in models[1:])
+        model_weight_factor = sum(
+            model_weight[model0] + model_weight[model] * len(HFmap[hs])
+            for model in models[1:]
+        )
         for b_key in bundle[f"{model0}_{hs}"]["scenarios"].keys():
             bundle[f"{model0}_{hs}"]["scenarios"][b_key] *= 1 / model_weight_factor
         norm_factor = sum(bundle[f"{model0}_{hs}"]["scenarios"].values())
@@ -369,8 +388,7 @@ def mf_random_nested(data, model_weight, models, bundle_args=None):
         for k, w in bundle_scen[b].items():
             bundle_scen[b][k] = w / total_weight
         bundle[f"{model0}_{b}"] = dict(
-            scenarios=bundle_scen[b],
-            Probability=1.0 / len(bundleIDs),
+            scenarios=bundle_scen[b], Probability=1.0 / len(bundleIDs)
         )
 
     return bundle
@@ -435,8 +453,7 @@ def mf_random(data, model_weight, models, bundle_args=None):
         for k, w in bundle_scen[b].items():
             bundle_scen[b][k] = w / total_weight
         bundle[f"{model0}_{b}"] = dict(
-            scenarios=bundle_scen[b],
-            Probability=1.0 / len(bundleIDs),
+            scenarios=bundle_scen[b], Probability=1.0 / len(bundleIDs)
         )
 
     return bundle
@@ -556,7 +573,7 @@ def single_bundle(data, model_weight, models=None, bundle_args=None):
     """
     if models is None:
         models = list(data.keys())
-    
+
     if all(
         "Probability" in sdata for model in models for sdata in data[model].values()
     ):

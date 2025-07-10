@@ -15,24 +15,12 @@ from forestlib.sp.scentobund import (
 def MF_data():
     return {
         "HF": {
-            "scen_1": {
-                "Demand": 3,
-                "Probability": 0.4,
-            },
-            "scen_0": {
-                "Demand": 1,
-                "Probability": 0.6,
-            },
+            "scen_1": {"Demand": 3, "Probability": 0.4},
+            "scen_0": {"Demand": 1, "Probability": 0.6},
         },
         "LF": {
-            "scen_3": {
-                "Demand": 4,
-                "Probability": 0.2,
-            },
-            "scen_2": {
-                "Demand": 2,
-                "Probability": 0.8,
-            },
+            "scen_3": {"Demand": 4, "Probability": 0.2},
+            "scen_2": {"Demand": 2, "Probability": 0.8},
         },
     }
 
@@ -41,40 +29,16 @@ def MF_data():
 def MFpaired_data():
     return {
         "HF": {
-            "scen_0": {
-                "Demand": 3,
-                "Probability": 0.2,
-            },
-            "scen_1": {
-                "Demand": 1,
-                "Probability": 0.2,
-            },
-            "scen_2": {
-                "Demand": 2,
-                "Probability": 0.3,
-            },
-            "scen_3": {
-                "Demand": 4,
-                "Probability": 0.3,
-            },
+            "scen_0": {"Demand": 3, "Probability": 0.2},
+            "scen_1": {"Demand": 1, "Probability": 0.2},
+            "scen_2": {"Demand": 2, "Probability": 0.3},
+            "scen_3": {"Demand": 4, "Probability": 0.3},
         },
         "LF": {
-            "scen_0": {
-                "Demand": 4,
-                "Probability": 0.2,
-            },
-            "scen_1": {
-                "Demand": 2,
-                "Probability": 0.3,
-            },
-            "scen_2": {
-                "Demand": 1,
-                "Probability": 0.3,
-            },
-            "scen_3": {
-                "Demand": 3,
-                "Probability": 0.2,
-            },
+            "scen_0": {"Demand": 4, "Probability": 0.2},
+            "scen_1": {"Demand": 2, "Probability": 0.3},
+            "scen_2": {"Demand": 1, "Probability": 0.3},
+            "scen_3": {"Demand": 3, "Probability": 0.2},
         },
     }
 
@@ -83,24 +47,12 @@ def MFpaired_data():
 def SF_data():
     return {
         "HF": {
-            "scen_1": {
-                "Demand": 3,
-                "Probability": 0.2,
-            },
-            "scen_0": {
-                "Demand": 1,
-                "Probability": 0.3,
-            },
+            "scen_1": {"Demand": 3, "Probability": 0.2},
+            "scen_0": {"Demand": 1, "Probability": 0.3},
         },
         "LF": {
-            "scen_3": {
-                "Demand": 4,
-                "Probability": 0.1,
-            },
-            "scen_2": {
-                "Demand": 2,
-                "Probability": 0.4,
-            },
+            "scen_3": {"Demand": 4, "Probability": 0.1},
+            "scen_2": {"Demand": 2, "Probability": 0.4},
         },
     }
 
@@ -108,36 +60,16 @@ def SF_data():
 @pytest.fixture
 def rand_data():
     return {
-        "HF": {
-            "scen_0": {
-                "Demand": 1,
-                "Probability": 0.6,
-            },
-        },
-        "LF": {
-            "scen_2": {
-                "Demand": 2,
-                "Probability": 0.4,
-            },
-        },
+        "HF": {"scen_0": {"Demand": 1, "Probability": 0.6}},
+        "LF": {"scen_2": {"Demand": 2, "Probability": 0.4}},
     }
 
 
 @pytest.fixture
 def rand_data_MF():
     return {
-        "HF": {
-            "scen_0": {
-                "Demand": 1,
-                "Probability": 1.0,
-            },
-        },
-        "LF": {
-            "scen_2": {
-                "Demand": 2,
-                "Probability": 1.0,
-            },
-        },
+        "HF": {"scen_0": {"Demand": 1, "Probability": 1.0}},
+        "LF": {"scen_2": {"Demand": 2, "Probability": 1.0}},
     }
 
 
@@ -145,21 +77,10 @@ def rand_data_MF():
 def imbalanced_data():
     return {
         "HF": {
-            "rand_1": {
-                "Demand": 3,
-                "Probability": 0.5,
-            },
-            "rand_0": {
-                "Demand": 1,
-                "Probability": 0.3,
-            },
+            "rand_1": {"Demand": 3, "Probability": 0.5},
+            "rand_0": {"Demand": 1, "Probability": 0.3},
         },
-        "LF": {
-            "rand_2": {
-                "Demand": 4,
-                "Probability": 0.2,
-            },
-        },
+        "LF": {"rand_2": {"Demand": 4, "Probability": 0.2}},
     }
 
 
@@ -167,25 +88,33 @@ class TestBundleFunctions(object):
 
     def dist_map(self, data, models):
         model0 = models[0]
-        
+
         HFscenarios = list(data[model0].keys())
         LFscenarios = {}  # all other models are LF
         for model in models[1:]:
             LFscenarios[model] = list(data[model].keys())
 
         HFdemands = list(data[model0][HFkey]["Demand"] for HFkey in HFscenarios)
-        LFdemands = list(data[model][ls]["Demand"] for ls in LFscenarios[model] for model in models[1:])
+        LFdemands = list(
+            data[model][ls]["Demand"]
+            for ls in LFscenarios[model]
+            for model in models[1:]
+        )
 
         # map each LF scenario to closest HF scenario using 1-norm of demand difference
         demand_diffs = {}
         for i in range(len(HFdemands)):
             for j in range(len(LFdemands)):
-                demand_diffs[(i,j)] = abs(HFdemands[i] - LFdemands[j])
+                demand_diffs[(i, j)] = abs(HFdemands[i] - LFdemands[j])
 
         return demand_diffs
 
     def test_similar_partitions(self, MF_data):
-        assert similar_partitions(MF_data, models=["HF", "LF"], bundle_args={"distance_function": self.dist_map}) == {
+        assert similar_partitions(
+            MF_data,
+            models=["HF", "LF"],
+            bundle_args={"distance_function": self.dist_map},
+        ) == {
             "HF_scen_1": {
                 "scenarios": {
                     ("HF", "scen_1"): 0.6666666666666666,
@@ -197,12 +126,16 @@ class TestBundleFunctions(object):
                 "scenarios": {
                     ("HF", "scen_0"): 0.42857142857142855,
                     ("LF", "scen_2"): 0.5714285714285715,
-                    }, 
-                    "Probability": 0.5},
+                },
+                "Probability": 0.5,
+            },
         }
 
         assert similar_partitions(
-            MF_data, model_weight={"HF": 3, "LF": 1}, models=["HF", "LF"], bundle_args={"distance_function": self.dist_map}
+            MF_data,
+            model_weight={"HF": 3, "LF": 1},
+            models=["HF", "LF"],
+            bundle_args={"distance_function": self.dist_map},
         ) == {
             "HF_scen_1": {
                 "scenarios": {
@@ -213,10 +146,11 @@ class TestBundleFunctions(object):
             },
             "HF_scen_0": {
                 "scenarios": {
-                    ("HF", "scen_0"): 0.6923076923076924, 
+                    ("HF", "scen_0"): 0.6923076923076924,
                     ("LF", "scen_2"): 0.30769230769230776,
-                }, 
-                "Probability": 0.5},
+                },
+                "Probability": 0.5,
+            },
         }
 
     def test_mf_paired(self, MFpaired_data, imbalanced_data):
