@@ -231,6 +231,7 @@ class ProgressiveHedgingSolver(object):
             time_last_iter=time_last_iter,
             xbar=xbar,
             rho=self.rho,
+            w=w,
         )
 
         while True:
@@ -310,6 +311,8 @@ class ProgressiveHedgingSolver(object):
             if self.normalize_convergence_norm:
                 g /= len(sfs_variables)
             logger.info(f"g = {g}")
+            G = norm([xbar[x] - xbar_prev[x] for x in sfs_variables], self.convergence_norm)/len(sfs_variables)
+            logger.info(f"G = {G}")
 
             # Step 9.1
             tic(
@@ -328,6 +331,9 @@ class ProgressiveHedgingSolver(object):
                 time_last_iter=time_last_iter,
                 xbar=xbar,
                 rho=self.rho,
+                g=g,
+                G=G,
+                w=w
             )
 
             # Step 10
@@ -368,7 +374,6 @@ class ProgressiveHedgingSolver(object):
         logger.info("-" * 70)
         logger.info("ProgressiveHedgingSolver - RESULTS")
         if logger.isEnabledFor(logging.DEBUG):
-            # if logger.level != logging.NOTSET and logger.level <= logging.VERBOSE:
             pprint.pprint(self.solutions.to_dict())
             sys.stdout.flush()
 
@@ -383,26 +388,39 @@ class ProgressiveHedgingSolver(object):
         logger.info("-" * 70)
         logger.info(f"Iteration:        {kwds['iteration']}")
         logger.info(f"obj_lb:           {kwds['obj_lb']}")
+        logger.info(f"conv_norm:        {kwds.get('g',None)}")
+        logger.info(f"xbar_diff_norm:   {kwds.get('G',None)}")
         logger.info(f"time:             {kwds['time']}")
         logger.info(f"time_last_iter:   {kwds['time_last_iter']}")
         if logger.isEnabledFor(logging.VERBOSE):
-            _xbar = kwds["xbar"]
-            if len(_xbar) > 10:
-                _vals = list(_xbar.values())
-                logger.verbose(f"xbar_min:         {min(_vals)}")
-                logger.verbose(f"xbar_mean:        {statistics.mean(_vals)}")
-                logger.verbose(f"xbar_max:         {max(_vals)}")
+            tmp = kwds["w"]
+            tmp = {k:statistics.mean(abs(val) for val in v.values()) for k,v in tmp.items()}
+            if len(tmp) > 10:
+                _vals = list(tmp.values())
+                logger.verbose(f"w_min:            {min(_vals)}")
+                logger.verbose(f"w_mean:           {statistics.mean(_vals)}")
+                logger.verbose(f"w_max:            {max(_vals)}")
             else:
-                logger.verbose(f"xbar:             {kwds['xbar']}")
+                logger.verbose(f"w_mean_abs:       {tmp}")
 
-            _rho = kwds["rho"]
-            if len(_rho) > 10:
-                _vals = list(_rho.values())
+            tmp = kwds["xbar"]
+            if len(tmp) > 10:
+                _vals = list(abs(v) for v in tmp.values())
+                logger.verbose(f"xbar_min_abs:     {min(_vals)}")
+                logger.verbose(f"xbar_mean_abs:    {statistics.mean(_vals)}")
+                logger.verbose(f"xbar_max_abs:     {max(_vals)}")
+            else:
+                tmp = {k:v for k,v in tmp.items() if v != 0}
+                logger.verbose(f"xbar_abs:         {tmp}")
+
+            tmp = kwds["rho"]
+            if len(tmp) > 10:
+                _vals = list(tmp.values())
                 logger.verbose(f"rho_min:          {min(_vals)}")
                 logger.verbose(f"rho_mean:         {statistics.mean(_vals)}")
                 logger.verbose(f"rho_max:          {max(_vals)}")
             else:
-                logger.verbose(f"rho:              {_rho}")
+                logger.verbose(f"rho:              {tmp}")
         logger.info("")
 
     def archive_solution(self, *, sp, xbar=None, w=None, **kwds):
