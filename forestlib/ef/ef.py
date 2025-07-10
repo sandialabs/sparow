@@ -33,7 +33,7 @@ class ExtensiveFormSolver(object):
             self.solver_options = solver_options
 
         if loglevel is not None:
-            if loglevel == "DEBUG":
+            if loglevel == "DEBUG" or loglevel == "VERBOSE":
                 forestlib.logs.use_debugging_formatter()
             logger.setLevel(loglevel)
 
