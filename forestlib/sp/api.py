@@ -1,14 +1,11 @@
 from .sp_pyomo import (
-    #StochasticProgram_Pyomo_MultistageBuilder,
+    # StochasticProgram_Pyomo_MultistageBuilder,
     StochasticProgram_Pyomo_NamedBuilder,
 )
 
 
 def stochastic_program(
-    *,
-    model_builder_list=None,
-    first_stage_variables=None,
-    aml="pyomo",
+    *, model_builder_list=None, first_stage_variables=None, aml="pyomo"
 ):
     """
     aml - The modeling framework used to construct the model.
@@ -25,7 +22,7 @@ def stochastic_program(
             )
         else:
             return StochasticProgram_Pyomo_NamedBuilder(
-                first_stage_variables=first_stage_variables,
+                first_stage_variables=first_stage_variables
             )
 
     else:

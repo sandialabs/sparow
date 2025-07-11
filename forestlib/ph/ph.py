@@ -292,8 +292,8 @@ class ProgressiveHedgingSolver(object):
 
             # Step 9.1
             latest_soln = self.archive_solution(
-                    sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb, g=g
-                )
+                sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb, g=g
+            )
             self.log_iteration(
                 iteration=iteration,
                 obj_lb=obj_lb,

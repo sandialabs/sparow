@@ -2,6 +2,7 @@
     Code that's been archived
 '''
 
+
 ### ARCHIVED FROM sp_pyomo.py
 class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
 
@@ -77,7 +78,8 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
                 obj
                 + sum(w[i] * x for i, x in self.int_to_FirstStageVar[b].items())
                 + sum(
-                    (rho[i] / 2.0)*((x - x_bar[i]) ** 2) for i, x in self.int_to_FirstStageVar[b].items()
+                    (rho[i] / 2.0) * ((x - x_bar[i]) ** 2)
+                    for i, x in self.int_to_FirstStageVar[b].items()
                 )
             )
         EF_model.obj = pyo.Objective(expr=obj)

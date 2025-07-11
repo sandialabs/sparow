@@ -72,7 +72,9 @@ for lscen in LF_scenarios:
     )
 
 # normalize LF scenario probabilities
-LF_norm_term = sum(LFscens_list[s_idx]["Probability"] for s_idx in range(len(LFscens_list)))
+LF_norm_term = sum(
+    LFscens_list[s_idx]["Probability"] for s_idx in range(len(LFscens_list))
+)
 for s_idx in range(len(LFscens_list)):
     LFscens_list[s_idx]["Probability"] /= LF_norm_term
 
@@ -87,11 +89,14 @@ for hscen in HF_scenarios:
     )
 
 # normalize LF scenario probabilities
-HF_norm_term = sum(HFscens_list[s_idx]["Probability"] for s_idx in range(len(HFscens_list)))
+HF_norm_term = sum(
+    HFscens_list[s_idx]["Probability"] for s_idx in range(len(HFscens_list))
+)
 for s_idx in range(len(HFscens_list)):
     HFscens_list[s_idx]["Probability"] /= HF_norm_term
 
 model_data = {"LF": {"scenarios": LFscens_list}, "HF": {"scenarios": HFscens_list}}
+
 
 def LF_builder(data, args):
     n = data["n"]
@@ -124,10 +129,10 @@ def LF_builder(data, args):
 
     model.VarLogic = pyo.Constraint(model.N, rule=VarLogic_rule)
 
-    #def Capacity_rule(model, i): # remove this constraint for a lower-fidelity model
+    # def Capacity_rule(model, i): # remove this constraint for a lower-fidelity model
     #    return sum(model.z[i,j] for j in range(s)) <= k[i] * model.x[i]
 
-    #model.Capacity = pyo.Constraint(model.N, rule=Capacity_rule)
+    # model.Capacity = pyo.Constraint(model.N, rule=Capacity_rule)
 
     ### OBJECTIVE
     def Obj_rule(model):
@@ -159,8 +164,10 @@ def HF_builder(data, args):
     model.S = pyo.Set(initialize=[j for j in range(s)])
 
     ### VARIABLES
-    model.x = pyo.Var(model.N, bounds=[0, 1]) # x[i] == 1 if facility i is open
-    model.z = pyo.Var(model.N, model.S, bounds=[0, 1]) # z[i, j] is proportion of customer j's demand met by facility i
+    model.x = pyo.Var(model.N, bounds=[0, 1])  # x[i] == 1 if facility i is open
+    model.z = pyo.Var(
+        model.N, model.S, bounds=[0, 1]
+    )  # z[i, j] is proportion of customer j's demand met by facility i
 
     ### CONSTRAINTS
     def MeetDemand_rule(model, j):
@@ -173,10 +180,10 @@ def HF_builder(data, args):
 
     model.VarLogic = pyo.Constraint(model.N, model.S, rule=VarLogic_rule)
 
-    #def Capacity_rule(model, i):
+    # def Capacity_rule(model, i):
     #    return sum(model.z[i,j] for j in range(s)) <= k[i] * model.x[i]
 
-    #model.Capacity = pyo.Constraint(model.N, rule=Capacity_rule)
+    # model.Capacity = pyo.Constraint(model.N, rule=Capacity_rule)
 
     ### OBJECTIVE
     def Obj_rule(model):
@@ -310,10 +317,7 @@ def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
         name="HF", model_data=model_data["HF"], model_builder=HF_builder
     )
     sp.initialize_model(
-        name="LF",
-        model_data=model_data["LF"],
-        model_builder=LF_builder,
-        default=False,
+        name="LF", model_data=model_data["LF"], model_builder=LF_builder, default=False
     )
 
     bundle_num = 0

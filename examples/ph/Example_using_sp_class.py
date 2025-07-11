@@ -105,10 +105,6 @@ options = {
     "iterk_solver_options": dict(),
 }
 all_scenario_names = ["good", "bad"]
-ph = PH(
-    options,
-    all_scenario_names,
-    scenario_creator,
-)
+ph = PH(options, all_scenario_names, scenario_creator)
 
 results = ph.ph_main()

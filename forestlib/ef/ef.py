@@ -16,13 +16,7 @@ class ExtensiveFormSolver(object):
         self.solver_name = None
         self.solver_options = {}
 
-    def set_options(
-        self,
-        *,
-        solver=None,
-        solver_options=None,
-        loglevel=None,
-    ):
+    def set_options(self, *, solver=None, solver_options=None, loglevel=None):
         #
         # Misc configuration
         #

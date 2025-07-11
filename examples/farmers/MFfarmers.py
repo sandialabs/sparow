@@ -379,10 +379,7 @@ def LF_model_builder(data, args):
         return data["Yield"][crop_base_name]
 
     model.Yield = pyo.Param(
-        model.CROPS,
-        within=pyo.NonNegativeReals,
-        initialize=Yield_init,
-        mutable=True,
+        model.CROPS, within=pyo.NonNegativeReals, initialize=Yield_init, mutable=True
     )
 
     ### VARIABLES
@@ -454,11 +451,7 @@ def LF_model_builder(data, args):
     model.LimitAmountSold = pyo.Constraint(model.CROPS, rule=LimitAmountSold_rule)
 
     def EnforceQuotas_rule(model, c):
-        return (
-            0.0,
-            model.QuantitySubQuotaSold[c],
-            model.PriceQuota[c],
-        )
+        return (0.0, model.QuantitySubQuotaSold[c], model.PriceQuota[c])
 
     model.EnforceQuotas = pyo.Constraint(model.CROPS, rule=EnforceQuotas_rule)
 
@@ -655,6 +648,7 @@ def model_builder(data, args):
 # options to solve, LF, HF, or MF models with PH or EF:
 #
 
+
 def HF_EF():
     print("-" * 60)
     print("Running HF_EF")
@@ -735,6 +729,7 @@ def HF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
+
 
 def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     print("-" * 60)

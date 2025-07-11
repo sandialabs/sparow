@@ -16,6 +16,7 @@ The high fidelity (HF) farmers problem considers divisions of the land into indi
 """
 # TODO: figuring out why num_scens=3 doesn't output a solution! -R
 
+
 class GlobalData:
     num_plots = 1
     num_scens = 3  ### should be >= 3
@@ -441,17 +442,14 @@ def model_builder(scen_data, scen_args):
 
     return model
 
+
 Scen_object = Scenario_dict(scendata)
 bundle_data = Scen_object.scenario_generator(GlobalData.num_plots, GlobalData.num_scens)
 
-sp = stochastic_program(
-    first_stage_variables=["DevotedAcreage[*,*]"]
-)
+sp = stochastic_program(first_stage_variables=["DevotedAcreage[*,*]"])
 app_data = {"num_plots": GlobalData.num_plots}
 sp.initialize_application(app_data=app_data)
-sp.initialize_model(
-            model_data=bundle_data, model_builder=model_builder
-        )
+sp.initialize_model(model_data=bundle_data, model_builder=model_builder)
 
 ph = ProgressiveHedgingSolver()
 ph.solve(sp, max_iterations=10, solver="gurobi")
