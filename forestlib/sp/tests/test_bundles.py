@@ -133,6 +133,7 @@ def similar_scenarios():
             "scen_6": {"Demand": 1, "Probability": 0.3},
             "scen_7": {"Demand": 4, "Probability": 0.2},
         },
+        "LF": {"rand_2": {"Demand": 4, "Probability": 0.2}},
     }
 
 

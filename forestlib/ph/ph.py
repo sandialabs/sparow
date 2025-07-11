@@ -1,13 +1,15 @@
+import statistics
 import copy
 import sys
 import munch
 import pprint
 import numpy as np
-
+import datetime
 import logging
+
+from pyomo.common.timing import tic, toc, TicTocTimer
 import forestlib.logs
 from forestlib import solnpool
-import datetime
 
 logger = forestlib.logs.logger
 
@@ -101,7 +103,7 @@ class ProgressiveHedgingSolver(object):
         #
         if rho:
             self.rho = rho
-        if rho_updates == True:
+        if rho_updates:
             self.rho_updates = rho_updates
         if default_rho:
             self.default_rho = default_rho
@@ -162,7 +164,6 @@ class ProgressiveHedgingSolver(object):
             sp_metadata = self.solutions.add_pool("PH Iterations", policy="keep_latest")
         sp_metadata.solver = "PH Iteration Results"
         sp_metadata.solver_options = dict(
-            # rho=self.rho,
             cached_model_generation=self.cached_model_generation,
             max_iterations=self.max_iterations,
             convergence_tolerance=self.convergence_tolerance,
@@ -177,20 +178,22 @@ class ProgressiveHedgingSolver(object):
             sp.set_solver(self.solver_name)
 
         logger.info("ProgressiveHedgingSolver - START")
+        iteration_timer = TicTocTimer()
+        iteration_timer.tic(None)
 
         # Step 2
         obj_value = {}
+        tic("Initial subproblems", logger=logger, level=logging.VERBOSE)
         for b in sp.bundles:
-            logger.verbose(f"Creating subproblem '{b}'")
             M = sp.create_subproblem(b, cached=self.cached_model_generation)
-            # M.write(f'Iter0_PH_{b}.lp',io_options={'symbolic_solver_labels':True})
-            logger.verbose(f"Optimizing subproblem '{b}'")
+            toc("Created subproblem %s", str(b), logger=logger, level=logging.VERBOSE)
+
             results = sp.solve(M, solver_options=self.solver_options)
             assert (
                 results.obj_value is not None
             ), f"ERROR solving bundle {b} in initial solve"
             obj_value[b] = results.obj_value
-            logger.verbose(f"Optimization Complete")
+            toc("Optimized subproblem %s", str(b), logger=logger, level=logging.VERBOSE)
         obj_lb = sum(sp.bundles[b].probability * obj_value[b] for b in sp.bundles)
 
         #
@@ -220,15 +223,19 @@ class ProgressiveHedgingSolver(object):
         latest_soln = self.archive_solution(
             sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb
         )
+        time_last_iter = iteration_timer.toc(None)
         self.log_iteration(
             iteration=iteration,
             obj_lb=obj_lb,
             time=datetime.datetime.now(),
+            time_last_iter=time_last_iter,
             xbar=xbar,
             rho=self.rho,
+            w=w,
         )
 
         while True:
+            iteration_timer.tic(None)
             iteration += 1
 
             # Step 5
@@ -236,9 +243,13 @@ class ProgressiveHedgingSolver(object):
             w_prev = w
 
             # Step 6
+            tic(
+                f"Subproblems for iteration {iteration}",
+                logger=logger,
+                level=logging.VERBOSE,
+            )
             obj_value = {}
             for b in sp.bundles:
-                logger.verbose(f"Creating subproblem '{b}'")
                 logger.debug(f"  b: {b}  w: {w[b]}")
                 M = sp.create_subproblem(
                     b=b,
@@ -247,13 +258,24 @@ class ProgressiveHedgingSolver(object):
                     rho=self.rho,
                     cached=self.cached_model_generation,
                 )
-                logger.verbose(f"Optimizing subproblem '{b}'")
+                toc(
+                    "Created subproblem %s",
+                    str(b),
+                    logger=logger,
+                    level=logging.VERBOSE,
+                )
+
                 results = sp.solve(M, solver_options=self.solver_options)
                 assert (
                     results.obj_value is not None
                 ), f"ERROR solving bundle {b} in iteration {iteration}"
                 obj_value[b] = results.obj_value
-                logger.verbose(f"Optimization Complete")
+                toc(
+                    "Optimized subproblem %s",
+                    str(b),
+                    logger=logger,
+                    level=logging.VERBOSE,
+                )
             obj_lb = sum(sp.bundles[b].probability * obj_value[b] for b in sp.bundles)
 
             # Step 7
@@ -267,7 +289,7 @@ class ProgressiveHedgingSolver(object):
                     xbar[x] += sp.bundles[b].probability * sp.get_variable_value(b, x)
             logger.debug(f"xbar = {xbar}")
             self.update_rho(sfs_variables, xbar, sp)
-            logger.info(f"rho = {self.rho}")
+            logger.debug(f"rho = {self.rho}")
 
             # Step 8
             w = {}
@@ -289,17 +311,29 @@ class ProgressiveHedgingSolver(object):
             if self.normalize_convergence_norm:
                 g /= len(sfs_variables)
             logger.info(f"g = {g}")
+            G = norm([xbar[x] - xbar_prev[x] for x in sfs_variables], self.convergence_norm)/len(sfs_variables)
+            logger.info(f"G = {G}")
 
             # Step 9.1
+            tic(
+                f"Archiving solution: {iteration}", logger=logger, level=logging.VERBOSE
+            )
             latest_soln = self.archive_solution(
                 sp=sp, xbar=xbar, w=w, iteration=iteration, obj_lb=obj_lb, g=g
             )
+            toc(f"Archiving solution - DONE", logger=logger, level=logging.VERBOSE)
+
+            time_last_iter = iteration_timer.toc(None)
             self.log_iteration(
                 iteration=iteration,
                 obj_lb=obj_lb,
                 time=datetime.datetime.now(),
+                time_last_iter=time_last_iter,
                 xbar=xbar,
                 rho=self.rho,
+                g=g,
+                G=G,
+                w=w
             )
 
             # Step 10
@@ -339,7 +373,7 @@ class ProgressiveHedgingSolver(object):
         logger.info("")
         logger.info("-" * 70)
         logger.info("ProgressiveHedgingSolver - RESULTS")
-        if logger.level != logging.NOTSET and logger.level <= logging.VERBOSE:
+        if logger.isEnabledFor(logging.DEBUG):
             pprint.pprint(self.solutions.to_dict())
             sys.stdout.flush()
 
@@ -352,11 +386,41 @@ class ProgressiveHedgingSolver(object):
     def log_iteration(self, **kwds):
         logger.info("")
         logger.info("-" * 70)
-        logger.info(f"Iteration:   {kwds['iteration']}")
-        logger.info(f"obj_lb:      {kwds['obj_lb']}")
-        logger.info(f"time:        {kwds['time']}")
-        logger.verbose(f"xbar:        {kwds['xbar']}")
-        logger.verbose(f"rho:         {kwds['rho']}")
+        logger.info(f"Iteration:        {kwds['iteration']}")
+        logger.info(f"obj_lb:           {kwds['obj_lb']}")
+        logger.info(f"conv_norm:        {kwds.get('g',None)}")
+        logger.info(f"xbar_diff_norm:   {kwds.get('G',None)}")
+        logger.info(f"time:             {kwds['time']}")
+        logger.info(f"time_last_iter:   {kwds['time_last_iter']}")
+        if logger.isEnabledFor(logging.VERBOSE):
+            tmp = kwds["w"]
+            tmp = {k:statistics.mean(abs(val) for val in v.values()) for k,v in tmp.items()}
+            if len(tmp) > 10:
+                _vals = list(tmp.values())
+                logger.verbose(f"w_min:            {min(_vals)}")
+                logger.verbose(f"w_mean:           {statistics.mean(_vals)}")
+                logger.verbose(f"w_max:            {max(_vals)}")
+            else:
+                logger.verbose(f"w_mean_abs:       {tmp}")
+
+            tmp = kwds["xbar"]
+            if len(tmp) > 10:
+                _vals = list(abs(v) for v in tmp.values())
+                logger.verbose(f"xbar_min_abs:     {min(_vals)}")
+                logger.verbose(f"xbar_mean_abs:    {statistics.mean(_vals)}")
+                logger.verbose(f"xbar_max_abs:     {max(_vals)}")
+            else:
+                tmp = {k:v for k,v in tmp.items() if v != 0}
+                logger.verbose(f"xbar_abs:         {tmp}")
+
+            tmp = kwds["rho"]
+            if len(tmp) > 10:
+                _vals = list(tmp.values())
+                logger.verbose(f"rho_min:          {min(_vals)}")
+                logger.verbose(f"rho_mean:         {statistics.mean(_vals)}")
+                logger.verbose(f"rho_max:          {max(_vals)}")
+            else:
+                logger.verbose(f"rho:              {tmp}")
         logger.info("")
 
     def archive_solution(self, *, sp, xbar=None, w=None, **kwds):
@@ -374,7 +438,7 @@ class ProgressiveHedgingSolver(object):
 
     def update_rho(self, sfs_variables, xbar, sp):
         # this function is scenario-independent, but will need to be updated for integer x
-        if self.rho_updates == True:
+        if self.rho_updates:
             for x in sfs_variables:
                 if abs(sp.get_objective_coef(x)) > 0:
                     self.rho[x] = abs(sp.get_objective_coef(x)) / max(

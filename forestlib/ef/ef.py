@@ -2,10 +2,11 @@ import sys
 import numpy as np
 import munch
 import logging
+import datetime
 
+from pyomo.common.timing import tic, toc
 import forestlib.logs
 import forestlib.solnpool
-import datetime
 
 logger = forestlib.logs.logger
 
@@ -26,7 +27,7 @@ class ExtensiveFormSolver(object):
             self.solver_options = solver_options
 
         if loglevel is not None:
-            if loglevel == "DEBUG":
+            if loglevel == "DEBUG" or loglevel == "VERBOSE":
                 forestlib.logs.use_debugging_formatter()
             logger.setLevel(loglevel)
 
@@ -42,13 +43,18 @@ class ExtensiveFormSolver(object):
         logger.info("")
         logger.info("-" * 70)
         logger.info("ExtensiveFormSolver - START")
+        if logger.isEnabledFor(logging.VERBOSE):
+            print(f"  Solver: {self.solver_name}")
+            print(f"  Solver Options")
+            for k, v in self.solver_options.items():
+                print(f"    {k}= {v}")
+        tic(None)
 
         sp.initialize_bundles(scheme="single_bundle")
         assert (
             len(sp.bundles) == 1
         ), f"The extensive form should only have one bundle: {len(sp.bundles)}"
 
-        logger.debug(f"Creating extensive form")
         b = next(iter(sp.bundles))
         M = sp.create_subproblem(b)
         if logger.isEnabledFor(logging.DEBUG):
@@ -56,11 +62,11 @@ class ExtensiveFormSolver(object):
             M.display()
             sys.stdout.flush()
 
-        logger.debug(f"Optimizing extensive form")
+        toc("Created extensive form", logger=logger, level=logging.VERBOSE)
         results = sp.solve(M, solver_options=self.solver_options)
 
         # TODO - show value of subproblem
-        logger.debug(f"Optimization Complete")
+        toc("Optimized extensive form", logger=logger, level=logging.VERBOSE)
         end_time = datetime.datetime.now()
 
         solutions = forestlib.solnpool.PoolManager()

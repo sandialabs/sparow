@@ -28,52 +28,52 @@ def test_keepall_add():
     assert len(pm) == 3
 
     assert pm.to_dict() == {
-        'pool': {
-            'metadata': {'context_name': 'pool'},
-            'pool_config': {'policy': 'keep_all'},
-            'solutions': {
+        "pool": {
+            "metadata": {"context_name": "pool"},
+            "pool_config": {"policy": "keep_all"},
+            "solutions": {
                 0: {
-                    'id': 0,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': 0}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 0,
+                    "objectives": [{"name": None, "suffix": {}, "value": 0}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 0,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 0,
                         }
                     ],
                 },
                 1: {
-                    'id': 1,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': 1}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 1,
+                    "objectives": [{"name": None, "suffix": {}, "value": 1}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 0,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 0,
                         }
                     ],
                 },
                 2: {
-                    'id': 2,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': 1}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 2,
+                    "objectives": [{"name": None, "suffix": {}, "value": 1}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 1,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 1,
                         }
                     ],
                 },
@@ -100,37 +100,37 @@ def test_keeplatest_add():
     assert len(pm) == 2
 
     assert pm.to_dict() == {
-        'pool': {
-            'metadata': {'context_name': 'pool'},
-            'pool_config': {'max_pool_size': 2, 'policy': 'keep_latest'},
-            'solutions': {
+        "pool": {
+            "metadata": {"context_name": "pool"},
+            "pool_config": {"max_pool_size": 2, "policy": "keep_latest"},
+            "solutions": {
                 1: {
-                    'id': 1,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': 1}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 1,
+                    "objectives": [{"name": None, "suffix": {}, "value": 1}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 0,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 0,
                         }
                     ],
                 },
                 2: {
-                    'id': 2,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': 1}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 2,
+                    "objectives": [{"name": None, "suffix": {}, "value": 1}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 1,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 1,
                         }
                     ],
                 },
@@ -157,37 +157,37 @@ def test_keeplatestunique_add():
     assert len(pm) == 2
 
     assert pm.to_dict() == {
-        'pool': {
-            'metadata': {'context_name': 'pool'},
-            'pool_config': {'max_pool_size': 2, 'policy': 'keep_latest_unique'},
-            'solutions': {
+        "pool": {
+            "metadata": {"context_name": "pool"},
+            "pool_config": {"max_pool_size": 2, "policy": "keep_latest_unique"},
+            "solutions": {
                 0: {
-                    'id': 0,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': 0}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 0,
+                    "objectives": [{"name": None, "suffix": {}, "value": 0}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 0,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 0,
                         }
                     ],
                 },
                 1: {
-                    'id': 1,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': 1}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 1,
+                    "objectives": [{"name": None, "suffix": {}, "value": 1}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 1,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 1,
                         }
                     ],
                 },
@@ -214,43 +214,43 @@ def test_keepbest_add1():
     assert len(pm) == 2
 
     assert pm.to_dict() == {
-        'pool': {
-            'metadata': {'context_name': 'pool'},
-            'pool_config': {
-                'abs_tolerance': 1,
-                'max_pool_size': None,
-                'objective': None,
-                'policy': 'keep_best',
-                'rel_tolerance': None,
+        "pool": {
+            "metadata": {"context_name": "pool"},
+            "pool_config": {
+                "abs_tolerance": 1,
+                "max_pool_size": None,
+                "objective": None,
+                "policy": "keep_best",
+                "rel_tolerance": None,
             },
-            'solutions': {
+            "solutions": {
                 0: {
-                    'id': 0,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': 0}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 0,
+                    "objectives": [{"name": None, "suffix": {}, "value": 0}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 0,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 0,
                         }
                     ],
                 },
                 1: {
-                    'id': 1,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': 1}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 1,
+                    "objectives": [{"name": None, "suffix": {}, "value": 1}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 1,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 1,
                         }
                     ],
                 },
@@ -285,58 +285,58 @@ def test_keepbest_add2():
     assert len(pm) == 3
 
     assert pm.to_dict() == {
-        'pool': {
-            'metadata': {'context_name': 'pool'},
-            'pool_config': {
-                'abs_tolerance': 1,
-                'max_pool_size': None,
-                'objective': None,
-                'policy': 'keep_best',
-                'rel_tolerance': None,
+        "pool": {
+            "metadata": {"context_name": "pool"},
+            "pool_config": {
+                "abs_tolerance": 1,
+                "max_pool_size": None,
+                "objective": None,
+                "policy": "keep_best",
+                "rel_tolerance": None,
             },
-            'solutions': {
+            "solutions": {
                 0: {
-                    'id': 0,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': 0}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 0,
+                    "objectives": [{"name": None, "suffix": {}, "value": 0}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 0,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 0,
                         }
                     ],
                 },
                 2: {
-                    'id': 2,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': -1}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 2,
+                    "objectives": [{"name": None, "suffix": {}, "value": -1}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 2,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 2,
                         }
                     ],
                 },
                 3: {
-                    'id': 3,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': -0.5}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 3,
+                    "objectives": [{"name": None, "suffix": {}, "value": -0.5}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 3,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 3,
                         }
                     ],
                 },
@@ -349,58 +349,58 @@ def test_keepbest_add2():
     assert len(pm) == 3
 
     assert pm.to_dict() == {
-        'pool': {
-            'metadata': {'context_name': 'pool'},
-            'pool_config': {
-                'abs_tolerance': 1,
-                'max_pool_size': None,
-                'objective': None,
-                'policy': 'keep_best',
-                'rel_tolerance': None,
+        "pool": {
+            "metadata": {"context_name": "pool"},
+            "pool_config": {
+                "abs_tolerance": 1,
+                "max_pool_size": None,
+                "objective": None,
+                "policy": "keep_best",
+                "rel_tolerance": None,
             },
-            'solutions': {
+            "solutions": {
                 2: {
-                    'id': 2,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': -1}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 2,
+                    "objectives": [{"name": None, "suffix": {}, "value": -1}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 2,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 2,
                         }
                     ],
                 },
                 3: {
-                    'id': 3,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': -0.5}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 3,
+                    "objectives": [{"name": None, "suffix": {}, "value": -0.5}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 3,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 3,
                         }
                     ],
                 },
                 4: {
-                    'id': 4,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': -1.5}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 4,
+                    "objectives": [{"name": None, "suffix": {}, "value": -1.5}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 4,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 4,
                         }
                     ],
                 },
@@ -435,43 +435,43 @@ def test_keepbest_add3():
     assert len(pm) == 2
 
     assert pm.to_dict() == {
-        'pool': {
-            'metadata': {'context_name': 'pool'},
-            'pool_config': {
-                'abs_tolerance': 1,
-                'max_pool_size': 2,
-                'objective': None,
-                'policy': 'keep_best',
-                'rel_tolerance': None,
+        "pool": {
+            "metadata": {"context_name": "pool"},
+            "pool_config": {
+                "abs_tolerance": 1,
+                "max_pool_size": 2,
+                "objective": None,
+                "policy": "keep_best",
+                "rel_tolerance": None,
             },
-            'solutions': {
+            "solutions": {
                 2: {
-                    'id': 2,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': -1}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 2,
+                    "objectives": [{"name": None, "suffix": {}, "value": -1}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 2,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 2,
                         }
                     ],
                 },
                 3: {
-                    'id': 3,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': -0.5}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 3,
+                    "objectives": [{"name": None, "suffix": {}, "value": -0.5}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 3,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 3,
                         }
                     ],
                 },
@@ -484,43 +484,43 @@ def test_keepbest_add3():
     assert len(pm) == 2
 
     assert pm.to_dict() == {
-        'pool': {
-            'metadata': {'context_name': 'pool'},
-            'pool_config': {
-                'abs_tolerance': 1,
-                'max_pool_size': 2,
-                'objective': None,
-                'policy': 'keep_best',
-                'rel_tolerance': None,
+        "pool": {
+            "metadata": {"context_name": "pool"},
+            "pool_config": {
+                "abs_tolerance": 1,
+                "max_pool_size": 2,
+                "objective": None,
+                "policy": "keep_best",
+                "rel_tolerance": None,
             },
-            'solutions': {
+            "solutions": {
                 2: {
-                    'id': 2,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': -1}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 2,
+                    "objectives": [{"name": None, "suffix": {}, "value": -1}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 2,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 2,
                         }
                     ],
                 },
                 4: {
-                    'id': 4,
-                    'objectives': [{'name': None, 'suffix': {}, 'value': -1.5}],
-                    'suffix': {},
-                    'variables': [
+                    "id": 4,
+                    "objectives": [{"name": None, "suffix": {}, "value": -1.5}],
+                    "suffix": {},
+                    "variables": [
                         {
-                            'discrete': False,
-                            'fixed': False,
-                            'index': None,
-                            'name': None,
-                            'suffix': {},
-                            'value': 4,
+                            "discrete": False,
+                            "fixed": False,
+                            "index": None,
+                            "name": None,
+                            "suffix": {},
+                            "value": 4,
                         }
                     ],
                 },

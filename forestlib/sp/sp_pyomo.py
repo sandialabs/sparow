@@ -102,19 +102,19 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         return list(range(len(self.varcuid_to_int)))
 
     def solve(self, M, *, solver_options=None, tee=False, solver=None):
+        options = copy.copy(self.solver_options)
         if solver_options:
-            self.solver_options = solver_options
+            options.update(solver_options)
+        tee = options.pop("tee", tee)
+
         if solver:
             self.solver = solver
         pyo_solver = pyo.SolverFactory(self.solver)
-        tee = self.solver_options.get("tee", tee)
-        solver_options_ = copy.copy(self.solver_options)
-        if "tee" in solver_options_:
-            del solver_options_["tee"]
+        if options:
+            for k, v in options.items():
+                pyo_solver.options[k] = v
 
-        results = pyo_solver.solve(
-            M, options=solver_options_, tee=tee, load_solutions=False
-        )
+        results = pyo_solver.solve(M, tee=tee, load_solutions=False)
         status = results.solver.status
         if not pyo.check_optimal_termination(results):
             condition = results.solver.termination_condition

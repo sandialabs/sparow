@@ -17,9 +17,7 @@ def stochastic_program(
     """
     if aml == "pyomo":
         if model_builder_list is not None:
-            return StochasticProgram_Pyomo_NamedBuilder(
-                model_builder_list=model_builder_list
-            )
+            raise RuntimeError("No support for multi-stage models right now")
         else:
             return StochasticProgram_Pyomo_NamedBuilder(
                 first_stage_variables=first_stage_variables

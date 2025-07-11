@@ -410,7 +410,7 @@ def similar_partitions(data, model_weight=None, models=None, bundle_args=None):
     for model in models[1:]:
         for hs_ind, hs in enumerate(HFscenarios):
             min_key = None
-            min_value = float('inf')
+            min_value = float("inf")
             for ls_ind, ls in enumerate(LFscenarios[model]):
                 if (
                     demand_diffs[(hs_ind, ls_ind)] < min_value
@@ -794,29 +794,31 @@ def mf_ordered(data, model_weight=None, models=None, bundle_args=None):
 """
 
 
-def single_scenario(data, model_weight, models=None, bundle_args=None):
+def single_scenario(data, model_weight=None, models=None, bundle_args=None):
     """
     Each scenario is its own bundle (i.e., no bundling)
     """
     if models is None:
         models = list(data.keys())
 
-    if all(
-        "Probability" in sdata for model in models for sdata in data[model].values()
-    ):
+    #model0 = models[0]
+    #pkey = check_data_dict_keys(data, model0, bundle_args)[1]
+    pkey = "Probability"
+
+    if all(pkey in sdata for model in models for sdata in data[model].values()):
         #
         # Probability values have been specified for all scenarios, so we use the relative weight
         # of these probabilities
         #
         total_prob = sum(
-            sdata["Probability"] for model in models for sdata in data[model].values()
+            sdata[pkey] for model in models for sdata in data[model].values()
         )
         bundle = {}
         for model in models:
             for s, sdata in data[model].items():
                 bundle[scen_name(model, s)] = dict(
                     scenarios={scen_key(model, s): 1.0},
-                    Probability=sdata["Probability"] / total_prob,
+                    Probability=sdata[pkey] / total_prob,
                 )
     else:
         #
