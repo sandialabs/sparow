@@ -9,25 +9,25 @@ from forestlib.sp import stochastic_program
 from forestlib.ef import ExtensiveFormSolver
 from forestlib.ph import ProgressiveHedgingSolver
 
-'''
-UNCAPACITATED FACILITY LOCATION
-    - LF model is an approximation using continuous variables and big-M constraints
-    - HF model:
-        - disaggregates logical constraints
-        - is continuous, but a perfect formulation (i.e., obtains integer optimal solution)
-Problem data adapted from https://ampl.com/colab/notebooks/ampl-development-tutorial-26-stochastic-capacitated-facility-location-problem.html#problem-description
-'''
+"""
+CAPACITATED FACILITY LOCATION
+    - LF model is an approximation using continuous variables
+        - LF scenarios are restricted to Low, Medium, and High
+    - HF model is a MIP (first-stage binary variables, second-stage continuous variables)
+        - HF scenarios can be Low, Medium, and High for each customer (e.g., ['Low', 'High', 'Low', 'Medium'])
+* Can specify number of HF scenarios by including "num_HF" key in app_data; otherwise, defaults to 8
+* Problem data adapted from https://ampl.com/colab/notebooks/ampl-development-tutorial-26-stochastic-capacitated-facility-location-problem.html#problem-description
+"""
 
-app_data = {"n": 3, "s": 4}
-app_data["f"] = [400000, 200000, 600000]
+app_data = {"n": 3, "t": 4}  # number of facilities & customers
+app_data["f"] = [400000, 200000, 600000]  # fixed costs for opening facilities
 app_data["c"] = [
     [5739.725, 6539.725, 8650.40, 22372.1125],
     [6055.05, 6739.055, 8050.40, 21014.225],
     [8650.40, 7539.055, 4539.72, 15024.325],
-]
-app_data["k"] = [1550, 650, 1750]
+]  # servicing costs
+app_data["k"] = [1550, 650, 1750]  # facility capacity
 
-# Define the customer demand data
 customer_demand = {
     "San_Antonio_TX": [450, 650, 887],
     "Dallas_TX": [910, 1134, 1456],
@@ -43,7 +43,7 @@ demand_value_mapping = {"Low": 0, "Medium": 1, "High": 2}
 # mapping of demand levels to their corresponding probabilities
 demand_prob_mapping = {"Low": 0.25, "Medium": 0.5, "High": 0.25}
 
-sdict = {}
+sdict = {}  # dictionary of all possible Low/Medium/High combinations for HF scenarios
 for scenario in all_scenarios:
     scenario_dict = dict(zip(cities, scenario))
     sdict[scenario] = {
@@ -56,51 +56,58 @@ for scenario in all_scenarios:
         ),
     }
 
-# Each scenario is randomly assigned LF or HF
+LF_scenarios = [
+    ("Low", "Low", "Low", "Low"),
+    ("Medium", "Medium", "Medium", "Medium"),
+    ("High", "High", "High", "High"),
+]
 random.seed(58564564871312356)
-LF_scenarios = random.choices(list(sdict.keys()), k=40)
-HF_scenarios = [s for s in sdict.keys() if s not in LF_scenarios]
+HF_scenarios = random.choices(
+    list(sdict.keys()), k=app_data.get("num_HF", 8)
+)  # randomly select HF scenarios from sdict
 
-LFscens_list = []
-for lscen in LF_scenarios:
+LFscens_list = []  # list of LF scenarios
+for lscen_idx, lscen in enumerate(LF_scenarios):
+    scen = demand_levels[lscen_idx]
     LFscens_list.append(
         {
-            "ID": f"{scenario}",
-            "Demand": list(sdict[scenario]["Demand"].values()),
-            "Probability": sdict[scenario]["Probability"],
+            "ID": f"{scen}",
+            "Demand": [
+                customer_demand[key][demand_value_mapping[scen]]
+                for key in customer_demand.keys()
+            ],
+            "Probability": demand_prob_mapping[scen],
         }
     )
 
-# normalize LF scenario probabilities
-LF_norm_term = sum(
-    LFscens_list[s_idx]["Probability"] for s_idx in range(len(LFscens_list))
-)
-for s_idx in range(len(LFscens_list)):
-    LFscens_list[s_idx]["Probability"] /= LF_norm_term
-
-HFscens_list = []
+HFscens_list = []  # list of HF scenarios
+customer_demand_vals = list(customer_demand.values())
 for hscen in HF_scenarios:
     HFscens_list.append(
         {
-            "ID": f"{scenario}",
-            "Demand": list(sdict[scenario]["Demand"].values()),
+            "ID": f"{hscen}",
+            "Demand": [
+                customer_demand_vals[customer][demand_value_mapping[hscen[customer]]]
+                for customer in range(len(hscen))
+            ],
             "Probability": sdict[scenario]["Probability"],
         }
     )
 
-# normalize LF scenario probabilities
+# normalize HF scenario probabilities
 HF_norm_term = sum(
     HFscens_list[s_idx]["Probability"] for s_idx in range(len(HFscens_list))
 )
 for s_idx in range(len(HFscens_list)):
     HFscens_list[s_idx]["Probability"] /= HF_norm_term
 
+
 model_data = {"LF": {"scenarios": LFscens_list}, "HF": {"scenarios": HFscens_list}}
 
 
 def LF_builder(data, args):
     n = data["n"]
-    s = data["s"]
+    t = data["t"]
     f = data["f"]
     c = data["c"]
     k = data["k"]
@@ -112,33 +119,33 @@ def LF_builder(data, args):
 
     ### PARAMETERS
     model.N = pyo.Set(initialize=[i for i in range(n)])
-    model.S = pyo.Set(initialize=[j for j in range(s)])
+    model.T = pyo.Set(initialize=[j for j in range(t)])
 
     ### VARIABLES
-    model.x = pyo.Var(model.N, bounds=[0, 1])
-    model.z = pyo.Var(model.N, model.S, bounds=[0, 1])
+    model.x = pyo.Var(model.N, bounds=[0, 1])  # x[i] == 1 if facility i is open
+    model.z = pyo.Var(
+        model.N, model.T, within=pyo.NonNegativeReals
+    )  # z[i, j] = proportion of customer j's demand met by facility i
 
     ### CONSTRAINTS
     def MeetDemand_rule(model, j):
-        return sum(model.z[i, j] for i in range(n)) == 1
+        return sum(model.z[i, j] for i in range(n)) >= d[j]
 
-    model.MeetDemand = pyo.Constraint(model.S, rule=MeetDemand_rule)
+    model.MeetDemand = pyo.Constraint(model.T, rule=MeetDemand_rule)
 
-    def VarLogic_rule(model, i):
-        return sum(model.z[i, j] for j in range(s)) <= s * model.x[i]
+    def SufficientProduction_rule(model):
+        return sum(k[i] * model.x[i] for i in range(n)) >= sum(d[j] for j in range(t))
 
-    model.VarLogic = pyo.Constraint(model.N, rule=VarLogic_rule)
+    model.SufficientProduction = pyo.Constraint(rule=SufficientProduction_rule)
 
-    # def Capacity_rule(model, i): # remove this constraint for a lower-fidelity model
-    #    return sum(model.z[i,j] for j in range(s)) <= k[i] * model.x[i]
+    def Capacity_rule(model, i):  # note this constraint also ensures logic between x, z
+        return sum(model.z[i, j] for j in range(t)) <= k[i] * model.x[i]
 
-    # model.Capacity = pyo.Constraint(model.N, rule=Capacity_rule)
+    model.Capacity = pyo.Constraint(model.N, rule=Capacity_rule)
 
     ### OBJECTIVE
     def Obj_rule(model):
-        expr = sum(
-            sum(c[i][j] * d[j] * model.z[i, j] for j in range(s)) for i in range(n)
-        )
+        expr = sum(sum(c[i][j] * model.z[i, j] for j in range(t)) for i in range(n))
         expr += sum(f[i] * model.x[i] for i in range(n))
         return expr
 
@@ -149,7 +156,7 @@ def LF_builder(data, args):
 
 def HF_builder(data, args):
     n = data["n"]
-    s = data["s"]
+    t = data["t"]
     f = data["f"]
     c = data["c"]
     k = data["k"]
@@ -161,35 +168,33 @@ def HF_builder(data, args):
 
     ### PARAMETERS
     model.N = pyo.Set(initialize=[i for i in range(n)])
-    model.S = pyo.Set(initialize=[j for j in range(s)])
+    model.T = pyo.Set(initialize=[j for j in range(t)])
 
     ### VARIABLES
-    model.x = pyo.Var(model.N, bounds=[0, 1])  # x[i] == 1 if facility i is open
+    model.x = pyo.Var(model.N, within=pyo.Binary)  # x[i] == 1 if facility i is open
     model.z = pyo.Var(
-        model.N, model.S, bounds=[0, 1]
-    )  # z[i, j] is proportion of customer j's demand met by facility i
+        model.N, model.T, within=pyo.NonNegativeReals
+    )  # z[i, j] = proportion of customer j's demand met by facility i
 
     ### CONSTRAINTS
     def MeetDemand_rule(model, j):
-        return sum(model.z[i, j] for i in range(n)) == 1
+        return sum(model.z[i, j] for i in range(n)) >= d[j]
 
-    model.MeetDemand = pyo.Constraint(model.S, rule=MeetDemand_rule)
+    model.MeetDemand = pyo.Constraint(model.T, rule=MeetDemand_rule)
 
-    def VarLogic_rule(model, i, j):
-        return model.z[i, j] <= model.x[i]
+    def SufficientProduction_rule(model):
+        return sum(k[i] * model.x[i] for i in range(n)) >= sum(d[j] for j in range(t))
 
-    model.VarLogic = pyo.Constraint(model.N, model.S, rule=VarLogic_rule)
+    model.SufficientProduction = pyo.Constraint(rule=SufficientProduction_rule)
 
-    # def Capacity_rule(model, i):
-    #    return sum(model.z[i,j] for j in range(s)) <= k[i] * model.x[i]
+    def Capacity_rule(model, i):  # note this constraint also ensures logic between x, z
+        return sum(model.z[i, j] for j in range(t)) <= k[i] * model.x[i]
 
-    # model.Capacity = pyo.Constraint(model.N, rule=Capacity_rule)
+    model.Capacity = pyo.Constraint(model.N, rule=Capacity_rule)
 
     ### OBJECTIVE
     def Obj_rule(model):
-        expr = sum(
-            sum(c[i][j] * d[j] * model.z[i, j] for j in range(s)) for i in range(n)
-        )
+        expr = sum(sum(c[i][j] * model.z[i, j] for j in range(t)) for i in range(n))
         expr += sum(f[i] * model.x[i] for i in range(n))
         return expr
 
@@ -212,7 +217,6 @@ def HF_EF():
     sp.initialize_model(
         name="HF", model_data=model_data["HF"], model_builder=HF_builder
     )
-
     solver = ExtensiveFormSolver()
     solver.set_options(solver="gurobi")
     results = solver.solve(sp)
@@ -247,7 +251,7 @@ def HF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
         name="HF", model_data=model_data["HF"], model_builder=HF_builder
     )
 
-    solver = ProgressiveHedgingSolver(sp)
+    solver = ProgressiveHedgingSolver()
     solver.set_options(
         solver="gurobi",
         loglevel=loglevel,
@@ -271,7 +275,7 @@ def LF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
         name="LF", model_data=model_data["LF"], model_builder=LF_builder
     )
 
-    solver = ProgressiveHedgingSolver(sp)
+    solver = ProgressiveHedgingSolver()
     solver.set_options(
         solver="gurobi",
         loglevel=loglevel,
@@ -322,7 +326,7 @@ def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
 
     bundle_num = 0
     sp.initialize_bundles(
-        scheme="bundle_random_partition",
+        scheme="mf_random",
         # distance_function=dist_map,
         LF=2,
         seed=1234567890,
@@ -332,7 +336,7 @@ def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     # pprint.pprint(sp.get_bundles())
     sp.save_bundles(f"MF_PH_bundle_{bundle_num}.json", indent=4, sort_keys=True)
 
-    solver = ProgressiveHedgingSolver(sp)
+    solver = ProgressiveHedgingSolver()
     solver.set_options(
         solver="gurobi",
         loglevel=loglevel,
