@@ -133,7 +133,6 @@ def similar_scenarios():
             "scen_6": {"Demand": 1, "Probability": 0.3},
             "scen_7": {"Demand": 4, "Probability": 0.2},
         },
-        "LF": {"rand_2": {"Demand": 4, "Probability": 0.2}},
     }
 
 
@@ -163,31 +162,23 @@ class TestBundleFunctions(object):
         return demand_diffs
 
     def test_check_data_dict_keys(self, weird_key_names, probable_key_names):
-        assert single_scenario(probable_key_names) == {
-            "HF_s_1": {"scenarios": {("HF", "s_1"): 1.0}, "Probability": 0.25},
-            "HF_s_0": {"scenarios": {("HF", "s_0"): 1.0}, "Probability": 0.25},
-            "LF_s_2": {"scenarios": {("LF", "s_2"): 1.0}, "Probability": 0.1},
-            "LF_s_3": {"scenarios": {("LF", "s_3"): 1.0}, "Probability": 0.3},
-            "LF_s_4": {"scenarios": {("LF", "s_4"): 1.0}, "Probability": 0.1},
+        assert single_bundle(probable_key_names) == {
+            "bundle": {"scenarios": {("HF", "s_1"): 0.25, ("HF", "s_0"): 0.25, ("LF", "s_2"): 0.1, ("LF", "s_3"): 0.3, ("LF", "s_4"): 0.1}, "Probability": 1.0},
         }
 
-        assert single_scenario(
+        assert single_bundle(
             weird_key_names,
             bundle_args={"demand_key": "weird_key_d", "probability_key": "weird_key_p"},
         ) == {
-            "HF_s_1": {"scenarios": {("HF", "s_1"): 1.0}, "Probability": 0.25},
-            "HF_s_0": {"scenarios": {("HF", "s_0"): 1.0}, "Probability": 0.25},
-            "LF_s_2": {"scenarios": {("LF", "s_2"): 1.0}, "Probability": 0.1},
-            "LF_s_3": {"scenarios": {("LF", "s_3"): 1.0}, "Probability": 0.3},
-            "LF_s_4": {"scenarios": {("LF", "s_4"): 1.0}, "Probability": 0.1},
+            "bundle": {"scenarios": {("HF", "s_1"): 0.25, ("HF", "s_0"): 0.25, ("LF", "s_2"): 0.1, ("LF", "s_3"): 0.3, ("LF", "s_4"): 0.1}, "Probability": 1.0},
         }
 
         with pytest.raises(RuntimeError) as excinfo:
-            single_scenario(weird_key_names, bundle_args={"demand_key": "weird_key_d"})
+            single_bundle(weird_key_names, bundle_args={"demand_key": "weird_key_d"})
         assert excinfo.type is RuntimeError
 
         with pytest.raises(RuntimeError) as excinfo:
-            single_scenario(
+            single_bundle(
                 weird_key_names, bundle_args={"probability_key": "weird_key_p"}
             )
         assert excinfo.type is RuntimeError

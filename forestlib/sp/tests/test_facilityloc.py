@@ -1,10 +1,6 @@
-import sys
-import argparse
-import munch
+import pytest 
 import pyomo.environ as pyo
-import itertools
-import math
-import random
+from forestlib.solnpool import PoolManager
 from forestlib.sp import stochastic_program
 from forestlib.ef import ExtensiveFormSolver
 from forestlib.ph import ProgressiveHedgingSolver
@@ -114,6 +110,8 @@ class TestFacilityLoc:
         )
         solver = ExtensiveFormSolver()
         solver.set_options(solver="gurobi")
+        pool_manager = PoolManager()
+        pool_manager.reset_solution_counter()
         results = solver.solve(sp)
         results_dict = results.to_dict()
         obj_val = results_dict[None]['solutions'][0]['objectives'][0]['value']

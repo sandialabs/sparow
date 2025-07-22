@@ -836,7 +836,7 @@ def single_scenario(data, model_weight=None, models=None, bundle_args=None):
     return bundle
 
 
-def single_bundle(data, model_weight, models=None, bundle_args=None):
+def single_bundle(data, model_weight=None, models=None, bundle_args=None):
     """
     Combine scenarios from the specified models into a single bundle (i.e., the subproblem is the master problem).
     """
@@ -876,7 +876,7 @@ def single_bundle(data, model_weight, models=None, bundle_args=None):
     return bundle
 
 
-def kmeans_similar(data, model_weight, models=None, bundle_args=None):
+def kmeans_similar(data, model_weight=None, models=None, bundle_args=None):
     """
     Each scenario is paired by closest distance
         - bun_size (approx. size of each bundle) can be passed into bundle_args. default is 2.
@@ -950,7 +950,7 @@ def kmeans_similar(data, model_weight, models=None, bundle_args=None):
     return bundle
 
 
-def kmeans_dissimilar(data, model_weight, models=None, bundle_args=None):
+def kmeans_dissimilar(data, model_weight=None, models=None, bundle_args=None):
     """
     Each scenario is paired by furthest distance
         - bun_size (approx. size of each bundle) can be passed into bundle_args. default is 2.
@@ -1029,7 +1029,7 @@ def kmeans_dissimilar(data, model_weight, models=None, bundle_args=None):
     return bundle
 
 
-def sf_random(data, model_weight, models=None, bundle_args=None):
+def sf_random(data, model_weight=None, models=None, bundle_args=None):
     """
     Scenarios are randomly grouped into bundles of approx. same size
         - Can specify bundle size in bundle_args as "bun_size"
