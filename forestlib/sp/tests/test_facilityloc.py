@@ -14,7 +14,7 @@ Note that this test just ensures our extensive form solution matches AMPL's!! It
 * Problem data adapted from https://ampl.com/colab/notebooks/ampl-development-tutorial-26-stochastic-capacitated-facility-location-problem.html#problem-description
 """
 
-class TestMFNewsVendor:
+class TestFacilityLoc:
     def test_facilityloc(self):
         app_data = {"n": 3, "t": 4}  # number of facilities & customers
         app_data["f"] = [400000, 200000, 600000]  # fixed costs for opening facilities
