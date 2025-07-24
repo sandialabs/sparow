@@ -39,13 +39,7 @@ class StochasticProgram(object):
         elif app_data is not None:
             self.app_data = app_data
 
-    def initialize_bundles(
-        self,
-        *,
-        scheme=None,
-        models=None,
-        **kwargs,
-    ):
+    def initialize_bundles(self, *, scheme=None, models=None, **kwargs):
         if scheme == None:
             scheme = "single_scenario"
         if models == None:
