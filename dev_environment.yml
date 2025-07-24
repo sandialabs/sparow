@@ -12,9 +12,10 @@ dependencies:
   - pytest
   - pytest-cov
   - pip 
-  - pip:
-    - haggis 
-    - mpi-sppy
   - black 
   - scikit-learn
   - rich
+  - math
+  - pip:
+    - haggis 
+    - mpi-sppy
