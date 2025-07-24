@@ -11,9 +11,10 @@ dependencies:
   - flake8
   - pytest
   - pytest-cov
-  - pip
-  - mpi-sppy
+  - pip 
+  - pip:
+    - haggis 
+    - mpi-sppy
   - black 
-  - haggis 
   - scikit-learn
   - rich
