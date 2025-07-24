@@ -12,6 +12,9 @@ from mpisppy.opt.ph import PH
 
 from forestlib.sp import stochastic_program
 from forestlib.ph import ProgressiveHedgingSolver
+from pyomo.opt import check_available_solvers
+
+gurobi_available = len(check_available_solvers('gurobi', 'appsi_gurobi')) == 2
 
 verbose = False
 if verbose:
@@ -204,6 +207,7 @@ model_data = {
 
 
 class TestSolverAgainstMPISPPY(object):
+    @pytest.mark.skipif(not gurobi_available, reason="gurobi not installed")
     def test_EF_model_solve(self):
         options = {"solver": "gurobi"}
         all_scenario_names = ["good", "average", "bad"]
@@ -233,6 +237,7 @@ class TestSolverAgainstMPISPPY(object):
         # assert abs(ef_objval - ph_objval) < 1e-5
         pass
 
+    @pytest.mark.skipif(not gurobi_available, reason="gurobi not installed")
     def test_PH_model_solve_obj(self):
         options = {
             "solver_name": "gurobi",
@@ -268,6 +273,7 @@ class TestSolverAgainstMPISPPY(object):
             print("ph_objval: ", ph_objval)
         assert abs((mpi_objval - ph_objval) / ph_objval) < 1e-3
 
+    @pytest.mark.skipif(not gurobi_available, reason="gurobi not installed")
     def test_PH_model_solve_xbar(self):
         if verbose:
             print("=" * 60)
@@ -317,8 +323,9 @@ class TestSolverAgainstMPISPPY(object):
         if verbose:
             print("xbar_mpi:", xbar_mpi)
             print("xbar_ph:", xbar_ph)
-        assert np.allclose(xbar_ph, xbar_mpi)
-
+        assert np.allclose(xbar_ph, xbar_mpi)    
+        
+    @pytest.mark.skipif(not gurobi_available, reason="gurobi not installed")
     def test_PH_model_solve_w_scen(self):
         options = {
             "solver_name": "gurobi",

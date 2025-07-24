@@ -14,7 +14,7 @@ jobs:
       fail-fast: false  # If one job fails, the rest will still run
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12"] # removing 3.13 for now b/c haggis isn't supported
     runs-on: ${{ matrix.os }}
     defaults:
       run:
