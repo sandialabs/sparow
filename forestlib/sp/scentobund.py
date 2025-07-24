@@ -2,6 +2,7 @@ import json
 import munch
 import random
 import types
+import ast
 
 """
 * specify which bundling scheme (function) is used via "bundle_scheme" in sp.py
@@ -75,7 +76,7 @@ def JSdecoded(item: dict, dict_key=False):
     if isinstance(item, list):
         return [JSdecoded(e) for e in item]
     elif isinstance(item, dict):
-        return {literal_eval(key): value for key, value in item.items()}
+        return {ast.literal_eval(key): value for key, value in item.items()}
     return item
 
 
