@@ -1,0 +1,19 @@
+name: forest_dev
+channels:
+  - conda-forge
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+dependencies:
+  - pyomo
+  - munch
+  - numpy
+  - glpk
+  - flake8
+  - pytest
+  - pytest-cov
+  - pip
+  - mpi-sppy
+  - black 
+  - haggis 
+  - scikit-learn
+  - rich
