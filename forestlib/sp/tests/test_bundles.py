@@ -163,14 +163,32 @@ class TestBundleFunctions(object):
 
     def test_check_data_dict_keys(self, weird_key_names, probable_key_names):
         assert single_bundle(probable_key_names) == {
-            "bundle": {"scenarios": {("HF", "s_1"): 0.25, ("HF", "s_0"): 0.25, ("LF", "s_2"): 0.1, ("LF", "s_3"): 0.3, ("LF", "s_4"): 0.1}, "Probability": 1.0},
+            "bundle": {
+                "scenarios": {
+                    ("HF", "s_1"): 0.25,
+                    ("HF", "s_0"): 0.25,
+                    ("LF", "s_2"): 0.1,
+                    ("LF", "s_3"): 0.3,
+                    ("LF", "s_4"): 0.1,
+                },
+                "Probability": 1.0,
+            },
         }
 
         assert single_bundle(
             weird_key_names,
             bundle_args={"demand_key": "weird_key_d", "probability_key": "weird_key_p"},
         ) == {
-            "bundle": {"scenarios": {("HF", "s_1"): 0.25, ("HF", "s_0"): 0.25, ("LF", "s_2"): 0.1, ("LF", "s_3"): 0.3, ("LF", "s_4"): 0.1}, "Probability": 1.0},
+            "bundle": {
+                "scenarios": {
+                    ("HF", "s_1"): 0.25,
+                    ("HF", "s_0"): 0.25,
+                    ("LF", "s_2"): 0.1,
+                    ("LF", "s_3"): 0.3,
+                    ("LF", "s_4"): 0.1,
+                },
+                "Probability": 1.0,
+            },
         }
 
         with pytest.raises(RuntimeError) as excinfo:
@@ -183,11 +201,22 @@ class TestBundleFunctions(object):
             )
         assert excinfo.type is RuntimeError
 
+    def test_sf_model_weight_warnings(self, rand_data):
+        with pytest.warns(
+            UserWarning, match="Single fidelity schemes do not utilize model_weight"
+        ) as warninfo:
+            single_bundle(rand_data, model_weight={"HF": 2, "LF": 1})
+        assert (
+            warninfo[0].message.args[0]
+            == "Single fidelity schemes do not utilize model_weight"
+        )
+        assert warninfo[0].category == UserWarning
+
     def test_mf_kmeans_similar(self, similar_scenarios):
         assert mf_kmeans_similar(similar_scenarios) == {
             "bundle_4.0": {
                 "scenarios": {("HF", "scen_0"): 0.5, ("LF", "scen_7"): 0.5},
-                "Probability": 0.25,
+                "Probability": 0.2,
             },
             "bundle_1.0": {
                 "scenarios": {("HF", "scen_1"): 0.4, ("LF", "scen_6"): 0.6},
@@ -195,7 +224,7 @@ class TestBundleFunctions(object):
             },
             "bundle_2.0": {
                 "scenarios": {("HF", "scen_2"): 0.5, ("LF", "scen_5"): 0.5},
-                "Probability": 0.25,
+                "Probability": 0.3,
             },
             "bundle_5.0": {
                 "scenarios": {("HF", "scen_3"): 0.6, ("LF", "scen_4"): 0.4},
@@ -205,23 +234,23 @@ class TestBundleFunctions(object):
 
     def test_mf_kmeans_dissimilar(self, similar_scenarios):
         assert mf_kmeans_dissimilar(similar_scenarios) == {
-            "bundle_4.0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.25},
+            "bundle_4.0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.1},
             "bundle_1.0": {
                 "scenarios": {
                     ("HF", "scen_1"): 0.3333333333333333,
                     ("LF", "scen_7"): 0.3333333333333333,
                     ("LF", "scen_4"): 0.3333333333333333,
                 },
-                "Probability": 0.25,
+                "Probability": 0.30000000000000004,
             },
-            "bundle_2.0": {"scenarios": {("HF", "scen_2"): 1.0}, "Probability": 0.25},
+            "bundle_2.0": {"scenarios": {("HF", "scen_2"): 1.0}, "Probability": 0.15},
             "bundle_5.0": {
                 "scenarios": {
                     ("HF", "scen_3"): 0.3333333333333333,
                     ("LF", "scen_6"): 0.3333333333333333,
                     ("LF", "scen_5"): 0.3333333333333333,
                 },
-                "Probability": 0.25,
+                "Probability": 0.44999999999999996,
             },
         }
 
@@ -492,13 +521,31 @@ class TestBundleFunctions(object):
             },
         }
 
-    ## TODO: test for mf_ordered
+    def Xtest_mf_ordered(self, weird_key_names):
+        assert mf_ordered(
+            weird_key_names,
+            bundle_args={"demand_key": "weird_key_d", "probability_key": "weird_key_p"},
+        ) == {
+            "HF_s_0": {
+                "scenarios": {
+                    ("HF", "s_1"): 0.55555555555555556,
+                    ("LF", "s_2"): 0.22222222222222224,
+                    ("LF", "s_4"): 0.22222222222222224,
+                },
+                "Probability": 0.5,
+            },
+            "HF_s_1": {
+                "scenarios": {
+                    ("HF", "s_0"): 0.45454545454545455,
+                    ("LF", "s_3"): 0.5454545454545455,
+                },
+                "Probability": 0.5,
+            },
+        }
 
     def test_single_scenario(self, SF_data, MF_data):
         # checking logic with no bundle_args
-        assert single_scenario(
-            SF_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["LF", "HF"]
-        ) == {
+        assert single_scenario(SF_data, models=["LF", "HF"]) == {
             "HF_scen_1": {"scenarios": {("HF", "scen_1"): 1.0}, "Probability": 0.2},
             "HF_scen_0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.3},
             "LF_scen_3": {"scenarios": {("LF", "scen_3"): 1.0}, "Probability": 0.1},
@@ -506,9 +553,7 @@ class TestBundleFunctions(object):
         }
 
         # checking logic with "fidelity" in bundle_args
-        assert single_scenario(
-            MF_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["HF"]
-        ) == {
+        assert single_scenario(MF_data, models=["HF"]) == {
             "HF_scen_1": {"scenarios": {("HF", "scen_1"): 1.0}, "Probability": 0.4},
             "HF_scen_0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.6},
         }
@@ -516,17 +561,12 @@ class TestBundleFunctions(object):
         # checking logic with bundle_args that aren't "fidelity"
         assert single_scenario(
             SF_data,
-            model_weight={"HF": 1.0, "LF": 1.0},
             bundle_args={"some_other_arg": "arg"},
-        ) == single_scenario(
-            SF_data, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args=None
-        )
+        ) == single_scenario(SF_data, bundle_args=None)
 
     def test_single_bundle(self, SF_data, MF_data):
         # check logic with no bundle args
-        assert single_bundle(
-            SF_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["LF", "HF"]
-        ) == {
+        assert single_bundle(SF_data, models=["LF", "HF"]) == {
             "bundle": {
                 "scenarios": {
                     ("HF", "scen_1"): 0.2,
@@ -539,9 +579,7 @@ class TestBundleFunctions(object):
         }
 
         # check logic with 'fidelity' in bundle args
-        assert single_bundle(
-            MF_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["LF"]
-        ) == {
+        assert single_bundle(MF_data, models=["LF"]) == {
             "bundle": {
                 "scenarios": {("LF", "scen_3"): 0.2, ("LF", "scen_2"): 0.8},
                 "Probability": 1.0,
@@ -551,15 +589,115 @@ class TestBundleFunctions(object):
         # check logic with bundle args that aren't fidelity
         assert single_bundle(
             SF_data,
-            model_weight={"HF": 1.0, "LF": 1.0},
             bundle_args={"some_other_arg": "arg"},
-        ) == single_bundle(
-            SF_data, model_weight={"HF": 1.0, "LF": 1.0}, bundle_args=None
-        )
+        ) == single_bundle(SF_data, bundle_args=None)
 
-    ## TODO: tests for kmeans_similar/dissimilar
+    def test_kmeans_similar(self, SF_data):
+        # check logic with no bundle args
+        assert kmeans_similar(SF_data) == {
+            "bundle_1": {
+                "scenarios": {
+                    ("HF", "scen_0"): 0.42857142857142855,
+                    ("LF", "scen_2"): 0.5714285714285715,
+                },
+                "Probability": 0.7,
+            },
+            "bundle_0": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.6666666666666666,
+                    ("LF", "scen_3"): 0.3333333333333333,
+                },
+                "Probability": 0.30000000000000004,
+            },
+        }
 
-    ## TODO: tests for sf_random
+        # check logic with bun_size
+        assert kmeans_similar(SF_data, bundle_args={"bun_size": 1}) == {
+            "bundle_3": {
+                "scenarios": {("HF", "scen_0"): 1.0},
+                "Probability": 0.3,
+            },
+            "bundle_2": {
+                "scenarios": {("HF", "scen_1"): 1.0},
+                "Probability": 0.2,
+            },
+            "bundle_1": {
+                "scenarios": {("LF", "scen_2"): 1.0},
+                "Probability": 0.4,
+            },
+            "bundle_0": {
+                "scenarios": {("LF", "scen_3"): 1.0},
+                "Probability": 0.1,
+            },
+        }
+        assert kmeans_similar(SF_data, bundle_args={"bun_size": 4}) == {
+            "bundle_0": {
+                "scenarios": {
+                    ("HF", "scen_0"): 0.3,
+                    ("HF", "scen_1"): 0.2,
+                    ("LF", "scen_2"): 0.4,
+                    ("LF", "scen_3"): 0.1,
+                },
+                "Probability": 1.0,
+            },
+        }
+
+        # ensure bun_size > num of scenarios returns error
+        with pytest.raises(ValueError) as excinfo:
+            kmeans_similar(SF_data, bundle_args={"bun_size": 5})
+        assert excinfo.type is ValueError
+
+    def test_kmeans_dissimilar(self, SF_data):
+        assert kmeans_dissimilar(SF_data) == {
+            "bundle_0": {
+                "scenarios": {
+                    ("HF", "scen_0"): 0.42857142857142855,
+                    ("LF", "scen_2"): 0.5714285714285715,
+                },
+                "Probability": 0.7,
+            },
+            "bundle_1": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.6666666666666666,
+                    ("LF", "scen_3"): 0.3333333333333333,
+                },
+                "Probability": 0.30000000000000004,
+            },
+        }
+
+        # check logic with bun_size
+        assert kmeans_dissimilar(SF_data, bundle_args={"bun_size": 1}) == {
+            "bundle_0": {
+                "scenarios": {
+                    ("HF", "scen_0"): 0.42857142857142855,
+                    ("LF", "scen_2"): 0.5714285714285715,
+                },
+                "Probability": 0.7,
+            },
+            "bundle_3": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.6666666666666666,
+                    ("LF", "scen_3"): 0.3333333333333333,
+                },
+                "Probability": 0.30000000000000004,
+            },
+        }
+        assert kmeans_dissimilar(SF_data, bundle_args={"bun_size": 4}) == {
+            "bundle_0": {
+                "scenarios": {
+                    ("HF", "scen_0"): 0.3,
+                    ("HF", "scen_1"): 0.2,
+                    ("LF", "scen_2"): 0.4,
+                    ("LF", "scen_3"): 0.1,
+                },
+                "Probability": 1.0,
+            },
+        }
+
+        # ensure bun_size > num of scenarios returns error
+        with pytest.raises(ValueError) as excinfo:
+            kmeans_dissimilar(SF_data, bundle_args={"bun_size": 5})
+        assert excinfo.type is ValueError
 
     def Xtest_bundle_random_partition(self, rand_data, rand_data_MF):
         # check that no "num_buns" in bundle args returns error

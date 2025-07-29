@@ -1,4 +1,4 @@
-import pytest 
+import pytest
 import pyomo.environ as pyo
 from forestlib.solnpool import PoolManager
 from forestlib.sp import stochastic_program
@@ -9,6 +9,7 @@ from forestlib.ph import ProgressiveHedgingSolver
 Note that this test just ensures our extensive form solution matches AMPL's!! It does not test PH.
 * Problem data adapted from https://ampl.com/colab/notebooks/ampl-development-tutorial-26-stochastic-capacitated-facility-location-problem.html#problem-description
 """
+
 
 class TestFacilityLoc:
     def test_facilityloc(self):
@@ -72,7 +73,9 @@ class TestFacilityLoc:
             model.T = pyo.Set(initialize=[j for j in range(t)])
 
             ### VARIABLES
-            model.x = pyo.Var(model.N, within=pyo.Binary)  # x[i] == 1 if facility i is open
+            model.x = pyo.Var(
+                model.N, within=pyo.Binary
+            )  # x[i] == 1 if facility i is open
             model.z = pyo.Var(
                 model.N, model.T, within=pyo.NonNegativeReals
             )  # z[i, j] = proportion of customer j's demand met by facility i
@@ -84,18 +87,24 @@ class TestFacilityLoc:
             model.MeetDemand = pyo.Constraint(model.T, rule=MeetDemand_rule)
 
             def SufficientProduction_rule(model):
-                return sum(k[i] * model.x[i] for i in range(n)) >= sum(d[j] for j in range(t))
+                return sum(k[i] * model.x[i] for i in range(n)) >= sum(
+                    d[j] for j in range(t)
+                )
 
             model.SufficientProduction = pyo.Constraint(rule=SufficientProduction_rule)
 
-            def Capacity_rule(model, i):  # note this constraint also ensures logic between x, z
+            def Capacity_rule(
+                model, i
+            ):  # note this constraint also ensures logic between x, z
                 return sum(model.z[i, j] for j in range(t)) <= k[i] * model.x[i]
 
             model.Capacity = pyo.Constraint(model.N, rule=Capacity_rule)
 
             ### OBJECTIVE
             def Obj_rule(model):
-                expr = sum(sum(c[i][j] * model.z[i, j] for j in range(t)) for i in range(n))
+                expr = sum(
+                    sum(c[i][j] * model.z[i, j] for j in range(t)) for i in range(n)
+                )
                 expr += sum(f[i] * model.x[i] for i in range(n))
                 return expr
 
@@ -114,6 +123,9 @@ class TestFacilityLoc:
         pool_manager.reset_solution_counter()
         results = solver.solve(sp)
         results_dict = results.to_dict()
-        obj_val = results_dict[None]['solutions'][0]['objectives'][0]['value']
+        obj_val = results_dict[None]["solutions"][0]["objectives"][0]["value"]
 
         assert obj_val == 16758018.596250001
+
+
+### TODO: suppress warning

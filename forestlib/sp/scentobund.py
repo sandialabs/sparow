@@ -5,6 +5,7 @@ import types
 from sklearn.cluster import KMeans
 import numpy as np
 import numbers
+import warnings
 
 """
 * specify which bundling scheme (function) is used via "bundle_scheme" in sp.py
@@ -194,7 +195,7 @@ def check_data_dict_keys(data, model0, bundle_args):
 """
 
 
-### TODO: flexibility for fewer bundle centers than HF scenarios -R
+### TODO: add model weights option -R
 def mf_kmeans_similar(data, model_weight=None, models=None, bundle_args=None):
     """
     LF scenarios are bundled with closest HF scenario; HF scenarios are bundle centers
@@ -206,6 +207,9 @@ def mf_kmeans_similar(data, model_weight=None, models=None, bundle_args=None):
 
     if models is None:
         models = list(data.keys())
+    assert (
+        len(models) > 1
+    ), "Expecting multiple models for mf_kmeans_similar; see kmeans_similar for equivalent single fidelity scheme"
 
     model0 = models[0]  # the first model in models is assumed to be the HF model
     dkey = check_data_dict_keys(data, model0, bundle_args)[0]
@@ -270,8 +274,15 @@ def mf_kmeans_similar(data, model_weight=None, models=None, bundle_args=None):
             else:
                 bundle[f"bundle_{centers[diffs[s]][0]}"] = dict(
                     scenarios={scen_key(model, s): data[model][s][pkey]},
-                    Probability=1 / num_centers,
+                    Probability=0,
                 )
+    # bundle probability is normalized sum of scenario probabilities within bundle
+    for bkey in bundle.keys():
+        bundle[bkey]["Probability"] = sum(bundle[bkey]["scenarios"].values())
+    # normalize bundle probabilities
+    bundle_prob_norm = sum(bundle[bkey]["Probability"] for bkey in bundle.keys())
+    for bkey in bundle.keys():
+        bundle[bkey]["Probability"] *= 1 / bundle_prob_norm
 
     # normalization term for if some centers have no mapped scenarios
     fewer_centers_norm = sum(bundle[bkey]["Probability"] for bkey in bundle.keys())
@@ -287,6 +298,7 @@ def mf_kmeans_similar(data, model_weight=None, models=None, bundle_args=None):
 
 
 ### TODO: clean up extra variables, variable names -R
+### TODO: add model weights option -R
 def mf_kmeans_dissimilar(data, model_weight=None, models=None, bundle_args=None):
     """
     LF scenarios are bundled with furthest HF scenario; HF scenarios are bundle centers
@@ -298,6 +310,9 @@ def mf_kmeans_dissimilar(data, model_weight=None, models=None, bundle_args=None)
 
     if models is None:
         models = list(data.keys())
+    assert (
+        len(models) > 1
+    ), "Expecting multiple models for mf_kmeans_dissimilar; see kmeans_dissimilar for equivalent single fidelity scheme"
 
     model0 = models[0]  # the first model in models is assumed to be the HF model
     dkey = check_data_dict_keys(data, model0, bundle_args)[0]
@@ -362,8 +377,15 @@ def mf_kmeans_dissimilar(data, model_weight=None, models=None, bundle_args=None)
             else:
                 bundle[f"bundle_{centers[diffs[s]][0]}"] = dict(
                     scenarios={scen_key(model, s): data[model][s][pkey]},
-                    Probability=1 / num_centers,
+                    Probability=0,
                 )
+    # bundle probability is normalized sum of scenario probabilities within bundle
+    for bkey in bundle.keys():
+        bundle[bkey]["Probability"] = sum(bundle[bkey]["scenarios"].values())
+    # normalize bundle probabilities
+    bundle_prob_norm = sum(bundle[bkey]["Probability"] for bkey in bundle.keys())
+    for bkey in bundle.keys():
+        bundle[bkey]["Probability"] *= 1 / bundle_prob_norm
 
     # normalization term for if some centers have no mapped scenarios
     fewer_centers_norm = sum(bundle[bkey]["Probability"] for bkey in bundle.keys())
@@ -794,6 +816,7 @@ def mf_ordered(data, model_weight=None, models=None, bundle_args=None):
 """
 
 
+### TODO: add output message (not warning) for this scheme -R
 def single_scenario(data, model_weight=None, models=None, bundle_args=None):
     """
     Each scenario is its own bundle (i.e., no bundling)
@@ -801,8 +824,8 @@ def single_scenario(data, model_weight=None, models=None, bundle_args=None):
     if models is None:
         models = list(data.keys())
 
-    #model0 = models[0]
-    #pkey = check_data_dict_keys(data, model0, bundle_args)[1]
+    # model0 = models[0]
+    # pkey = check_data_dict_keys(data, model0, bundle_args)[1]
     pkey = "Probability"
 
     if all(pkey in sdata for model in models for sdata in data[model].values()):
@@ -840,6 +863,11 @@ def single_bundle(data, model_weight=None, models=None, bundle_args=None):
     """
     Combine scenarios from the specified models into a single bundle (i.e., the subproblem is the master problem).
     """
+    if model_weight:
+        warnings.warn(
+            "Single fidelity schemes do not utilize model_weight", UserWarning
+        )
+
     if models is None:
         models = list(data.keys())
 
@@ -883,6 +911,11 @@ def kmeans_similar(data, model_weight=None, models=None, bundle_args=None):
         - ensure there are no duplicate/redundant scenarios before using this!
         - all scenarios must have unique names!
     """
+    if model_weight:
+        warnings.warn(
+            "Single fidelity schemes do not utilize model_weight", UserWarning
+        )
+
     if models is None:
         models = list(data.keys())
 
@@ -890,8 +923,8 @@ def kmeans_similar(data, model_weight=None, models=None, bundle_args=None):
     dkey = check_data_dict_keys(data, model0, bundle_args)[0]
     pkey = check_data_dict_keys(data, model0, bundle_args)[1]
 
-    if "bun_size" in bundle_args:  # default bundle size is 2
-        bun_size = bundle_args['bun_size']
+    if bundle_args is not None:  # default bundle size is 2
+        bun_size = bundle_args.get("bun_size", 2)
     else:
         bun_size = 2
 
@@ -934,8 +967,15 @@ def kmeans_similar(data, model_weight=None, models=None, bundle_args=None):
             else:
                 bundle[f"bundle_{sbmap[s]}"] = dict(
                     scenarios={scen_key(model, s): data[model][s][pkey]},
-                    Probability=1 / num_centers,
+                    Probability=0,
                 )
+    # bundle probability is normalized sum of scenario probabilities within bundle
+    for bkey in bundle.keys():
+        bundle[bkey]["Probability"] = sum(bundle[bkey]["scenarios"].values())
+    # normalize bundle probabilities
+    bundle_prob_norm = sum(bundle[bkey]["Probability"] for bkey in bundle.keys())
+    for bkey in bundle.keys():
+        bundle[bkey]["Probability"] *= 1 / bundle_prob_norm
 
     # normalization term for if some centers have no mapped scenarios
     fewer_centers_norm = sum(bundle[bkey]["Probability"] for bkey in bundle.keys())
@@ -957,6 +997,11 @@ def kmeans_dissimilar(data, model_weight=None, models=None, bundle_args=None):
         - ensure there are no duplicate/redundant scenarios before using this!
         - all scenarios must have unique names!
     """
+    if model_weight:
+        warnings.warn(
+            "Single fidelity schemes do not utilize model_weight", UserWarning
+        )
+
     if models is None:
         models = list(data.keys())
 
@@ -964,8 +1009,8 @@ def kmeans_dissimilar(data, model_weight=None, models=None, bundle_args=None):
     dkey = check_data_dict_keys(data, model0, bundle_args)[0]
     pkey = check_data_dict_keys(data, model0, bundle_args)[1]
 
-    if "bun_size" in bundle_args:  # default bundle size is 2
-        bun_size = bundle_args['bun_size']
+    if bundle_args is not None:  # default bundle size is 2
+        bun_size = bundle_args.get("bun_size", 2)
     else:
         bun_size = 2
 
@@ -1013,8 +1058,15 @@ def kmeans_dissimilar(data, model_weight=None, models=None, bundle_args=None):
             else:
                 bundle[f"bundle_{max_diffs[s]}"] = dict(
                     scenarios={scen_key(model, s): data[model][s][pkey]},
-                    Probability=1 / num_centers,
+                    Probability=0,
                 )
+    # bundle probability is normalized sum of scenario probabilities within bundle
+    for bkey in bundle.keys():
+        bundle[bkey]["Probability"] = sum(bundle[bkey]["scenarios"].values())
+    # normalize bundle probabilities
+    bundle_prob_norm = sum(bundle[bkey]["Probability"] for bkey in bundle.keys())
+    for bkey in bundle.keys():
+        bundle[bkey]["Probability"] *= 1 / bundle_prob_norm
 
     # normalization term for if some centers have no mapped scenarios
     fewer_centers_norm = sum(bundle[bkey]["Probability"] for bkey in bundle.keys())
@@ -1035,6 +1087,11 @@ def sf_random(data, model_weight=None, models=None, bundle_args=None):
         - Can specify bundle size in bundle_args as "bun_size"
         - Bundle size will default to 2-3 scenarios per bundle by default
     """
+    if model_weight:
+        warnings.warn(
+            "Single fidelity schemes do not utilize model_weight", UserWarning
+        )
+
     if models is None:
         models = list(data.keys())
 
@@ -1100,12 +1157,12 @@ def sf_random(data, model_weight=None, models=None, bundle_args=None):
     bundle = {}
     for bun_idx in range(num_buns):
         bun_prob = sum(
-            scens[f'{temp_bundle[bun_idx][l][1]}'][pkey]
+            scens[f"{temp_bundle[bun_idx][l][1]}"][pkey]
             for l, _ in enumerate(temp_bundle[bun_idx])
         )
         bundle[f"rand_{bun_idx}"] = {
             "scenarios": {
-                temp_bundle[bun_idx][l]: scens[f'{temp_bundle[bun_idx][l][1]}'][pkey]
+                temp_bundle[bun_idx][l]: scens[f"{temp_bundle[bun_idx][l][1]}"][pkey]
                 / bun_prob
                 for l, _ in enumerate(temp_bundle[bun_idx])
             },
