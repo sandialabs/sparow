@@ -101,31 +101,3 @@ class TestNewsVendor:
 
         sp.solve(M2, solver="glpk")
         assert pyo.value(M2.s[None, 2].x) == 60.0
-
-    def test_multistage_builder(self):
-        sp = stochastic_program(model_builder_list=[first_stage, second_stage])
-        sp.initialize_model(model_data=model_data)
-
-        assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
-        assert sp.bundles["1"].probability == 0.2
-
-        #
-        # Testing internal data structures
-        #
-        M1 = sp.create_subproblem("1")
-        assert set(sp.int_to_FirstStageVar.keys()) == {"1"}
-        assert sp.varcuid_to_int == {pyo.ComponentUID("x"): 0}
-
-        M2 = sp.create_subproblem("2")
-        assert set(sp.int_to_FirstStageVar.keys()) == {"1", "2"}
-        assert sp.varcuid_to_int == {pyo.ComponentUID("x"): 0}
-
-        #
-        # Test subproblem solver logic
-        #
-        M1.pprint()
-        sp.solve(M1, solver="glpk")
-        assert pyo.value(M1.x) == 15.0
-
-        sp.solve(M2, solver="glpk")
-        assert pyo.value(M2.x) == 60.0

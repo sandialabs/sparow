@@ -102,19 +102,19 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         return list(range(len(self.varcuid_to_int)))
 
     def solve(self, M, *, solver_options=None, tee=False, solver=None):
+        options = copy.copy(self.solver_options)
         if solver_options:
-            self.solver_options = solver_options
+            options.update(solver_options)
+        tee = options.pop("tee", tee)
+
         if solver:
             self.solver = solver
         pyo_solver = pyo.SolverFactory(self.solver)
-        tee = self.solver_options.get("tee", tee)
-        solver_options_ = copy.copy(self.solver_options)
-        if "tee" in solver_options_:
-            del solver_options_["tee"]
+        if options:
+            for k, v in options.items():
+                pyo_solver.options[k] = v
 
-        results = pyo_solver.solve(
-            M, options=solver_options_, tee=tee, load_solutions=False
-        )
+        results = pyo_solver.solve(M, tee=tee, load_solutions=False)
         status = results.solver.status
         if not pyo.check_optimal_termination(results):
             condition = results.solver.termination_condition
@@ -142,12 +142,13 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
                 sys.stdout.flush()
 
             # Return the value of the 'first' objective
-         
-            if self.solver=='ipopt':
+
+            if self.solver == 'ipopt':
                 return munch.Munch(
-                obj_value=pyo.value(M.obj),
-                termination_condition=results.solver.termination_condition,
-                status=results.solver.status,)
+                    obj_value=pyo.value(M.obj),
+                    termination_condition=results.solver.termination_condition,
+                    status=results.solver.status,
+                )
             else:
                 return munch.Munch(
                     obj_value=list(results.Solution[0].Objective.values())[0]["Value"],
@@ -158,11 +159,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
 
 class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
-    def __init__(
-        self,
-        *,
-        first_stage_variables,
-    ):
+    def __init__(self, *, first_stage_variables):
         super().__init__()
         #
         # A list of string names of variables, such as:

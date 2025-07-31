@@ -13,12 +13,12 @@ from mpisppy.opt.ph import PH
 from forestlib.sp import stochastic_program
 from forestlib.ph import ProgressiveHedgingSolver
 
-verbose=False
+verbose = False
 if verbose:
-    loglevel="DEBUG"
+    loglevel = "DEBUG"
 else:
-    loglevel="WARN"
-iters=7
+    loglevel = "WARN"
+iters = 7
 
 random.seed(923874938740938740)
 
@@ -86,9 +86,10 @@ def scenario_creator(scenario_name):
     model._mpisppy_probability = 1.0 / 3
     return model
 
-#Test_MPI_EF = False
+
+# Test_MPI_EF = False
 #
-#if Test_MPI_EF:
+# if Test_MPI_EF:
 #    options = {"solver": "gurobi"}
 #    all_scenario_names = ["good", "average", "bad"]
 #    ef = ExtensiveForm(options, all_scenario_names, scenario_creator)
@@ -99,7 +100,7 @@ def scenario_creator(scenario_name):
 #    print(f"{objval:.1f}")
 
 
-#options = {
+# options = {
 #    "solver_name": "gurobi",
 #    "PHIterLimit": 10,
 #    "defaultPHrho": 10,
@@ -109,7 +110,7 @@ def scenario_creator(scenario_name):
 #    "display_timing": False,
 #    "iter0_solver_options": dict(),
 #    "iterk_solver_options": dict(),
-#}
+# }
 
 # all_scenario_names = ["good", "average", "bad"]
 # ph = PH(
@@ -176,8 +177,8 @@ def model_builder(scen, scen_args):
     return model
 
 
-#FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
-#FarmerSP.initialize_model(model_builder=model_builder)
+# FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
+# FarmerSP.initialize_model(model_builder=model_builder)
 
 model_data = {
     "scenarios": [
@@ -217,7 +218,13 @@ class TestSolverAgainstMPISPPY(object):
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results = ph.solve(FarmerSP, max_iterations=iters-1, solver="gurobi", loglevel=loglevel, default_rho=10)
+        results = ph.solve(
+            FarmerSP,
+            max_iterations=iters - 1,
+            solver="gurobi",
+            loglevel=loglevel,
+            default_rho=10,
+        )
 
         soln = results.last_solution
         ph_objval = soln.objective().value
@@ -240,18 +247,20 @@ class TestSolverAgainstMPISPPY(object):
             "iterk_solver_options": dict(),
         }
         all_scenario_names = ["good", "average", "bad"]
-        ph = PH(
-            options,
-            all_scenario_names,
-            scenario_creator,
-        )
+        ph = PH(options, all_scenario_names, scenario_creator)
         results = ph.ph_main()
         mpi_objval = ph.Eobjective()
 
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results = ph.solve(FarmerSP, max_iterations=iters-1, solver="gurobi", loglevel=loglevel, default_rho=10)
+        results = ph.solve(
+            FarmerSP,
+            max_iterations=iters - 1,
+            solver="gurobi",
+            loglevel=loglevel,
+            default_rho=10,
+        )
 
         soln = results.last_solution
         ph_objval = soln.objective().value
@@ -262,9 +271,9 @@ class TestSolverAgainstMPISPPY(object):
 
     def test_PH_model_solve_xbar(self):
         if verbose:
-            print("="*60)
+            print("=" * 60)
             print("Running MPISPPY")
-            print("="*60)
+            print("=" * 60)
 
         options = {
             "solver_name": "gurobi",
@@ -279,11 +288,7 @@ class TestSolverAgainstMPISPPY(object):
         }
         all_scenario_names = ["good", "average", "bad"]
 
-        ph = PH(
-            options,
-            all_scenario_names,
-            scenario_creator,
-        )
+        ph = PH(options, all_scenario_names, scenario_creator)
         results = ph.ph_main()
         xbar_list = []
         for index in [("ROOT", 0), ("ROOT", 1), ("ROOT", 2)]:
@@ -293,17 +298,23 @@ class TestSolverAgainstMPISPPY(object):
         xbar_mpi = np.array(xbar_list)
 
         if verbose:
-            print("="*60)
+            print("=" * 60)
             print("Running Forestlib.ph")
-            print("="*60)
-            
+            print("=" * 60)
+
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results = ph.solve(FarmerSP, max_iterations=iters-1, solver="gurobi", loglevel=loglevel, default_rho=10)
+        results = ph.solve(
+            FarmerSP,
+            max_iterations=iters - 1,
+            solver="gurobi",
+            loglevel=loglevel,
+            default_rho=10,
+        )
         soln = results.last_solution
         xbar_ph = np.array([var.value for var in reversed(soln.variables())])
-        
+
         if verbose:
             print("xbar_mpi:", xbar_mpi)
             print("xbar_ph:", xbar_ph)
@@ -322,11 +333,7 @@ class TestSolverAgainstMPISPPY(object):
             "iterk_solver_options": dict(),
         }
         all_scenario_names = ["good", "average", "bad"]
-        ph = PH(
-            options,
-            all_scenario_names,
-            scenario_creator,
-        )
+        ph = PH(options, all_scenario_names, scenario_creator)
         results = ph.ph_main()
         w_bar_mpisppy = []
         for s in all_scenario_names:
@@ -338,7 +345,13 @@ class TestSolverAgainstMPISPPY(object):
         FarmerSP = stochastic_program(first_stage_variables=["X[*]"])
         FarmerSP.initialize_model(model_data=model_data, model_builder=model_builder)
         ph = ProgressiveHedgingSolver()
-        results = ph.solve(FarmerSP, max_iterations=iters-1, solver="gurobi", loglevel=loglevel, default_rho=10)
+        results = ph.solve(
+            FarmerSP,
+            max_iterations=iters - 1,
+            solver="gurobi",
+            loglevel=loglevel,
+            default_rho=10,
+        )
         soln = results.last_solution
 
         scenarios = ["AboveAverageScenario", "AverageScenario", "BelowAverageScenario"]
