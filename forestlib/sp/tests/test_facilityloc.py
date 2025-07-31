@@ -118,14 +118,14 @@ class TestFacilityLoc:
             name="HF", model_data=model_data["HF"], model_builder=HF_builder
         )
         solver = ExtensiveFormSolver()
-        solver.set_options(solver="gurobi")
+        solver.set_options(solver="glpk")
         pool_manager = PoolManager()
         pool_manager.reset_solution_counter()
         results = solver.solve(sp)
         results_dict = results.to_dict()
         obj_val = results_dict[None]["solutions"][0]["objectives"][0]["value"]
 
-        assert obj_val == 16758018.596250001
+        assert obj_val == 16758018.59625
 
 
 ### TODO: suppress warning
