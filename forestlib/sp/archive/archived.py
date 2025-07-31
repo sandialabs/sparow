@@ -4,7 +4,7 @@
 
 
 ### ARCHIVED FROM sp_pyomo.py
-class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
+""" class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
 
     def __init__(self, *, model_builder_list):
         super().__init__()
@@ -87,3 +87,4 @@ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):
             root_obj.deactivate()
 
         return EF_model
+ """
