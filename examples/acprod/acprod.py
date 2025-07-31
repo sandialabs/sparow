@@ -4,13 +4,13 @@ import munch
 import pyomo.environ as pyo
 from forestlib.sp import stochastic_program
 from forestlib.ef import ExtensiveFormSolver
-from forestlib.ph import ProgressiveHedgingSolver 
+from forestlib.ph import ProgressiveHedgingSolver
 
 
 #
 # Data for AC production problem - reference Birge and Louveaux???
 #
-app_data = {'c': [1, 3, 0.5], 'h': [1, 3, 0], 'T': 3}
+app_data = {'c': [1, 3, 0.5], 'T': 3}
 
 model_data = {
     "LF": {
@@ -31,10 +31,50 @@ model_data = {
     },
 }
 
+
+class ScenTree(object):
+    def __init__(self, T):
+        self.T = T  # number of stages
+        self.num_nodes = (2 ^ self.T) - 2  # number of nodes in scen tree
+
+    def ceil_division(self, p, q):
+        return -(p // -q)
+
+    # node attributes for scenario tree w/ T stages
+    def nodes(self):
+        node_attrs = {
+            n: {
+                "stage": 0,
+                "demand": None,
+                "parent": None,
+                "cond_prob": None,
+                "nonants": None,
+            }
+            for n in range(self.num_nodes)
+        }
+        node_attrs[0]["stage"] = 1
+        node_attrs[0]["demand"] = 1
+        node_attrs[0]["cond_prob"] = 1.0
+        for n in range(1, self.num_nodes):
+            node_attrs[n]["parent"] = self.ceil_division(n, 2) - 1
+            node_attrs[n]["cond_prob"] = 0.5
+            if n % 2 == 0:
+                node_attrs[n]["demand"] = 3
+                node_attrs[n]["nonants"] = [n - 1]
+            else:
+                node_attrs[n]["demand"] = 1
+                node_attrs[n]["nonants"] = [n + 1]
+        for t in range(1, self.T):
+            for n in range(2 ^ t - 1, 2 ^ (t + 1) - 1):
+                node_attrs[n]["stage"] = t + 1
+
+        return node_attrs
+
+
 def LF_builder(data, args):
     c = data['c']
-    h = data['h']
     T = data['T']
+    g0 = 0  # initial number of AC units stored
 
     ### STOCHASTIC DATA
     d = data['Demand']
@@ -42,36 +82,52 @@ def LF_builder(data, args):
     model = pyo.ConcreteModel(data["ID"])
 
     ### PARAMETERS
-    model.T = pyo.Set(initialize=[i for i in range(T)])
+    model.T = pyo.RangeSet(1, T)
 
-    ### VARIABLES
-    model.x = pyo.Var(model.T, bounds=[0,2])
-    model.w = pyo.Var(model.T, within=pyo.NonNegativeReals)
-    model.y = pyo.Var(model.T, within=pyo.NonNegativeReals)
+    def acprod_block_rule(b, t):
+        ### VARIABLES
+        b.x = pyo.Var(bounds=[0, 2])
+        b.w = pyo.Var(within=pyo.NonNegativeReals)
+        b.y = pyo.Var(within=pyo.NonNegativeReals)
+        b.g = pyo.Var(within=pyo.NonNegativeReals)
 
-    ### CONSTRAINTS
-    def MeetInitDemand_rule(model):
-        return model.x[0] + model.w[0] - model.y[0] == 1 
-    model.MeetInitDemand = pyo.Constraint(rule=MeetInitDemand_rule)
+        ### CONSTRAINTS
+        def MeetDemand_rule(b):
+            if t == 0:
+                return b.g + b.x + b.w - b.y == 1
+            else:
+                return b.g + b.x + b.w - b.y == d[t - 1]
 
-    def MeetDemand_rule(model, t):
-        return model.y[t-1] + model.x[t] + model.w[t] - model.y[t] == d[t]
-    model.MeetDemand = pyo.Constraint(pyo.Set(initialize=[i for i in range(1, T)]), rule=MeetDemand_rule)
+        b.MeetDemand = pyo.Constraint(rule=MeetDemand_rule)
+
+    model.ab = pyo.Block(model.T, rule=acprod_block_rule)
+
+    def linking_rule(model, t):
+        if t == 0:
+            return model.ab[t].g == g0
+        else:
+            return model.ab[t].g == model.ab[t - 1].y
+
+    model.linking_rule = pyo.Constraint(model.T, rule=linking_rule)
 
     ### OBJECTIVE
     def Obj_rule(model):
-        expr = c[0]*model.x[0] + c[1]*model.w[0] + c[2]*model.y[0]
-        expr += sum(c[0]*model.x[t] + c[1]*model.w[t] + c[2]*model.y[t] for t in range(1,T-1))
-        expr += h[0]*model.x[T-1] + h[1]*model.w[T-1] + h[2]*model.y[T-1]
+        expr = sum(
+            c[0] * model.ab[t].x + c[1] * model.ab[t].w + c[2] * model.ab[t].y
+            for t in range(T - 1)
+        )
+        expr += c[0] * model.ab[T - 1].x + c[1] * model.ab[T - 1].w
         return expr
+
     model.obj = pyo.Objective(rule=Obj_rule, sense=pyo.minimize)
 
     return model
+
 
 def HF_builder(data, args):
     c = data['c']
-    h = data['h']
     T = data['T']
+    g0 = 0  # initial number of AC units stored
 
     ### STOCHASTIC DATA
     d = data['Demand']
@@ -79,41 +135,60 @@ def HF_builder(data, args):
     model = pyo.ConcreteModel(data["ID"])
 
     ### PARAMETERS
-    model.T = pyo.Set(initialize=[i for i in range(T)])
+    model.T = pyo.RangeSet(1, T)
 
-    ### VARIABLES
-    model.x = pyo.Var(model.T, within=pyo.NonNegativeIntegers, bounds=[0,2])
-    model.w = pyo.Var(model.T, within=pyo.NonNegativeIntegers)
-    model.y = pyo.Var(model.T, within=pyo.NonNegativeIntegers)
+    def acprod_block_rule(b, t):
+        ### VARIABLES
+        b.x = pyo.Var(bounds=[0, 2], within=pyo.NonNegativeIntegers)
+        b.w = pyo.Var(within=pyo.NonNegativeIntegers)
+        b.y = pyo.Var(within=pyo.NonNegativeIntegers)
+        b.g = pyo.Var(within=pyo.NonNegativeIntegers)
 
-    ### CONSTRAINTS
-    def MeetInitDemand_rule(model):
-        return model.x[0] + model.w[0] - model.y[0] == 1 
-    model.MeetInitDemand = pyo.Constraint(rule=MeetInitDemand_rule)
+        ### CONSTRAINTS
+        def MeetDemand_rule(b):
+            if t == 0:
+                return b.g + b.x + b.w - b.y == 1
+            else:
+                return b.g + b.x + b.w - b.y == d[t - 1]
 
-    def MeetDemand_rule(model, t):
-        return model.y[t-1] + model.x[t] + model.w[t] - model.y[t] == d[t]
-    model.MeetDemand = pyo.Constraint(pyo.Set(initialize=[i for i in range(1, T)]), rule=MeetDemand_rule)
+        b.MeetDemand = pyo.Constraint(rule=MeetDemand_rule)
+
+    model.ab = pyo.Block(model.T, rule=acprod_block_rule)
+
+    def linking_rule(model, t):
+        if t == 0:
+            return model.ab[t].g == g0
+        else:
+            return model.ab[t].g == model.ab[t - 1].y
+
+    model.linking_rule = pyo.Constraint(model.T, rule=linking_rule)
 
     ### OBJECTIVE
     def Obj_rule(model):
-        expr = c[0]*model.x[0] + c[1]*model.w[0] + c[2]*model.y[0]
-        expr += sum(c[0]*model.x[t] + c[1]*model.w[t] + c[2]*model.y[t] for t in range(1,T-1))
-        expr += h[0]*model.x[T-1] + h[1]*model.w[T-1] + h[2]*model.y[T-1]
+        expr = sum(
+            c[0] * model.ab[t].x + c[1] * model.ab[t].w + c[2] * model.ab[t].y
+            for t in range(T - 1)
+        )
+        expr += c[0] * model.ab[T - 1].x + c[1] * model.ab[T - 1].w
         return expr
+
     model.obj = pyo.Objective(rule=Obj_rule, sense=pyo.minimize)
 
     return model
+
 
 #
 # options to solve, LF, HF, or MF models with PH or EF:
 #
 
+
 def HF_EF():
     print("-" * 60)
     print("Running HF_EF")
     print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["x[0]", "w[0]", "y[0]"])
+    sp = stochastic_program(
+        first_stage_variables=["ab[0].x", "ab[0].w", "ab[0].y", "ab[0].g"]
+    )
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
         name="HF", model_data=model_data["HF"], model_builder=HF_builder
@@ -130,7 +205,9 @@ def LF_EF():
     print("-" * 60)
     print("Running LF_EF")
     print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["x[0]", "w[0]", "y[0]"])
+    sp = stochastic_program(
+        first_stage_variables=["ab[0].x", "ab[0].w", "ab[0].y", "ab[0].g"]
+    )
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
         name="LF", model_data=model_data["LF"], model_builder=LF_builder
@@ -142,18 +219,28 @@ def LF_EF():
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
 
+
 def HF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     print("-" * 60)
     print("Running HF_PH")
     print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["x[0]", "w[0]", "y[0]"])
+    sp = stochastic_program(
+        first_stage_variables=["ab[0].x", "ab[0].w", "ab[0].y", "ab[0].g"]
+    )
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
         name="HF", model_data=model_data["HF"], model_builder=HF_builder
     )
 
     solver = ProgressiveHedgingSolver(sp)
-    solver.set_options(solver="gurobi", loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters, rho_updates=True)
+    solver.set_options(
+        solver="gurobi",
+        loglevel=loglevel,
+        cached_model_generation=cache,
+        max_iterations=max_iter,
+        finalize_all_xbar=finalize_all_iters,
+        rho_updates=True,
+    )
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
@@ -163,14 +250,23 @@ def LF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     print("-" * 60)
     print("Running LF_PH")
     print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["x[0]", "w[0]", "y[0]"])
+    sp = stochastic_program(
+        first_stage_variables=["ab[0].x", "ab[0].w", "ab[0].y", "ab[0].g"]
+    )
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
         name="LF", model_data=model_data["LF"], model_builder=LF_builder
     )
 
     solver = ProgressiveHedgingSolver(sp)
-    solver.set_options(solver="gurobi", loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters, rho_updates=True)
+    solver.set_options(
+        solver="gurobi",
+        loglevel=loglevel,
+        cached_model_generation=cache,
+        max_iterations=max_iter,
+        finalize_all_xbar=finalize_all_iters,
+        rho_updates=True,
+    )
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
@@ -178,52 +274,61 @@ def LF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
 
 def dist_map(data, models):
     model0 = models[0]
-    
+
     HFscenarios = list(data[model0].keys())
     LFscenarios = {}  # all other models are LF
     for model in models[1:]:
         LFscenarios[model] = list(data[model].keys())
 
     HFdemands = list(data[model0][HFkey]["d"] for HFkey in HFscenarios)
-    LFdemands = list(data[model][ls]["d"] for ls in LFscenarios[model] for model in models[1:])
+    LFdemands = list(
+        data[model][ls]["d"] for ls in LFscenarios[model] for model in models[1:]
+    )
 
     # map each LF scenario to closest HF scenario using 1-norm of demand difference
     demand_diffs = {}
     for i in range(len(HFdemands)):
         for j in range(len(LFdemands)):
-            demand_diffs[(i,j)] = abs(HFdemands[i] - LFdemands[j])
+            demand_diffs[(i, j)] = abs(HFdemands[i] - LFdemands[j])
 
     return demand_diffs
+
 
 def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     print("-" * 60)
     print("Running MF_PH")
     print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["x[0]", "w[0]", "y[0]"])
+    sp = stochastic_program(
+        first_stage_variables=["ab[0].x", "ab[0].w", "ab[0].y", "ab[0].g"]
+    )
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
         name="HF", model_data=model_data["HF"], model_builder=HF_builder
     )
     sp.initialize_model(
-        name="LF",
-        model_data=model_data["LF"],
-        model_builder=LF_builder,
-        default=False,
+        name="LF", model_data=model_data["LF"], model_builder=LF_builder, default=False
     )
 
     bundle_num = 0
     sp.initialize_bundles(
-        scheme="mf_random", #dissimilar_partitions",
-        #distance_function=dist_map,
+        scheme="mf_random",  # dissimilar_partitions",
+        # distance_function=dist_map,
         LF=2,
         seed=1234567890,
-        model_weight={"HF": 2.0, "LF": 1.0},
+        model_weight={"HF": 1.0, "LF": 1.0},
     )
-    #pprint.pprint(sp.get_bundles())
+    # pprint.pprint(sp.get_bundles())
     sp.save_bundles(f"MF_PH_bundle_{bundle_num}.json", indent=4, sort_keys=True)
-    
+
     solver = ProgressiveHedgingSolver(sp)
-    solver.set_options(solver="gurobi", loglevel=loglevel, cached_model_generation=cache, max_iterations=max_iter, finalize_all_xbar=finalize_all_iters, rho_updates=True)
+    solver.set_options(
+        solver="gurobi",
+        loglevel=loglevel,
+        cached_model_generation=cache,
+        max_iterations=max_iter,
+        finalize_all_xbar=finalize_all_iters,
+        rho_updates=True,
+    )
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
@@ -236,7 +341,9 @@ parser.add_argument("--hf-ph", action="store_true")
 parser.add_argument("--lf-ph", action="store_true")
 parser.add_argument("--mf-ph", action="store_true")
 parser.add_argument("--cache", action="store_true", default=False)
-parser.add_argument("-f", "--finalize_all_iterations", action="store_true", default=False)
+parser.add_argument(
+    "-f", "--finalize_all_iterations", action="store_true", default=False
+)
 parser.add_argument("--max-iter", action="store", default=100, type=int)
 parser.add_argument("-l", "--loglevel", action="store", default="INFO")
 args = parser.parse_args()  # parse sys.argv
@@ -246,10 +353,25 @@ if args.lf_ef:
 elif args.hf_ef:
     HF_EF()
 elif args.hf_ph:
-    HF_PH(cache=args.cache, max_iter=args.max_iter, loglevel=args.loglevel, finalize_all_iters=args.finalize_all_iterations)
+    HF_PH(
+        cache=args.cache,
+        max_iter=args.max_iter,
+        loglevel=args.loglevel,
+        finalize_all_iters=args.finalize_all_iterations,
+    )
 elif args.lf_ph:
-    LF_PH(cache=args.cache, max_iter=args.max_iter, loglevel=args.loglevel, finalize_all_iters=args.finalize_all_iterations)
+    LF_PH(
+        cache=args.cache,
+        max_iter=args.max_iter,
+        loglevel=args.loglevel,
+        finalize_all_iters=args.finalize_all_iterations,
+    )
 elif args.mf_ph:
-    MF_PH(cache=args.cache, max_iter=args.max_iter, loglevel=args.loglevel, finalize_all_iters=args.finalize_all_iterations)
+    MF_PH(
+        cache=args.cache,
+        max_iter=args.max_iter,
+        loglevel=args.loglevel,
+        finalize_all_iters=args.finalize_all_iterations,
+    )
 else:
     parser.print_help()

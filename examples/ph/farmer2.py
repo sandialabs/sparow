@@ -183,9 +183,7 @@ def second_stage_builder(M, scen, scen_args):
 
 sp = stochastic_program(model_builder_list=[first_stage_builder, second_stage_builder])
 
-app_data = {
-    "crops_multiplier": 1.0,
-}
+app_data = {"crops_multiplier": 1.0}
 sp.initialize_application(app_data=app_data)
 
 bundle_data = {

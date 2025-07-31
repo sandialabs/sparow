@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name="forestlib"
 version="1.0"
-dependencies = ["Pyomo", "munch", "mpi-sppy", "pytest", "black", "glpk", "pytest-cov", "haggis", "rich"]
+dependencies = ["Pyomo", "munch", "mpi-sppy", "pytest", "black", "glpk", "pytest-cov", "haggis", "scikit-learn", "rich"]
 readme = {file = "README.md", content-type = "text/plain"}
 description="A forest of optimization capabilities"
 classifiers=[

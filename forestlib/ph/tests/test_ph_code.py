@@ -114,6 +114,7 @@ def scenario_creator(scenario_name):
 #    "iter0_solver_options": dict(),
 #    "iterk_solver_options": dict(),
 # }
+
 # all_scenario_names = ["good", "average", "bad"]
 # ph = PH(
 #    options,
