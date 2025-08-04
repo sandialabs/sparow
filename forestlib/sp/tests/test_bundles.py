@@ -64,6 +64,34 @@ def SF_data():
 
 
 @pytest.fixture
+def SF_missing_all_prob_data():
+    return {
+        "HF": {
+            "scen_1": {"Demand": 3},
+            "scen_0": {"Demand": 1},
+        },
+        "LF": {
+            "scen_3": {"Demand": 4},
+            "scen_2": {"Demand": 2},
+        },
+    }
+
+
+@pytest.fixture
+def SF_missing_some_prob_data():
+    return {
+        "HF": {
+            "scen_1": {"Demand": 3, "Probability": 0.2},
+            "scen_0": {"Demand": 1},
+        },
+        "LF": {
+            "scen_3": {"Demand": 4},
+            "scen_2": {"Demand": 2},
+        },
+    }
+
+
+@pytest.fixture
 def rand_data():
     return {
         "HF": {"scen_0": {"Demand": 1, "Probability": 0.6}},
@@ -160,7 +188,9 @@ class TestBundleFunctions(object):
 
         return demand_diffs
 
-    def test_check_data_dict_keys(self, weird_key_names, probable_key_names):
+    def test_check_data_dict_keys(
+        self, weird_key_names, probable_key_names, SF_missing_all_prob_data
+    ):
         assert single_bundle(probable_key_names) == {
             "bundle": {
                 "scenarios": {
@@ -191,14 +221,31 @@ class TestBundleFunctions(object):
         }
 
         with pytest.raises(RuntimeError) as excinfo:
-            single_bundle(weird_key_names, bundle_args={"demand_key": "weird_key_d"})
+            single_bundle(weird_key_names)
         assert excinfo.type is RuntimeError
 
-        with pytest.raises(RuntimeError) as excinfo:
-            single_bundle(
-                weird_key_names, bundle_args={"probability_key": "weird_key_p"}
-            )
-        assert excinfo.type is RuntimeError
+        with pytest.warns(
+            UserWarning,
+            match="No scenario probabilities are given; assuming uniform distribution.",
+        ) as warninfo:
+            single_bundle(SF_missing_all_prob_data)
+        assert (
+            warninfo[0].message.args[0]
+            == "No scenario probabilities are given; assuming uniform distribution."
+        )
+        assert warninfo[0].category == UserWarning
+
+        assert single_bundle(SF_missing_all_prob_data) == {
+            "bundle": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.25,
+                    ("HF", "scen_0"): 0.25,
+                    ("LF", "scen_3"): 0.25,
+                    ("LF", "scen_2"): 0.25,
+                },
+                "Probability": 1.0,
+            }
+        }
 
     def test_sf_model_weight_warnings(self, rand_data):
         with pytest.warns(
@@ -519,7 +566,6 @@ class TestBundleFunctions(object):
                 },
             },
         }
-
 
     def test_single_scenario(self, SF_data, MF_data):
         # checking logic with no bundle_args

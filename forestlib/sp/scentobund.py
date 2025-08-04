@@ -114,12 +114,14 @@ def scen_key(model, scenario):
 def check_data_dict_keys(data, model0, bundle_args):
     dkey = None  # initialize demand and probability keys
     pkey = None
-    if bundle_args is not None:  # default bundle size is 2
+
+    if bundle_args:  # will populate dkey or pkey if they're provided
         dkey = bundle_args.get("demand_key")
         pkey = bundle_args.get("probability_key")
-    else:
-        # search first item in HF data dictionary for demand key. TODO: problematic if some data are missing -R
-        dkeys_to_check = ["Demand", "demand", "d", "D"]
+
+    if dkey is None:
+        # search first item in HF data dictionary for demand key
+        dkeys_to_check = ["Demand", "demand", "DEMAND", "d", "D"]
         existing_dkey = [
             e_dkey
             for e_dkey in dkeys_to_check
@@ -128,10 +130,13 @@ def check_data_dict_keys(data, model0, bundle_args):
         if len(existing_dkey) > 1 or len(existing_dkey) == 0:
             raise RuntimeError(f"Specify demand_key in bundle_args")
         dkey = existing_dkey[0]
-        # search first item in HF data dictionary for probability key
+
+    if pkey is None:
+        # search entire data dictionary for probability key(s)
         pkeys_to_check = [
             "Probability",
             "probability",
+            "PROBABILITY",
             "prob",
             "Prob",
             "p",
@@ -139,54 +144,34 @@ def check_data_dict_keys(data, model0, bundle_args):
             "Pr",
             "pr",
         ]
-        existing_pkey = [
-            e_pkey
-            for e_pkey in pkeys_to_check
-            if e_pkey in data[model0][next(iter(data[model0]))].keys()
+        all_scens = list(data.values())
+        list_all_scens = [list(all_scens[s].values()) for s in range(len(all_scens))]
+        all_keys = [
+            list(item.keys())
+            for l in range(len(list_all_scens))
+            for item in list_all_scens[l]
         ]
-        if len(existing_pkey) > 1 or len(existing_pkey) == 0:
+        flat_list = list(
+            set([list_item for sublist in all_keys for list_item in sublist])
+        )
+        pkey_list = [list_item for list_item in flat_list if list_item != dkey]
+        existing_pkey = [e_pkey for e_pkey in pkeys_to_check if e_pkey in pkey_list]
+        if len(existing_pkey) > 1:
             raise RuntimeError(f"Specify probability_key in bundle_args")
-        pkey = existing_pkey[0]
-
-    if dkey == None:
-        if "demand_key" in bundle_args:
-            dkey = bundle_args.get("demand_key")
+        elif len(existing_pkey) == 0:
+            pkey = None
+            warnings.warn(
+                "No scenario probabilities are given; assuming uniform distribution.",
+                UserWarning,
+            )
         else:
-            dkeys_to_check = ["Demand", "demand", "d", "D"]
-            existing_dkey = [
-                e_dkey
-                for e_dkey in dkeys_to_check
-                if e_dkey in data[model0][next(iter(data[model0]))].keys()
-            ]
-            if len(existing_dkey) > 1 or len(existing_dkey) == 0:
-                raise RuntimeError(
-                    f"Specify demand_key in bundle_args ({len(existing_dkey)} keys specified)"
-                )
-            dkey = existing_dkey[0]
-    if pkey == None:
-        if "probability_key" in bundle_args:
-            pkey = bundle_args.get("probability_key")
-        else:
-            pkeys_to_check = [
-                "Probability",
-                "probability",
-                "prob",
-                "Prob",
-                "p",
-                "P",
-                "Pr",
-                "pr",
-            ]
-            existing_pkey = [
-                e_pkey
-                for e_pkey in pkeys_to_check
-                if e_pkey in data[model0][next(iter(data[model0]))].keys()
-            ]
-            if len(existing_pkey) > 1 or len(existing_pkey) == 0:
-                raise RuntimeError(
-                    f"Specify probability_key in bundle_args ({len(existing_pkey)} keys specified)"
-                )
             pkey = existing_pkey[0]
+
+    # if pkey != None and any(pkey in sdata for model in models for sdata in data[model].values()):
+    #
+    # Some, but not all scenarios are missing probability values, so an error is returned.
+    #
+    # raise ValueError(f"Some scenario probability values are missing")
 
     return dkey, pkey
 
@@ -240,7 +225,7 @@ def mf_kmeans_similar(data, model_weight=None, models=None, bundle_args=None):
         arr = np.array([data[model0][skey][dkey] for skey in data[model0].keys()])
         X = arr.reshape(
             -1, 1
-        )  # array of scenario demands needs to be reshaped if demand is a number
+        )  # array of scenario demands needs to be reshaped if demand is 1-dimensional
     else:
         X = np.array([data[model0][skey][dkey] for skey in data[model0].keys()])
 
@@ -343,7 +328,7 @@ def mf_kmeans_dissimilar(data, model_weight=None, models=None, bundle_args=None)
         arr = np.array([data[model0][skey][dkey] for skey in data[model0].keys()])
         X = arr.reshape(
             -1, 1
-        )  # array of scenario demands needs to be reshaped if demand is a number
+        )  # array of scenario demands needs to be reshaped if demand is 1-dimensional
     else:
         X = np.array([data[model0][skey][dkey] for skey in data[model0].keys()])
 
@@ -810,7 +795,18 @@ def single_bundle(data, model_weight=None, models=None, bundle_args=None):
     model0 = models[0]
     pkey = check_data_dict_keys(data, model0, bundle_args)[1]
 
-    if all(pkey in sdata for model in models for sdata in data[model].values()):
+    if pkey == None:
+        #
+        # No scenario probabilities are given, so we just assume
+        # a uniform distribution.
+        #
+        total = sum(1 for model in models for sdata in data[model].values())
+
+        scenarios = {}
+        for model in models:
+            for s, sdata in data[model].items():
+                scenarios[scen_key(model, s)] = 1.0 / total
+    else:
         #
         # Probability values have been specified for all scenarios, so we use the relative weight
         # of these probabilities
@@ -823,17 +819,6 @@ def single_bundle(data, model_weight=None, models=None, bundle_args=None):
         for model in models:
             for s, sdata in data[model].items():
                 scenarios[scen_key(model, s)] = sdata[pkey] / bun_prob
-    else:
-        #
-        # At least some of the scenarios are missing probability values, so we just assume
-        # a uniform distribution.
-        #
-        total = sum(1 for model in models for sdata in data[model].values())
-
-        scenarios = {}
-        for model in models:
-            for s, sdata in data[model].items():
-                scenarios[scen_key(model, s)] = 1.0 / total
 
     bundle = dict(bundle=dict(scenarios=scenarios, Probability=1.0))
 
