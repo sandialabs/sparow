@@ -747,71 +747,6 @@ def mf_random(data, model_weight, models, bundle_args=None):
     return bundle
 
 
-def mf_ordered(data, model_weight=None, models=None, bundle_args=None):
-    """
-    Scenarios are paired according to their models
-        - Each HF scenario in exactly 1 bundle; LF scenarios are added one at a
-        time to bundles in order they are listed
-        - Can have different numbers of HF and LF scenarios
-        - Scenarios are not repeated (each scenario belongs to exactly 1 bundle)
-    """
-    if models is None:
-        models = list(data.keys())
-    assert len(models) > 1, "Expecting multiple models for mf_ordered"
-
-    #
-    # scenarios from each model are paired by order they appear in scenario list
-    #
-    model0 = models[0]  # the first model in models is assumed to be the HF model
-    pkey = check_data_dict_keys(data, model0, bundle_args)[1]
-
-    HFscenarios = list(data[model0].keys())
-    LFscenarios = {}  # all other models are LF
-    for model in models[1:]:
-        LFscenarios[model] = list(data[model].keys())
-
-    LFmap = (
-        {}
-    )  # keys are tuples (model, LF scenario) and values are HF scenario to be bundled with
-    for model in models[1:]:
-        for idx_ls, ls in enumerate(LFscenarios[model]):
-            LFmap[(model, ls)] = HFscenarios[idx_ls % len(HFscenarios)]
-
-    #
-    # Create the final bundle object
-    #
-    bundle = {}
-    for hs in HFscenarios:  # each HF scenario belongs in exactly 1 bundle
-        if model_weight:
-            bundle[f"{model0}_{hs}"] = dict(
-                scenarios={scen_key(model0, hs): model_weight[model0]},
-                Probability=1 / len(HFscenarios),
-            )
-        else:
-            bundle[f"{model0}_{hs}"] = dict(
-                scenarios={scen_key(model0, hs): data[model0][hs][pkey]},
-                Probability=data[model0][hs][pkey],
-            )
-    for model in models[
-        1:
-    ]:  # each LF scenario bundled with HF scenario based on order in data dict
-        for ls in LFscenarios[model]:
-            if model_weight:
-                bundle[f"{model0}_{LFmap[(model, ls)]}"]["scenarios"][
-                    scen_key(model, ls)
-                ] = model_weight[model]
-            else:
-                bundle[f"{model0}_{LFmap[(model, ls)]}"]["scenarios"][
-                    scen_key(model, ls)
-                ] = data[model][ls][pkey]
-    for hs in HFscenarios:  # normalize bundle probabilities
-        norm_factor = sum(bundle[f"{model0}_{hs}"]["scenarios"].values())
-        for b_key in bundle[f"{model0}_{hs}"]["scenarios"].keys():
-            bundle[f"{model0}_{hs}"]["scenarios"][b_key] *= 1 / norm_factor
-
-    return bundle
-
-
 """
 ******************* SINGLE-FIDELITY SCHEMES *******************
 """
@@ -1182,7 +1117,6 @@ scheme = {
     "mf_paired": mf_paired,
     "mf_random_nested": mf_random_nested,
     "mf_random": mf_random,
-    "mf_ordered": mf_ordered,
     "similar_partitions": similar_partitions,
     "dissimilar_partitions": dissimilar_partitions,
     "kmeans_similar": kmeans_similar,

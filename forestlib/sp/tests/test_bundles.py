@@ -5,7 +5,6 @@ from forestlib.sp.scentobund import (
     single_bundle,
     sf_random,
     mf_paired,
-    mf_ordered,
     mf_random_nested,
     mf_random,
     similar_partitions,
@@ -521,27 +520,6 @@ class TestBundleFunctions(object):
             },
         }
 
-    def Xtest_mf_ordered(self, weird_key_names):
-        assert mf_ordered(
-            weird_key_names,
-            bundle_args={"demand_key": "weird_key_d", "probability_key": "weird_key_p"},
-        ) == {
-            "HF_s_0": {
-                "scenarios": {
-                    ("HF", "s_1"): 0.55555555555555556,
-                    ("LF", "s_2"): 0.22222222222222224,
-                    ("LF", "s_4"): 0.22222222222222224,
-                },
-                "Probability": 0.5,
-            },
-            "HF_s_1": {
-                "scenarios": {
-                    ("HF", "s_0"): 0.45454545454545455,
-                    ("LF", "s_3"): 0.5454545454545455,
-                },
-                "Probability": 0.5,
-            },
-        }
 
     def test_single_scenario(self, SF_data, MF_data):
         # checking logic with no bundle_args
