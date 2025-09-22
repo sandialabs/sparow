@@ -2,6 +2,12 @@ import pytest
 import pyomo.environ as pyo
 from forestlib.sp import stochastic_program
 
+import pyomo.opt
+from pyomo.common import unittest
+solvers = set(pyomo.opt.check_available_solvers("glpk", "gurobi"))
+solvers = ['glpk'] if 'glpk' in solvers else ['gurobi']
+pytestmark = unittest.pytest.mark.parametrize("mip_solver", solvers)
+
 
 #
 # Data for a simple newsvendor example
@@ -75,6 +81,7 @@ def HF_builder(data, args):
     return M
 
 
+@unittest.pytest.mark.default
 class TestMFNewsVendor:
     """
     Test the multi-fidelity news vendor application
@@ -82,7 +89,7 @@ class TestMFNewsVendor:
     See https://stoprog.org/sites/default/files/SPTutorial/TutorialSP.pdf
     """
 
-    def test_LF_builder(self):
+    def test_LF_builder(self, mip_solver):
         sp = stochastic_program(first_stage_variables=["x"])
         sp.initialize_application(app_data=app_data)
         sp.initialize_model(
@@ -106,10 +113,10 @@ class TestMFNewsVendor:
         #
         # Test subproblem solver logic
         #
-        sp.solve(M1, solver="glpk")
+        sp.solve(M1, solver=mip_solver)
         assert pyo.value(M1.s["LF", 1].x) == 15.0
 
-        sp.solve(M2, solver="glpk")
+        sp.solve(M2, solver=mip_solver)
         assert pyo.value(M2.s["LF", 2].x) == 60.0
 
     def test_HF_builder(self):
@@ -136,10 +143,10 @@ class TestMFNewsVendor:
         #
         # Test subproblem solver logic
         #
-        sp.solve(M1, solver="glpk")
+        sp.solve(M1, solver=mip_solver)
         assert pyo.value(M1.s["HF", 1].x) == 9.0
 
-        sp.solve(M2, solver="glpk")
+        sp.solve(M2, solver=mip_solver)
         assert pyo.value(M2.s["HF", 2].x) == 40.0
 
     def test_MF_builder1(self):
@@ -173,14 +180,14 @@ class TestMFNewsVendor:
         #
         # Test subproblem solver logic
         #
-        sp.solve(M1, solver="glpk")
+        sp.solve(M1, solver=mip_solver)
         assert len(M1.s) == 2
         assert pyo.value(M1.s["HF", 1].x) == 15.0
         assert pyo.value(M1.s["LF", 1].x) == 15.0
         assert pyo.value(M1.s["HF", 1].y) == 21.0
         assert pyo.value(M1.s["LF", 1].y) == 15.0
 
-        sp.solve(M2, solver="glpk")
+        sp.solve(M2, solver=mip_solver)
         assert len(M2.s) == 2
         assert pyo.value(M2.s["HF", 2].x) == 60.0
         assert pyo.value(M2.s["LF", 2].x) == 60.0
@@ -266,7 +273,7 @@ class TestMFNewsVendor:
         #
         # Test subproblem solver logic
         #
-        sp.solve(M1, solver="glpk")
+        sp.solve(M1, solver=mip_solver)
         assert len(M1.s) == 3
         assert set(M1.s.keys()) == {("HF", 1), ("LF", 3), ("LF", 4)}
         assert pyo.value(M1.s["HF", 1].x) == 25.0
@@ -276,7 +283,7 @@ class TestMFNewsVendor:
         assert pyo.value(M1.s["LF", 3].y) == 95.5
         assert pyo.value(M1.s["LF", 4].y) == 104.5
 
-        sp.solve(M2, solver="glpk")
+        sp.solve(M2, solver=mip_solver)
         assert len(M2.s) == 3
         assert set(M2.s.keys()) == {("HF", 2), ("LF", 1), ("LF", 3)}
         assert pyo.value(M2.s["HF", 2].x) == 15.0
@@ -370,7 +377,7 @@ class TestMFNewsVendor:
         #
         # Test subproblem solver logic
         #
-        sp.solve(M1, solver="glpk")
+        sp.solve(M1, solver=mip_solver)
         assert len(M1.s) == 3
         assert set(M1.s.keys()) == {("HF", 1), ("LF", 3), ("LF", 4)}
         assert pyo.value(M1.s["HF", 1].x) == 25.0
@@ -380,7 +387,7 @@ class TestMFNewsVendor:
         assert pyo.value(M1.s["LF", 3].y) == 95.5
         assert pyo.value(M1.s["LF", 4].y) == 104.5
 
-        sp.solve(M2, solver="glpk")
+        sp.solve(M2, solver=mip_solver)
         assert len(M2.s) == 3
         assert set(M2.s.keys()) == {("HF", 2), ("LF", 1), ("LF", 3)}
         assert pyo.value(M2.s["HF", 2].x) == 40.0

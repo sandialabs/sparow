@@ -2,6 +2,12 @@ import pytest
 import pyomo.environ as pyo
 from forestlib.sp import stochastic_program
 
+import pyomo.opt
+from pyomo.common import unittest
+solvers = set(pyomo.opt.check_available_solvers("glpk", "gurobi"))
+solvers = ['glpk'] if 'glpk' in solvers else ['gurobi']
+pytestmark = unittest.pytest.mark.parametrize("mip_solver", solvers)
+
 
 #
 # Data for a simple newsvendor example
@@ -66,6 +72,7 @@ def second_stage(M, S, data, args):
     S.less = pyo.Constraint(expr=S.y >= (c + h) * M.x - h * d)
 
 
+@unittest.pytest.mark.default
 class TestNewsVendor:
     """
     Test the news vendor application
@@ -73,7 +80,7 @@ class TestNewsVendor:
     See https://stoprog.org/sites/default/files/SPTutorial/TutorialSP.pdf
     """
 
-    def test_single_builder(self):
+    def test_single_builder(self, mip_solver):
         sp = stochastic_program(first_stage_variables=["x"])
         sp.initialize_model(model_data=model_data, model_builder=model_builder)
 
@@ -96,8 +103,8 @@ class TestNewsVendor:
         #
         # Test subproblem solver logic
         #
-        sp.solve(M1, solver="glpk")
-        assert pyo.value(M1.s[None, 1].x) == 15.0
+        sp.solve(M1, solver=mip_solver)
+        assert pyo.value(M1.s[None, 1].x) == pytest.approx(15.0)
 
-        sp.solve(M2, solver="glpk")
-        assert pyo.value(M2.s[None, 2].x) == 60.0
+        sp.solve(M2, solver=mip_solver)
+        assert pyo.value(M2.s[None, 2].x) == pytest.approx(60.0)
