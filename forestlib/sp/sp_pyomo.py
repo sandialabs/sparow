@@ -11,7 +11,6 @@ import pyomo.util.vars_from_expressions as vfe
 
 import forestlib.logs
 from .sp import StochasticProgram
-from IPython import embed
 
 logger = forestlib.logs.logger
 
