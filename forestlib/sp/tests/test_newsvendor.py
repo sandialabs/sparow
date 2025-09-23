@@ -4,9 +4,9 @@ from forestlib.sp import stochastic_program
 
 import pyomo.opt
 from pyomo.common import unittest
+
 solvers = set(pyomo.opt.check_available_solvers("glpk", "gurobi"))
-solvers = ['glpk'] if 'glpk' in solvers else ['gurobi']
-pytestmark = unittest.pytest.mark.parametrize("mip_solver", solvers)
+solvers = ["glpk"] if "glpk" in solvers else ["gurobi"]
 
 
 #
@@ -72,7 +72,7 @@ def second_stage(M, S, data, args):
     S.less = pyo.Constraint(expr=S.y >= (c + h) * M.x - h * d)
 
 
-@unittest.pytest.mark.default
+@unittest.pytest.mark.parametrize("mip_solver", solvers)
 class TestNewsVendor:
     """
     Test the news vendor application
