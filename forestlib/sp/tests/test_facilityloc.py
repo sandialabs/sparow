@@ -6,9 +6,9 @@ from forestlib.ef import ExtensiveFormSolver
 
 import pyomo.opt
 from pyomo.common import unittest
+
 solvers = set(pyomo.opt.check_available_solvers("glpk", "gurobi"))
-solvers = ['glpk'] if 'glpk' in solvers else ['gurobi']
-pytestmark = unittest.pytest.mark.parametrize("mip_solver", solvers)
+solvers = ["glpk"] if "glpk" in solvers else ["gurobi"]
 
 
 """
@@ -17,7 +17,7 @@ Note that this test just ensures our extensive form solution matches AMPL's!! It
 """
 
 
-@unittest.pytest.mark.default
+@unittest.pytest.mark.parametrize("mip_solver", solvers)
 class TestFacilityLoc:
 
     def test_facilityloc(self, mip_solver):
