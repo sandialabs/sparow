@@ -1,3 +1,6 @@
+import pyomo.environ as pyo
+
+
 def constrain_EF_model(
     *, sp, M, first_stage_variables, fraction_same, filter_zeros=True
 ):
@@ -5,6 +8,11 @@ def constrain_EF_model(
     # Add a constraint that at least `fraction_same` of the specified first-stage-variables
     # match the given values.
     #
+    assert (
+        fraction_same >= 0 and fraction_same <= 1.0
+    ), f"Unexpected value: {fraction_same=}"
+    if fraction_same <= 1e-3:
+        return M
 
     # Filter zero values
     if filter_zeros:
@@ -21,6 +29,11 @@ def constrain_EF_model(
     var = {name: M.rootx[i] for i, name in sp.int_to_FirstStageVarName.items()}
     for name in first_stage_variables:
         assert name in var, f"Missing variable {name} in model first stage variables"
+
+    if fraction_same >= 1-1e-3:
+        for name, value in first_stage_variables.items():
+            var[name].fix(value)
+        return M
 
     # Add a block of constraints
     M.EFmod = pyo.Block()
