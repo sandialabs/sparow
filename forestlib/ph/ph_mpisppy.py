@@ -114,7 +114,7 @@ class Forestlib_client:
         sca = scenario_creator_kwargs.copy()
         sca["seedoffset"] = seed
         sca["num_scens"] = sample_branching_factors[0]  # two-stage problem
-        return scenario_creator(sname, **sca)
+        return self.scenario_creator(sname, **sca)
 
     def scenario_denouement(self, rank, scenario_name, scenario):
         pass
@@ -418,7 +418,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
                 for soln in all_iterations:
                     finalize_ph_results(soln, sp=sp, solutions=self.solutions)
             else:
-                soln = self.solutions[latest_soln]
+                #soln = self.solutions[latest_soln]
                 self.solutions.add_pool("Finalized Last PH Solution", policy="keep_best")
                 finalize_ph_results(soln, sp=sp, solutions=self.solutions)
 
