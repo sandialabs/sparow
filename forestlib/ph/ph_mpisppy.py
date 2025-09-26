@@ -120,13 +120,14 @@ class Forestlib_client:
         pass
 
 
-class Forestlib_guest(mpisppy.agnostic.pyomo_guest.Pyomo_guest):
+if mpisppy_available:
+    class Forestlib_guest(mpisppy.agnostic.pyomo_guest.Pyomo_guest):
 
-    def __init__(self, sp):
-        self.model_module = Forestlib_client(sp)
+        def __init__(self, sp):
+            self.model_module = Forestlib_client(sp)
 
-    def num_bundles(self):
-        return len(self.model_module._sp.bundles)
+        def num_bundles(self):
+            return len(self.model_module._sp.bundles)
 
 
 def mpisppy_agnostic_main(module, Ag, cfg):
