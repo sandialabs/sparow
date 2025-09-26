@@ -13,6 +13,7 @@ import mpisppy.agnostic.pyomo_guest
 import mpisppy.agnostic.agnostic_cylinders
 import mpisppy.agnostic.agnostic
 import mpisppy.utils.sputils
+from mpisppy import MPI  # for debugging
 
 # from pyomo.common.timing import tic, toc, TicTocTimer
 from forestlib import solnpool
@@ -171,6 +172,10 @@ def mpisppy_agnostic_main(module, Ag, cfg):
     wheel = mpisppy.spin_the_wheel.WheelSpinner(hub_dict, list_of_spoke_dict)
     wheel.spin()
 
+    # TODO: Collect the first-stage solution and return it
+    # TODO: How do we know if the first stage solution is integral?  How can we force it to be integral?
+    # TODO: Collect other statistics from the optimizer (# iterations)
+
     if cfg.solution_base_name is not None:
         wheel.write_first_stage_solution(f"{cfg.solution_base_name}.csv")
         wheel.write_first_stage_solution(
@@ -242,9 +247,12 @@ def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
 class ProgressiveHedgingSolver_MPISPPY(object):
 
     def __init__(self):
+        comm = MPI.COMM_WORLD
+        self.mpi_rank = comm.Get_rank()
         self.rho = {}
-        self.cached_model_generation = True
+        #self.cached_model_generation = True
         self.max_iterations = 100
+        self.time_limit = None
         self.convergence_tolerance = 1e-3
         self.normalize_convergence_norm = True
         self.convergence_norm = 1
@@ -260,8 +268,9 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         self,
         *,
         rho=None,
-        cached_model_generation=None,
+        #cached_model_generation=None,
         max_iterations=None,
+        time_limit=None,
         convergence_tolerance=None,
         normalize_convergence_norm=None,
         convergence_norm=None,
@@ -270,7 +279,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         loglevel=None,
         finalize_xbar_by_rounding=None,
         finalize_all_xbar=None,
-        solution_manager=None,
+        #solution_manager=None,
         rho_updates=False,
         default_rho=None,
     ):
@@ -283,10 +292,12 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             self.rho_updates = rho_updates
         if default_rho:
             self.default_rho = default_rho
-        if cached_model_generation is not None:
-            self.cached_model_generation = cached_model_generation
+        #if cached_model_generation is not None:
+        #    self.cached_model_generation = cached_model_generation
         if max_iterations is not None:
             self.max_iterations = max_iterations
+        if time_limit is not None:
+            self.time_limit = time_limit
         if convergence_tolerance is not None:
             self.convergence_tolerance = convergence_tolerance
         if normalize_convergence_norm is not None:
@@ -301,8 +312,8 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             self.finalize_xbar_by_rounding = finalize_xbar_by_rounding
         if finalize_all_xbar is not None:
             self.finalize_all_xbar = finalize_all_xbar
-        if solution_manager is not None:
-            self.solution_manager = solution_manager
+        #if solution_manager is not None:
+        #    self.solution_manager = solution_manager
 
         if loglevel is not None:
             if loglevel == "DEBUG" or loglevel == "VERBOSE":
@@ -313,14 +324,17 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         start_time = datetime.datetime.now()
         if len(options) > 0:
             self.set_options(**options)
-        if logger.isEnabledFor(logging.DEBUG):
+
+
+        if self.mpi_rank==0 and logger.isEnabledFor(logging.DEBUG):
             print("Solver Configuration")
-            print(f"  cached_model_generation    {self.cached_model_generation}")
+            #print(f"  cached_model_generation    {self.cached_model_generation}")
             print(f"  convergence_norm           {self.convergence_norm}")
             print(f"  convergence_tolerance      {self.convergence_tolerance}")
             print(f"  finalize_xbar_by_rounding  {self.finalize_xbar_by_rounding}")
             print(f"  finalize_all_xbar          {self.finalize_all_xbar}")
             print(f"  max_iterations             {self.max_iterations}")
+            print(f"  time_limit                 {self.time_limit}")
             print(f"  normalize_convergence_norm {self.normalize_convergence_norm}")
             print(f"  rho                        {self.rho}")
             print(f"  solver_name                {self.solver_name}")
@@ -332,46 +346,62 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         # If finalize_all_xbar is True, then we disable hashing of variables to ensure
         # we keep the solution for each iteration of PH.
         #
-        if self.solutions is None:
-            self.solutions = solnpool.PoolManager()
-        if self.finalize_all_xbar:
-            sp_metadata = self.solutions.add_pool("PH Iterations", policy="keep_all")
-        else:
-            sp_metadata = self.solutions.add_pool("PH Iterations", policy="keep_latest")
-        sp_metadata.solver = "PH Iteration Results"
-        sp_metadata.solver_options = dict(
-            cached_model_generation=self.cached_model_generation,
-            max_iterations=self.max_iterations,
-            convergence_tolerance=self.convergence_tolerance,
-            normalize_convergence_norm=self.normalize_convergence_norm,
-            solver_name=self.solver_name,
-            solver_options=self.solver_options,
-        )
+        if self.mpi_rank==0:
+            if self.solutions is None:
+                self.solutions = solnpool.PoolManager()
+            if self.finalize_all_xbar:
+                sp_metadata = self.solutions.add_pool("PH Iterations", policy="keep_all")
+            else:
+                sp_metadata = self.solutions.add_pool("PH Iterations", policy="keep_latest")
+            sp_metadata.solver = "PH Iteration Results"
+            sp_metadata.solver_options = dict(
+                #cached_model_generation=self.cached_model_generation,
+                max_iterations=self.max_iterations,
+                time_limit=self.time_limit,
+                convergence_tolerance=self.convergence_tolerance,
+                normalize_convergence_norm=self.normalize_convergence_norm,
+                solver_name=self.solver_name,
+                solver_options=self.solver_options,
+            )
 
         # The StochProgram object manages the sub-solver interface.  By default, we assume
         #   the user has initialized the sub-solver within the SP object.
         #if self.solver_name:
         #    sp.set_solver(self.solver_name)
 
-        logger.info("ProgressiveHedgingSolver_MPISPPY - START")
+        if self.mpi_rank==0:
+            logger.info("ProgressiveHedgingSolver_MPISPPY - START")
 
         options = {
                 'solver_name': self.solver_name,
                 }
         if self.default_rho:
             options['default_rho'] = self.default_rho
+        if self.max_iterations:
+            options['max_iterations'] = self.max_iterations
+        if self.time_limit:
+            options['time_limit'] = self.time_limit
+        if self.solver_options:
+            options['solver_options'] = self.solver_options
+        if logger.isEnabledFor(logging.INFO):
+            options['display_progress'] = True
+        if logger.isEnabledFor(logging.VERBOSE):
+            options['verbose'] = True
+
         mpisppy_main(sp, options)
 
-        end_time = datetime.datetime.now()
+        if self.mpi_rank==0:
+            end_time = datetime.datetime.now()
 
-        sp_metadata = self.solutions.metadata
-        #sp_metadata.iterations = iteration
-        #sp_metadata.termination_condition = termination_condition
-        sp_metadata.start_time = str(start_time)
+            sp_metadata = self.solutions.metadata
+            #sp_metadata.iterations = iteration
+            #sp_metadata.termination_condition = termination_condition
+            sp_metadata.start_time = str(start_time)
 
-        logger.info("")
-        logger.info("-" * 70)
-        logger.info("ProgressiveHedgingSolver_MPISPPY - FINALIZING")
+            logger.info("")
+            logger.info("-" * 70)
+            logger.info("ProgressiveHedgingSolver_MPISPPY - FINALIZING")
+
         if False:
             if self.finalize_all_xbar:
                 all_iterations = list(self.solutions)
@@ -383,21 +413,23 @@ class ProgressiveHedgingSolver_MPISPPY(object):
                 self.solutions.add_pool("Finalized Last PH Solution", policy="keep_best")
                 finalize_ph_results(soln, sp=sp, solutions=self.solutions)
 
-        sp_metadata.end_time = str(end_time)
-        sp_metadata.time_elapsed = str(end_time - start_time)
+        if self.mpi_rank==0:
+            sp_metadata.end_time = str(end_time)
+            sp_metadata.time_elapsed = str(end_time - start_time)
 
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug("")
-            logger.debug("-" * 70)
-            logger.debug("ProgressiveHedgingSolver_MPISPPY - RESULTS")
-            pprint.pprint(self.solutions.to_dict())
-            sys.stdout.flush()
+        if self.mpi_rank == 0:
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("")
+                logger.debug("-" * 70)
+                logger.debug("ProgressiveHedgingSolver_MPISPPY - RESULTS")
+                pprint.pprint(self.solutions.to_dict())
+                sys.stdout.flush()
 
-        logger.info("")
-        logger.info("-" * 70)
-        logger.info("ProgressiveHedgingSolver_MPISPPY - STOP")
+            logger.info("")
+            logger.info("-" * 70)
+            logger.info("ProgressiveHedgingSolver_MPISPPY - STOP")
 
-        return self.solutions
+            return self.solutions
 
     def Xlog_iteration(self, **kwds):
         logger.info("")
