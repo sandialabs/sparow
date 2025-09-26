@@ -7,13 +7,17 @@ import numpy as np
 import datetime
 import logging
 
-import mpisppy.spin_the_wheel
-import mpisppy.utils.cfg_vanilla
-import mpisppy.agnostic.pyomo_guest
-import mpisppy.agnostic.agnostic_cylinders
-import mpisppy.agnostic.agnostic
-import mpisppy.utils.sputils
-from mpisppy import MPI  # for debugging
+try:
+    import mpisppy.spin_the_wheel
+    import mpisppy.utils.cfg_vanilla
+    import mpisppy.agnostic.pyomo_guest
+    import mpisppy.agnostic.agnostic_cylinders
+    import mpisppy.agnostic.agnostic
+    import mpisppy.utils.sputils
+    from mpisppy import MPI  # for debugging
+    mpisppy_available=True
+except:
+    mpisppy_available=False
 
 # from pyomo.common.timing import tic, toc, TicTocTimer
 from forestlib import solnpool
@@ -247,8 +251,9 @@ def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
 class ProgressiveHedgingSolver_MPISPPY(object):
 
     def __init__(self):
-        comm = MPI.COMM_WORLD
-        self.mpi_rank = comm.Get_rank()
+        if mpisppy_available:
+            comm = MPI.COMM_WORLD
+            self.mpi_rank = comm.Get_rank()
         self.rho = {}
         #self.cached_model_generation = True
         self.max_iterations = 100
@@ -321,6 +326,10 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             logger.setLevel(loglevel)
 
     def solve(self, sp, **options):
+        if not mpisppy_available:
+            # TODO - return metadata with a useful termination condition
+            return None
+
         start_time = datetime.datetime.now()
         if len(options) > 0:
             self.set_options(**options)
