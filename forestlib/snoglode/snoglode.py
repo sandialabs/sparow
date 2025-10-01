@@ -2,14 +2,19 @@
 Demonstration of solving the LF farmer SP using SNoGloDe
 """
 
+from typing import Tuple
+import math
+import logging
+import datetime
+
 import snoglode as sno
 from snoglode.utils.solve_stats import OneUpperBoundSolve
 import snoglode.utils.compute as compute
-from pprint import pprint
 
 import pyomo.environ as pyo
 from pyomo.contrib.alternative_solutions.aos_utils import get_active_objective
 from pyomo.opt import TerminationCondition, SolverStatus
+from pyomo.common.timing import tic, toc
 
 try:
     from pyomo.contrib.alternative_solutions.solnpool import (
@@ -30,49 +35,11 @@ except:
           \nReverting to simple saving behavior."
     )
 
-from MFfarmers import LFScenario_dict, LF_model_builder
+# from MFfarmers import LFScenario_dict, LF_model_builder
 from forestlib.sp import stochastic_program
-from typing import Tuple
+import forestlib.logs
 
-import math
-
-
-class GlobalData:
-    num_plots = 1
-    num_scens = 3  ### should be >= 3
-
-
-#
-# list of possible per-plot scenarios for LF model:
-#
-LF_scendata = {
-    "scenarios": [
-        {
-            "ID": "scen_0",
-            "Yield": {"WHEAT": 2.0, "CORN": 2.4, "SUGAR_BEETS": 16.0},
-            "Probability": 0.3,
-        },
-        {
-            "ID": "scen_1",
-            "Yield": {"WHEAT": 2.5, "CORN": 3.0, "SUGAR_BEETS": 20.0},
-            "Probability": 0.3,
-        },
-        {
-            "ID": "scen_2",
-            "Yield": {"WHEAT": 3.0, "CORN": 3.6, "SUGAR_BEETS": 24.0},
-            "Probability": 0.4,
-        },
-    ]
-}
-
-lf_scen_dict = LFScenario_dict(LF_scendata)
-app_data = {"num_plots": 1, "use_integer": False}
-model_data = {"LF": LF_scendata}
-sp = stochastic_program(first_stage_variables=["DevotedAcreage[*,*]"])
-sp.initialize_application(app_data=app_data)
-sp.initialize_model(
-    name="LF", model_data=model_data["LF"], model_builder=LF_model_builder
-)
+logger = forestlib.logs.logger
 
 
 class CustomCandidateGenerator(sno.AbstractCandidateGenerator):
@@ -272,6 +239,8 @@ class CustomCandidateGenerator(sno.AbstractCandidateGenerator):
         return True, candidate_solution, pyo.value(statistics.aggregated_objective)
 
 
+global_sp = None
+
 def subproblem_creator(scen_name):
     """
     function is called once per scenario name passed.
@@ -292,35 +261,93 @@ def subproblem_creator(scen_name):
         probability associated with this scenario occuring
     """
     # grab model
-    scen_model = sp.create_subproblem(scen_name)
+    global sp
+    scen_model = global_sp.create_subproblem(scen_name)
 
-    lifted_var_ids = {sp.int_to_FirstStageVarName[i]:v for i,v in sp.int_to_FirstStageVar[scen_name].items()}
-    scen_prob = sp.bundles[scen_name].probability
+    lifted_var_ids = {
+        global_sp.int_to_FirstStageVarName[i]: v
+        for i, v in global_sp.int_to_FirstStageVar[scen_name].items()
+    }
+    scen_prob = global_sp.bundles[scen_name].probability
 
     return scen_model, lifted_var_ids, scen_prob
 
 
-def run_snoglode():
-    lf_scen_names = [b for b in iter(sp.bundles)]
+class SnoglodeSolver(object):
 
-    # create / set necessary params for snoglode
-    params = sno.SolverParameters(
-        subproblem_names=lf_scen_names,
-        subproblem_creator=subproblem_creator,
-        lb_solver=pyo.SolverFactory("glpk"),
-        cg_solver=pyo.SolverFactory("glpk"),
-        ub_solver=pyo.SolverFactory("glpk"),
-    )
-    params.inherit_solutions_from_parent(True)
-    params.set_bounders(candidate_solution_finder=CustomCandidateGenerator)
+    def __init__(self):
+        self.solver_name = None
+        self.max_iterations = 100
+        self.solver_options = {}
 
-    solver = sno.Solver(params)
-    solver.solve(max_iter=25)
+    def set_options(
+        self, *, solver=None, solver_options=None, max_iterations=None, loglevel=None
+    ):
+        #
+        # Misc configuration
+        #
+        if solver:
+            self.solver_name = solver
+        if solver_options:
+            self.solver_options = solver_options
+        if max_iterations:
+            self.max_iterations = max_iterations
 
-    # evaluate results
-    aos = solver.upper_bounder.candidate_solution_finder.pm.to_dict()
-    pprint(aos)
+        if loglevel is not None:
+            if loglevel == "DEBUG" or loglevel == "VERBOSE":
+                forestlib.logs.use_debugging_formatter()
+            logger.setLevel(loglevel)
 
+    def solve(self, sp, **options):
+        start_time = datetime.datetime.now()
+        if len(options) > 0:
+            self.set_options(**options)
 
-if __name__ == "__main__":
-    run_snoglode()
+        logger.info("")
+        logger.info("-" * 70)
+        logger.info("SnoglodeSolver - START")
+        if logger.isEnabledFor(logging.VERBOSE):
+            print(f"  Solver: {self.solver_name}")
+            print(f"  Solver Options")
+            for k, v in self.solver_options.items():
+                print(f"    {k}= {v}")
+        tic(None)
+
+        scen_names = list(sorted(sp.bundles.keys()))
+
+        if not self.solver_name:
+            raise ValueError(f"A solver name must be specified to run Snoglode")
+
+        # create / set necessary params for snoglode
+        global global_sp
+        global_sp = sp
+        params = sno.SolverParameters(
+            subproblem_names=scen_names,
+            subproblem_creator=subproblem_creator,
+            lb_solver=pyo.SolverFactory(self.solver_name),
+            cg_solver=pyo.SolverFactory(self.solver_name),
+            ub_solver=pyo.SolverFactory(self.solver_name),
+        )
+        params.inherit_solutions_from_parent(True)
+        params.set_bounders(candidate_solution_finder=CustomCandidateGenerator)
+
+        toc("Snoglode starting", logger=logger, level=logging.VERBOSE)
+        solver = sno.Solver(params)
+        solver.solve(max_iter=self.max_iterations)
+        toc("Snoglode complete", logger=logger, level=logging.VERBOSE)
+
+        end_time = datetime.datetime.now()
+
+        solutions = solver.upper_bounder.candidate_solution_finder.pm
+        metadata = solutions.metadata
+        # metadata.termination_condition = str(results.termination_condition)
+        # metadata.status = str(results.status)
+        metadata.start_time = str(start_time)
+        metadata.end_time = str(end_time)
+        metadata.time_elapsed = str(end_time - start_time)
+
+        logger.info("")
+        logger.info("-" * 70)
+        logger.info("SnoglodeSolver - STOP")
+
+        return solutions
