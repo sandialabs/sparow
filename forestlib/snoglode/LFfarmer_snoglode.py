@@ -93,7 +93,7 @@ class CustomCandidateGenerator(sno.AbstractCandidateGenerator):
         # do we ALWAYS have to solve the upper bound problem?
         # NOTE: in this case no because I will hack in the UB solve to work with the candidate solutions
         self.ub_required = False
-        self.opt = pyo.SolverFactory("gurobi")
+        self.opt = pyo.SolverFactory("glpk")
 
         # save different dicts of candidates
         if alt_sol_available:
@@ -294,23 +294,8 @@ def subproblem_creator(scen_name):
     # grab model
     scen_model = sp.create_subproblem(scen_name)
 
-    # get all first stage vars
-    lifted_var_ids = {}
-    for var in scen_model.component_data_objects(pyo.Var):
-        if "DevotedAcreage" in var.name:
-            if "WHEAT" in var.name:
-                lifted_var_ids[f"DevotedAcreageWheat"] = var
-            elif "CORN" in var.name:
-                lifted_var_ids[f"DevotedAcreageCorn"] = var
-            elif "SUGAR_BEETS" in var.name:
-                lifted_var_ids[f"DevotedAcreageBeets"] = var
-
-    # get probability
-    id = scen_name.split("LF_")[1]
-    for scen in LF_scendata["scenarios"]:
-        if scen["ID"] == id:
-            scen_prob = scen["Probability"]
-            break
+    lifted_var_ids = {sp.int_to_FirstStageVarName[i]:v for i,v in sp.int_to_FirstStageVar[scen_name].items()}
+    scen_prob = sp.bundles[scen_name].probability
 
     return scen_model, lifted_var_ids, scen_prob
 
@@ -322,9 +307,9 @@ def run_snoglode():
     params = sno.SolverParameters(
         subproblem_names=lf_scen_names,
         subproblem_creator=subproblem_creator,
-        lb_solver=pyo.SolverFactory("gurobi"),
-        cg_solver=pyo.SolverFactory("gurobi"),
-        ub_solver=pyo.SolverFactory("gurobi"),
+        lb_solver=pyo.SolverFactory("glpk"),
+        cg_solver=pyo.SolverFactory("glpk"),
+        ub_solver=pyo.SolverFactory("glpk"),
     )
     params.inherit_solutions_from_parent(True)
     params.set_bounders(candidate_solution_finder=CustomCandidateGenerator)
