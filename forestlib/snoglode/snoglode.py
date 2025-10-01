@@ -239,38 +239,40 @@ class CustomCandidateGenerator(sno.AbstractCandidateGenerator):
         return True, candidate_solution, pyo.value(statistics.aggregated_objective)
 
 
-global_sp = None
+class subproblem_creator:
 
-def subproblem_creator(scen_name):
-    """
-    function is called once per scenario name passed.
+    def __init__(self, sp):
+        self.sp = sp
 
-    Parameters
-    ------------
-    scen_name : str
-        name representing a unique scenario.
+    def __call__(self, scen_name):
+        """
+        function is called once per scenario name passed.
 
-    Returns
-    ------------
-    scen_model : pyo.ConcreteModel()
-        model representing this particular scenario
-    lifted_var_ids : dict
-        keys = first stage variable ID's (str OR tuple)
-        vals = pyo.Var linked to that first stage var
-    scen_prob : float
-        probability associated with this scenario occuring
-    """
-    # grab model
-    global sp
-    scen_model = global_sp.create_subproblem(scen_name)
+        Parameters
+        ------------
+        scen_name : str
+            name representing a unique scenario.
 
-    lifted_var_ids = {
-        global_sp.int_to_FirstStageVarName[i]: v
-        for i, v in global_sp.int_to_FirstStageVar[scen_name].items()
-    }
-    scen_prob = global_sp.bundles[scen_name].probability
+        Returns
+        ------------
+        scen_model : pyo.ConcreteModel()
+            model representing this particular scenario
+        lifted_var_ids : dict
+            keys = first stage variable ID's (str OR tuple)
+            vals = pyo.Var linked to that first stage var
+        scen_prob : float
+            probability associated with this scenario occuring
+        """
+        # grab model
+        scen_model = self.sp.create_subproblem(scen_name)
 
-    return scen_model, lifted_var_ids, scen_prob
+        lifted_var_ids = {
+            self.sp.int_to_FirstStageVarName[i]: v
+            for i, v in self.sp.int_to_FirstStageVar[scen_name].items()
+        }
+        scen_prob = self.sp.bundles[scen_name].probability
+
+        return scen_model, lifted_var_ids, scen_prob
 
 
 class SnoglodeSolver(object):
@@ -319,11 +321,9 @@ class SnoglodeSolver(object):
             raise ValueError(f"A solver name must be specified to run Snoglode")
 
         # create / set necessary params for snoglode
-        global global_sp
-        global_sp = sp
         params = sno.SolverParameters(
             subproblem_names=scen_names,
-            subproblem_creator=subproblem_creator,
+            subproblem_creator=subproblem_creator(sp),
             lb_solver=pyo.SolverFactory(self.solver_name),
             cg_solver=pyo.SolverFactory(self.solver_name),
             ub_solver=pyo.SolverFactory(self.solver_name),
