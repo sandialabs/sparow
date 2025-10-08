@@ -1,0 +1,87 @@
+{
+    "args": {
+        "LF": 2,
+        "model_weight": {
+            "HF": 2.0,
+            "LF": 1.0
+        },
+        "seed": 1234567890
+    },
+    "bundles": {
+        "HF_scen_0": {
+            "probability": 0.3333333333333333,
+            "scenario_probability": {
+                "('HF', 'scen_0')": 0.5,
+                "('LF', 'scen_1')": 0.25,
+                "('LF', 'scen_2')": 0.25
+            },
+            "scenarios": [
+                [
+                    "HF",
+                    "scen_0"
+                ],
+                [
+                    "LF",
+                    "scen_1"
+                ],
+                [
+                    "LF",
+                    "scen_2"
+                ]
+            ]
+        },
+        "HF_scen_1": {
+            "probability": 0.3333333333333333,
+            "scenario_probability": {
+                "('HF', 'scen_1')": 0.5,
+                "('LF', 'scen_0')": 0.25,
+                "('LF', 'scen_2')": 0.25
+            },
+            "scenarios": [
+                [
+                    "HF",
+                    "scen_1"
+                ],
+                [
+                    "LF",
+                    "scen_0"
+                ],
+                [
+                    "LF",
+                    "scen_2"
+                ]
+            ]
+        },
+        "HF_scen_2": {
+            "probability": 0.3333333333333333,
+            "scenario_probability": {
+                "('HF', 'scen_2')": 0.5,
+                "('LF', 'scen_0')": 0.25,
+                "('LF', 'scen_1')": 0.25
+            },
+            "scenarios": [
+                [
+                    "HF",
+                    "scen_2"
+                ],
+                [
+                    "LF",
+                    "scen_0"
+                ],
+                [
+                    "LF",
+                    "scen_1"
+                ]
+            ]
+        }
+    },
+    "models": [
+        "HF",
+        "LF"
+    ],
+    "scheme": "mf_random_nested",
+    "weights": {
+        "HF": 2.0,
+        "LF": 1.0
+    }
+}
