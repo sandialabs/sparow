@@ -60,7 +60,7 @@ class CustomCandidateGenerator(sno.AbstractCandidateGenerator):
         # do we ALWAYS have to solve the upper bound problem?
         # NOTE: in this case no because I will hack in the UB solve to work with the candidate solutions
         self.ub_required = False
-        self.opt = pyo.SolverFactory("glpk")
+        self.opt = solver
 
         # save different dicts of candidates
         if alt_sol_available:
