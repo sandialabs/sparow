@@ -9,11 +9,6 @@ import logging
 from functools import partial
 
 try:
-    import mpisppy.spin_the_wheel
-    import mpisppy.utils.cfg_vanilla
-    import mpisppy.agnostic.pyomo_guest
-    import mpisppy.agnostic.agnostic_cylinders
-    import mpisppy.agnostic.agnostic
     import mpisppy.utils.sputils
     from mpisppy import MPI  # for debugging
 
@@ -23,7 +18,7 @@ except:
 
 import pyomo.environ as pyo
 
-# from pyomo.common.timing import tic, toc, TicTocTimer
+#from pyomo.common.timing import tic, toc, TicTocTimer
 from forestlib import solnpool
 import forestlib.logs
 
@@ -154,78 +149,6 @@ class Forestlib_client:
         return self.first_stage_solution
 
 
-if mpisppy_available:
-
-    class Forestlib_guest(mpisppy.agnostic.pyomo_guest.Pyomo_guest):
-
-        def __init__(self, sp):
-            self.model_module = Forestlib_client(sp)
-
-        def num_bundles(self):
-            return len(self.model_module._sp.bundles)
-
-
-def mpisppy_agnostic_main(module, Ag, cfg):
-    """
-    This is the second half of mpisppy.agnostic.agnostic_cylinders.main()
-    """
-    scenario_creator = Ag.scenario_creator
-    assert hasattr(
-        module, "scenario_denouement"
-    ), "The model file must have a scenario_denouement        function"
-    scenario_denouement = module.scenario_denouement  # should we go though Ag?
-    # note that if you are bundling, cfg.num_scens will be a fib (numbuns)
-    all_scenario_names = module.scenario_names_creator(module.num_bundles())
-
-    # Things needed for vanilla cylinders
-    beans = (cfg, scenario_creator, scenario_denouement, all_scenario_names)
-
-    # Vanilla PH hub
-    hub_dict = mpisppy.utils.cfg_vanilla.ph_hub(
-        *beans,
-        scenario_creator_kwargs=None,  # kwargs in Ag not here
-        ph_extensions=None,
-        ph_converger=None,
-        rho_setter=None,
-    )
-    # pass the Ag object via options...
-    hub_dict["opt_kwargs"]["options"]["Ag"] = Ag
-
-    # xhat shuffle bound spoke
-    if cfg.xhatshuffle:
-        xhatshuffle_spoke = mpisppy.utils.cfg_vanilla.xhatshuffle_spoke(
-            *beans, scenario_creator_kwargs=None
-        )
-        xhatshuffle_spoke["opt_kwargs"]["options"]["Ag"] = Ag
-    if cfg.lagrangian:
-        lagrangian_spoke = mpisppy.utils.cfg_vanilla.lagrangian_spoke(
-            *beans, scenario_creator_kwargs=None
-        )
-        lagrangian_spoke["opt_kwargs"]["options"]["Ag"] = Ag
-
-    list_of_spoke_dict = list()
-    if cfg.xhatshuffle:
-        list_of_spoke_dict.append(xhatshuffle_spoke)
-    if cfg.lagrangian:
-        list_of_spoke_dict.append(lagrangian_spoke)
-
-    wheel = mpisppy.spin_the_wheel.WheelSpinner(hub_dict, list_of_spoke_dict)
-    wheel.spin()
-
-    # TODO: Collect the first-stage solution and return it
-    # TODO: How do we know if the first stage solution is integral?  How can we force it to be integral?
-    # TODO: Collect other statistics from the optimizer (# iterations)
-    #           Query PH object through the whee
-
-    if cfg.solution_base_name is not None:
-        wheel.write_first_stage_solution(f"{cfg.solution_base_name}.csv")
-        wheel.write_first_stage_solution(
-            f"{cfg.solution_base_name}.npy",
-            first_stage_solution_writer=mpisppy.utils.sputils.first_stage_nonant_npy_serializer,
-        )
-        wheel.write_tree_solution(f"{cfg.solution_base_name}")
-
-
 def mpisppy_generic_cylinders_main(module, options):
     import mpisppy.generic_cylinders as gc
 
@@ -293,71 +216,9 @@ def mpisppy_generic_cylinders_main(module, options):
 
 
 def mpisppy_main(sp, options):
-    agnostic = False
-
-    if agnostic:
-        guest = Forestlib_guest(sp)
-        cfg = mpisppy.agnostic.agnostic_cylinders._parse_args(guest)
-        if options:
-            for option, value in options.items():
-                cfg[option] = value
-        Ag = mpisppy.agnostic.agnostic.Agnostic(guest, cfg)
-        mpisppy_agnostic_main(guest, Ag, cfg)
-        return {}
-
-    else:
-        guest = Forestlib_client(sp)
-        mpisppy_generic_cylinders_main(guest, options)
-        return guest.get_first_stage_solution()
-
-
-def norm(values, p):
-    return np.linalg.norm(np.array(values), ord=p)
-
-
-def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
-    xbar = [soln.variable(i).value for i in range(len(soln.variables()))]
-    assert len(xbar) == len(
-        sp.shared_variables()
-    ), "Mismatch between solution variables and SP model variables: {len(xbar)} != {len(sp.shared_variables())}"
-    #
-    # We use xbar to identify a point that is feasible for all scenarios.
-    #
-    if sp.continuous_fsv():
-        logger.info("Finalizing continuous solution")
-        #
-        # Evaluate the final xbar, and keep if feasible.
-        #
-        sol = sp.evaluate([xbar[x] for x in sp.shared_variables()])
-        if sol.feasible:
-            solutions.add(
-                variables=soln.variables(),
-                objective=solnpool.Objective(value=sol.objective),
-                suffix=soln.suffix,
-            )
-    else:
-        logger.info("Finalizing solution with binary or integer variables")
-
-        if finalize_xbar_by_rounding:
-            #
-            # Round the final xbar, and keep if feasible.
-            #
-            logger.info(
-                "\tRounding xbar values associated with binary and integer variables"
-            )
-            tmpx = [sp.round(x, xbar[x]) for x in sp.shared_variables()]
-            sol = sp.evaluate(tmpx)
-            if sol.feasible:
-                variables = copy.copy(soln.variables())
-                for v in variables:
-                    v.value = tmpx[v.index]
-                solutions.add(
-                    variables=variables,
-                    objective=solnpool.Objective(value=sol.objective),
-                    suffix=soln.suffix,
-                )
-
-    return solutions
+    guest = Forestlib_client(sp)
+    mpisppy_generic_cylinders_main(guest, options)
+    return guest.get_first_stage_solution()
 
 
 class ProgressiveHedgingSolver_MPISPPY(object):
