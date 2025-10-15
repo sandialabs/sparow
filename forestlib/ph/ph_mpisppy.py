@@ -16,9 +16,12 @@ try:
     import mpisppy.agnostic.agnostic
     import mpisppy.utils.sputils
     from mpisppy import MPI  # for debugging
-    mpisppy_available=True
+
+    mpisppy_available = True
 except:
-    mpisppy_available=False
+    mpisppy_available = False
+
+import pyomo.environ as pyo
 
 # from pyomo.common.timing import tic, toc, TicTocTimer
 from forestlib import solnpool
@@ -32,6 +35,7 @@ class Forestlib_client:
     def __init__(self, sp):
         self._sp = sp
         self._scenario_probability = {}
+        self.first_stage_solution = None
 
     def scenario_creator(self, scenario_name, **kwargs):
         """
@@ -62,7 +66,7 @@ class Forestlib_client:
         if num_scens is not None:
             assert (
                 len(bundle_names) <= num_scens
-            ), f"The stochastic program was defined with {len(bundle_names)} bundles, but the user asked for {num_scens} bundles"
+            ), f"The stochastic program was defined with {len(bundle_names)=} bundles, but the user asked for {num_scens} bundles"
             # Keep the the first 'num_scens' bundles
             bundle_names = bundle_names[:num_scens]
 
@@ -122,17 +126,36 @@ class Forestlib_client:
         pass
 
     def custom_writer(self, wheel, cfg):
-        self.first_stage_solution = None
-        def writer(self, file_name, scenario, bundling):
+        def writer(client, file_name, scenario, bundling):
             root = scenario._mpisppy_node_list[0]
             assert root.name == "ROOT", f"Unexpected root name {root.name=}"
-            root_nonants = np.fromiter((pyo.value(var) for var in root.nonant_vardata_list), float)
-            self.first_stage_solution = root_nonants
+            root_nonants = np.fromiter(
+                (pyo.value(var) for var in root.nonant_vardata_list), float
+            )
+            comm = MPI.COMM_WORLD
+            client.first_stage_solution = root_nonants
 
-        wheel.write_first_stage_solution('ignore.npy', first_stage_solution_writer=partial(writer,self=self))
+        wheel.write_first_stage_solution(
+            "ignore.npy", first_stage_solution_writer=partial(writer, self)
+        )
+
+    def get_first_stage_solution(self):
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        if self.first_stage_solution:
+            if rank > 0:
+                comm.send(self.first_stage_solution, dest=0, tag=0)
+        elif rank == 0:
+            status = MPI.Status()
+            self.first_stage_solution = comm.recv(
+                source=MPI.ANY_SOURCE, tag=0, status=status
+            )
+
+        return self.first_stage_solution
 
 
 if mpisppy_available:
+
     class Forestlib_guest(mpisppy.agnostic.pyomo_guest.Pyomo_guest):
 
         def __init__(self, sp):
@@ -205,14 +228,16 @@ def mpisppy_agnostic_main(module, Ag, cfg):
 
 def mpisppy_generic_cylinders_main(module, options):
     import mpisppy.generic_cylinders as gc
+
     cfg = gc._parse_args(module)
     if options:
-        for option,value in options.items():
+        for option, value in options.items():
             cfg[option] = value
 
     bundle_wrapper = None  # the default
     if gc._proper_bundles(cfg):
         import mpisppy.utils.proper_bundler as proper_bundler
+
         bundle_wrapper = proper_bundler.ProperBundler(module)
         bundle_wrapper.set_bunBFs(cfg)
         scenario_creator = bundle_wrapper.scenario_creator
@@ -226,39 +251,55 @@ def mpisppy_generic_cylinders_main(module, options):
     else:  # the most common case
         scenario_creator = module.scenario_creator
         scenario_creator_kwargs = module.kw_creator(cfg)
-        
-    assert hasattr(module, "scenario_denouement"), "The model file must have a scenario_denouement function"
+
+    assert hasattr(
+        module, "scenario_denouement"
+    ), "The model file must have a scenario_denouement function"
     scenario_denouement = module.scenario_denouement
 
     if cfg.pickle_bundles_dir is not None:
         global_comm = MPI.COMM_WORLD
-        gc._write_bundles(module,
-                       cfg,
-                       scenario_creator,
-                       scenario_creator_kwargs,
-                       global_comm)
+        gc._write_bundles(
+            module, cfg, scenario_creator, scenario_creator_kwargs, global_comm
+        )
     elif cfg.pickle_scenarios_dir is not None:
         global_comm = MPI.COMM_WORLD
-        gc._write_scenarios(module,
-                         cfg,
-                         scenario_creator,
-                         scenario_creator_kwargs,
-                         scenario_denouement,
-                         global_comm)
+        gc._write_scenarios(
+            module,
+            cfg,
+            scenario_creator,
+            scenario_creator_kwargs,
+            scenario_denouement,
+            global_comm,
+        )
     elif cfg.EF:
-        gc._do_EF(module, cfg, scenario_creator, scenario_creator_kwargs, scenario_denouement, bundle_wrapper=bundle_wrapper)
+        gc._do_EF(
+            module,
+            cfg,
+            scenario_creator,
+            scenario_creator_kwargs,
+            scenario_denouement,
+            bundle_wrapper=bundle_wrapper,
+        )
     else:
-        gc._do_decomp(module, cfg, scenario_creator, scenario_creator_kwargs, scenario_denouement, bundle_wrapper=bundle_wrapper)
+        gc._do_decomp(
+            module,
+            cfg,
+            scenario_creator,
+            scenario_creator_kwargs,
+            scenario_denouement,
+            bundle_wrapper=bundle_wrapper,
+        )
 
 
 def mpisppy_main(sp, options):
-    agnostic=False
+    agnostic = False
 
     if agnostic:
         guest = Forestlib_guest(sp)
         cfg = mpisppy.agnostic.agnostic_cylinders._parse_args(guest)
         if options:
-            for option,value in options.items():
+            for option, value in options.items():
                 cfg[option] = value
         Ag = mpisppy.agnostic.agnostic.Agnostic(guest, cfg)
         mpisppy_agnostic_main(guest, Ag, cfg)
@@ -267,7 +308,7 @@ def mpisppy_main(sp, options):
     else:
         guest = Forestlib_client(sp)
         mpisppy_generic_cylinders_main(guest, options)
-        return guest.first_stage_solution
+        return guest.get_first_stage_solution()
 
 
 def norm(values, p):
@@ -326,7 +367,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             comm = MPI.COMM_WORLD
             self.mpi_rank = comm.Get_rank()
         self.rho = {}
-        #self.cached_model_generation = True
+        # self.cached_model_generation = True
         self.max_iterations = 100
         self.time_limit = None
         self.convergence_tolerance = 1e-3
@@ -344,7 +385,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         self,
         *,
         rho=None,
-        #cached_model_generation=None,
+        # cached_model_generation=None,
         max_iterations=None,
         time_limit=None,
         convergence_tolerance=None,
@@ -355,7 +396,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         loglevel=None,
         finalize_xbar_by_rounding=None,
         finalize_all_xbar=None,
-        #solution_manager=None,
+        # solution_manager=None,
         rho_updates=False,
         default_rho=None,
     ):
@@ -368,7 +409,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             self.rho_updates = rho_updates
         if default_rho:
             self.default_rho = default_rho
-        #if cached_model_generation is not None:
+        # if cached_model_generation is not None:
         #    self.cached_model_generation = cached_model_generation
         if max_iterations is not None:
             self.max_iterations = max_iterations
@@ -388,7 +429,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             self.finalize_xbar_by_rounding = finalize_xbar_by_rounding
         if finalize_all_xbar is not None:
             self.finalize_all_xbar = finalize_all_xbar
-        #if solution_manager is not None:
+        # if solution_manager is not None:
         #    self.solution_manager = solution_manager
 
         if loglevel is not None:
@@ -405,10 +446,9 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         if len(options) > 0:
             self.set_options(**options)
 
-
-        if self.mpi_rank==0 and logger.isEnabledFor(logging.DEBUG):
+        if self.mpi_rank == 0 and logger.isEnabledFor(logging.DEBUG):
             print("Solver Configuration")
-            #print(f"  cached_model_generation    {self.cached_model_generation}")
+            # print(f"  cached_model_generation    {self.cached_model_generation}")
             print(f"  convergence_norm           {self.convergence_norm}")
             print(f"  convergence_tolerance      {self.convergence_tolerance}")
             print(f"  finalize_xbar_by_rounding  {self.finalize_xbar_by_rounding}")
@@ -426,16 +466,20 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         # If finalize_all_xbar is True, then we disable hashing of variables to ensure
         # we keep the solution for each iteration of PH.
         #
-        if self.mpi_rank==0:
+        if self.mpi_rank == 0:
             if self.solutions is None:
                 self.solutions = solnpool.PoolManager()
             if self.finalize_all_xbar:
-                sp_metadata = self.solutions.add_pool("PH Iterations", policy="keep_all")
+                sp_metadata = self.solutions.add_pool(
+                    "PH Iterations", policy="keep_all"
+                )
             else:
-                sp_metadata = self.solutions.add_pool("PH Iterations", policy="keep_latest")
+                sp_metadata = self.solutions.add_pool(
+                    "PH Iterations", policy="keep_latest"
+                )
             sp_metadata.solver = "PH Iteration Results"
             sp_metadata.solver_options = dict(
-                #cached_model_generation=self.cached_model_generation,
+                # cached_model_generation=self.cached_model_generation,
                 max_iterations=self.max_iterations,
                 time_limit=self.time_limit,
                 convergence_tolerance=self.convergence_tolerance,
@@ -446,60 +490,49 @@ class ProgressiveHedgingSolver_MPISPPY(object):
 
         # The StochProgram object manages the sub-solver interface.  By default, we assume
         #   the user has initialized the sub-solver within the SP object.
-        #if self.solver_name:
+        # if self.solver_name:
         #    sp.set_solver(self.solver_name)
 
-        if self.mpi_rank==0:
+        if self.mpi_rank == 0:
             logger.info("ProgressiveHedgingSolver_MPISPPY - START")
 
         options = {
-                'solver_name': self.solver_name,
-                }
+            "solver_name": self.solver_name,
+        }
         if self.default_rho:
-            options['default_rho'] = self.default_rho
+            options["default_rho"] = self.default_rho
         if self.max_iterations:
-            options['max_iterations'] = self.max_iterations
+            options["max_iterations"] = self.max_iterations
         if self.time_limit:
-            options['time_limit'] = self.time_limit
+            options["time_limit"] = self.time_limit
         if self.solver_options:
-            options['solver_options'] = self.solver_options
+            options["solver_options"] = self.solver_options
         if logger.isEnabledFor(logging.INFO):
-            options['display_progress'] = True
+            options["display_progress"] = True
         if logger.isEnabledFor(logging.VERBOSE):
-            options['verbose'] = True
+            options["verbose"] = True
+        options["xhatxbar"] = True
 
         first_stage_solution = mpisppy_main(sp, options)
-        if first_stage_solution:
-            self.archive_solution(first_stage_solution)
 
-        if self.mpi_rank==0:
+        if self.mpi_rank == 0:
             end_time = datetime.datetime.now()
 
             sp_metadata = self.solutions.metadata
-            #sp_metadata.iterations = iteration
-            #sp_metadata.termination_condition = termination_condition
+            # sp_metadata.iterations = iteration
+            # sp_metadata.termination_condition = termination_condition
             sp_metadata.start_time = str(start_time)
 
             logger.info("")
             logger.info("-" * 70)
             logger.info("ProgressiveHedgingSolver_MPISPPY - FINALIZING")
 
-        if False:
-            if self.finalize_all_xbar:
-                all_iterations = list(self.solutions)
-                self.solutions.add_pool("Finalized All PH Iterations", policy="keep_all")
-                for soln in all_iterations:
-                    finalize_ph_results(soln, sp=sp, solutions=self.solutions)
-            else:
-                #soln = self.solutions[latest_soln]
-                self.solutions.add_pool("Finalized Last PH Solution", policy="keep_best")
-                finalize_ph_results(soln, sp=sp, solutions=self.solutions)
+            if first_stage_solution:
+                self.archive_solution(sp=sp, xbar=first_stage_solution)
 
-        if self.mpi_rank==0:
             sp_metadata.end_time = str(end_time)
             sp_metadata.time_elapsed = str(end_time - start_time)
 
-        if self.mpi_rank == 0:
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug("")
                 logger.debug("-" * 70)
@@ -513,58 +546,15 @@ class ProgressiveHedgingSolver_MPISPPY(object):
 
             return self.solutions
 
-    def Xlog_iteration(self, **kwds):
-        logger.info("")
-        logger.info("-" * 70)
-        logger.info(f"Iteration:        {kwds['iteration']}")
-        logger.info(f"obj_lb:           {kwds['obj_lb']}")
-        logger.info(f"conv_norm:        {kwds.get('g',None)}")
-        logger.info(f"xbar_diff_norm:   {kwds.get('G',None)}")
-        logger.info(f"time:             {kwds['time']}")
-        logger.info(f"time_last_iter:   {kwds['time_last_iter']}")
-        if logger.isEnabledFor(logging.VERBOSE):
-            tmp = kwds["w"]
-            tmp = {
-                k: statistics.mean(abs(val) for val in v.values())
-                for k, v in tmp.items()
-            }
-            if len(tmp) > 10:
-                _vals = list(tmp.values())
-                logger.verbose(f"w_min:            {min(_vals)}")
-                logger.verbose(f"w_mean:           {statistics.mean(_vals)}")
-                logger.verbose(f"w_max:            {max(_vals)}")
-            else:
-                logger.verbose(f"w_mean_abs:       {tmp}")
-
-            tmp = kwds["xbar"]
-            if len(tmp) > 10:
-                _vals = list(abs(v) for v in tmp.values())
-                logger.verbose(f"xbar_min_abs:     {min(_vals)}")
-                logger.verbose(f"xbar_mean_abs:    {statistics.mean(_vals)}")
-                logger.verbose(f"xbar_max_abs:     {max(_vals)}")
-            else:
-                tmp = {k: v for k, v in tmp.items() if v != 0}
-                logger.verbose(f"xbar_abs:         {tmp}")
-
-            tmp = kwds["rho"]
-            if len(tmp) > 10:
-                _vals = list(tmp.values())
-                logger.verbose(f"rho_min:          {min(_vals)}")
-                logger.verbose(f"rho_mean:         {statistics.mean(_vals)}")
-                logger.verbose(f"rho_max:          {max(_vals)}")
-            else:
-                logger.verbose(f"rho:              {tmp}")
-        logger.info("")
-
-    def archive_solution(self, *, xbar, w=None, **kwds):
-        # b = next(iter(sp.bundles))
+    def archive_solution(self, *, sp, xbar, w=None, **kwds):
+        w = {} if w is None else w
         variables = [
             solnpool.Variable(
-                value=val,
-                #index=i,
-                name=i,
+                value=float(val),
+                index=i,
+                name=sp.get_variable_name(i),
                 suffix=munch.Munch(w={k: v[i] for k, v in w.items()}),
             )
-            for i, val in xbar.items()
+            for i, val in enumerate(xbar)
         ]
         return self.solutions.add(variables=variables, **kwds)
