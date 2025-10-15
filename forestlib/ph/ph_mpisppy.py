@@ -6,6 +6,7 @@ import pprint
 import numpy as np
 import datetime
 import logging
+from functools import partial
 
 try:
     import mpisppy.spin_the_wheel
@@ -119,6 +120,16 @@ class Forestlib_client:
 
     def scenario_denouement(self, rank, scenario_name, scenario):
         pass
+
+    def custom_writer(self, wheel, cfg):
+        self.first_stage_solution = None
+        def writer(self, file_name, scenario, bundling):
+            root = scenario._mpisppy_node_list[0]
+            assert root.name == "ROOT", f"Unexpected root name {root.name=}"
+            root_nonants = np.fromiter((pyo.value(var) for var in root.nonant_vardata_list), float)
+            self.first_stage_solution = root_nonants
+
+        wheel.write_first_stage_solution('ignore.npy', first_stage_solution_writer=partial(writer,self=self))
 
 
 if mpisppy_available:
@@ -251,10 +262,12 @@ def mpisppy_main(sp, options):
                 cfg[option] = value
         Ag = mpisppy.agnostic.agnostic.Agnostic(guest, cfg)
         mpisppy_agnostic_main(guest, Ag, cfg)
+        return {}
 
     else:
         guest = Forestlib_client(sp)
         mpisppy_generic_cylinders_main(guest, options)
+        return guest.first_stage_solution
 
 
 def norm(values, p):
@@ -455,7 +468,9 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         if logger.isEnabledFor(logging.VERBOSE):
             options['verbose'] = True
 
-        mpisppy_main(sp, options)
+        first_stage_solution = mpisppy_main(sp, options)
+        if first_stage_solution:
+            self.archive_solution(first_stage_solution)
 
         if self.mpi_rank==0:
             end_time = datetime.datetime.now()
@@ -541,13 +556,13 @@ class ProgressiveHedgingSolver_MPISPPY(object):
                 logger.verbose(f"rho:              {tmp}")
         logger.info("")
 
-    def Xarchive_solution(self, *, sp, xbar=None, w=None, **kwds):
+    def archive_solution(self, *, xbar, w=None, **kwds):
         # b = next(iter(sp.bundles))
         variables = [
             solnpool.Variable(
                 value=val,
-                index=i,
-                name=sp.get_variable_name(i),
+                #index=i,
+                name=i,
                 suffix=munch.Munch(w={k: v[i] for k, v in w.items()}),
             )
             for i, val in xbar.items()
