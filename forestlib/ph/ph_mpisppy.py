@@ -58,11 +58,12 @@ class Forestlib_client:
 
     def scenario_names_creator(self, num_scens, start=None):
         bundle_names = sorted(self._sp.bundles.keys())
-        assert (
-            len(bundle_names) <= num_scens
-        ), f"The stochastic program was defined with {len(bundle_names)} bundles, but the user asked for {num_scens} bundles"
-        # Keep the the first 'num_scens' bundles
-        bundle_names = bundle_names[:num_scens]
+        if num_scens is not None:
+            assert (
+                len(bundle_names) <= num_scens
+            ), f"The stochastic program was defined with {len(bundle_names)} bundles, but the user asked for {num_scens} bundles"
+            # Keep the the first 'num_scens' bundles
+            bundle_names = bundle_names[:num_scens]
 
         # Compute the per-scenario probability
         total = sum(self._sp.bundles[b].probability for b in bundle_names)
@@ -180,6 +181,7 @@ def mpisppy_agnostic_main(module, Ag, cfg):
     # TODO: Collect the first-stage solution and return it
     # TODO: How do we know if the first stage solution is integral?  How can we force it to be integral?
     # TODO: Collect other statistics from the optimizer (# iterations)
+    #           Query PH object through the whee
 
     if cfg.solution_base_name is not None:
         wheel.write_first_stage_solution(f"{cfg.solution_base_name}.csv")
@@ -190,14 +192,69 @@ def mpisppy_agnostic_main(module, Ag, cfg):
         wheel.write_tree_solution(f"{cfg.solution_base_name}")
 
 
-def mpisppy_main(sp, options):
-    guest = Forestlib_guest(sp)
-    cfg = mpisppy.agnostic.agnostic_cylinders._parse_args(guest)
+def mpisppy_generic_cylinders_main(module, options):
+    import mpisppy.generic_cylinders as gc
+    cfg = gc._parse_args(module)
     if options:
         for option,value in options.items():
             cfg[option] = value
-    Ag = mpisppy.agnostic.agnostic.Agnostic(guest, cfg)
-    mpisppy_agnostic_main(guest, Ag, cfg)
+
+    bundle_wrapper = None  # the default
+    if gc._proper_bundles(cfg):
+        import mpisppy.utils.proper_bundler as proper_bundler
+        bundle_wrapper = proper_bundler.ProperBundler(module)
+        bundle_wrapper.set_bunBFs(cfg)
+        scenario_creator = bundle_wrapper.scenario_creator
+        # The scenario creator is wrapped, so these kw_args will not go the original
+        # creator (the kw_creator will keep the original args)
+        scenario_creator_kwargs = bundle_wrapper.kw_creator(cfg)
+    elif cfg.unpickle_scenarios_dir is not None:
+        # So reading pickled scenarios cannot be composed with proper bundles
+        scenario_creator = gc._read_pickled_scenario
+        scenario_creator_kwargs = {"cfg": cfg}
+    else:  # the most common case
+        scenario_creator = module.scenario_creator
+        scenario_creator_kwargs = module.kw_creator(cfg)
+        
+    assert hasattr(module, "scenario_denouement"), "The model file must have a scenario_denouement function"
+    scenario_denouement = module.scenario_denouement
+
+    if cfg.pickle_bundles_dir is not None:
+        global_comm = MPI.COMM_WORLD
+        gc._write_bundles(module,
+                       cfg,
+                       scenario_creator,
+                       scenario_creator_kwargs,
+                       global_comm)
+    elif cfg.pickle_scenarios_dir is not None:
+        global_comm = MPI.COMM_WORLD
+        gc._write_scenarios(module,
+                         cfg,
+                         scenario_creator,
+                         scenario_creator_kwargs,
+                         scenario_denouement,
+                         global_comm)
+    elif cfg.EF:
+        gc._do_EF(module, cfg, scenario_creator, scenario_creator_kwargs, scenario_denouement, bundle_wrapper=bundle_wrapper)
+    else:
+        gc._do_decomp(module, cfg, scenario_creator, scenario_creator_kwargs, scenario_denouement, bundle_wrapper=bundle_wrapper)
+
+
+def mpisppy_main(sp, options):
+    agnostic=False
+
+    if agnostic:
+        guest = Forestlib_guest(sp)
+        cfg = mpisppy.agnostic.agnostic_cylinders._parse_args(guest)
+        if options:
+            for option,value in options.items():
+                cfg[option] = value
+        Ag = mpisppy.agnostic.agnostic.Agnostic(guest, cfg)
+        mpisppy_agnostic_main(guest, Ag, cfg)
+
+    else:
+        guest = Forestlib_client(sp)
+        mpisppy_generic_cylinders_main(guest, options)
 
 
 def norm(values, p):
