@@ -1,6 +1,0 @@
-
-Gurobi 11.0.3 (linux64, gurobi_cl) logging started Mon Aug  4 17:49:30 2025
-
-Set parameter TokenServer to value "face.sandia.gov"
-Set parameter LogFile to value "gurobi.log"
-Using license file /home/rmalfan/gurobi.lic
