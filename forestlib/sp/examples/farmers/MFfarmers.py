@@ -645,96 +645,29 @@ def model_builder(data, args):
 
 
 #
-# options to solve, LF, HF, or MF models with PH or EF:
+# options to solve, LF, HF, or MF:
 #
 
 
-def HF_EF():
-    print("-" * 60)
-    print("Running HF_EF")
-    print("-" * 60)
+def HF_farmers():
     sp = stochastic_program(first_stage_variables=["DevotedAcreage[*,*]"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
         name="HF", model_data=model_data["HF"], model_builder=model_builder
     )
-
-    solver = ExtensiveFormSolver()
-    solver.set_options(solver="gurobi", loglevel="INFO")
-    results = solver.solve(sp)
-    results.write("results.json", indent=4)
-    print("Writing results to 'results.json'")
+    return sp
 
 
-def LF_EF():
-    print("-" * 60)
-    print("Running LF_EF")
-    print("-" * 60)
+def LF_farmers():
     sp = stochastic_program(first_stage_variables=["DevotedAcreage[*,*]"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
         name="LF", model_data=model_data["LF"], model_builder=LF_model_builder
     )
-
-    solver = ExtensiveFormSolver()
-    solver.set_options(solver="gurobi", loglevel="INFO")
-    results = solver.solve(sp)
-    results.write("results.json", indent=4)
-    print("Writing results to 'results.json'")
+    return sp
 
 
-def LF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
-    print("-" * 60)
-    print("Running LF_PH")
-    print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["DevotedAcreage[*,*]"])
-    sp.initialize_application(app_data=app_data)
-    sp.initialize_model(
-        name="LF", model_data=model_data["LF"], model_builder=LF_model_builder
-    )
-
-    solver = ProgressiveHedgingSolver(sp)
-    solver.set_options(
-        solver="gurobi",
-        loglevel=loglevel,
-        cached_model_generation=cache,
-        max_iterations=max_iter,
-        finalize_all_xbar=finalize_all_iters,
-        rho_updates=True,
-    )
-    results = solver.solve(sp)
-    results.write("results.json", indent=4)
-    print("Writing results to 'results.json'")
-
-
-def HF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
-    print("-" * 60)
-    print("Running HF_PH")
-    print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["DevotedAcreage[*,*]"])
-    sp.initialize_application(app_data=app_data)
-    sp.initialize_model(
-        name="HF", model_data=model_data["HF"], model_builder=model_builder
-    )
-
-    solver = ProgressiveHedgingSolver(sp)
-    solver.set_options(
-        solver="gurobi",
-        loglevel=loglevel,
-        cached_model_generation=cache,
-        max_iterations=max_iter,
-        finalize_all_xbar=finalize_all_iters,
-        rho_updates=True,
-    )
-    results = solver.solve(sp)
-    results.write("results.json", indent=4)
-    print("Writing results to 'results.json'")
-
-
-def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
-    print("-" * 60)
-    print("Running MF_PH")
-    print("-" * 60)
+def MFrandom_farmers():
     sp = stochastic_program(first_stage_variables=["DevotedAcreage[*,*]"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
@@ -746,68 +679,10 @@ def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
         model_builder=LF_model_builder,
         default=False,
     )
-
-    bundle_num = 0
     sp.initialize_bundles(
-        scheme="mf_random_nested",
+        scheme="mf_random",
         LF=2,
         seed=1234567890,
         model_weight={"HF": 2.0, "LF": 1.0},
     )
-    sp.save_bundles(f"MF_PH_bundle_{bundle_num}.json", indent=4, sort_keys=True)
-
-    solver = ProgressiveHedgingSolver(sp)
-    solver.set_options(
-        solver="gurobi",
-        loglevel=loglevel,
-        cached_model_generation=cache,
-        max_iterations=max_iter,
-        finalize_all_xbar=finalize_all_iters,
-        rho_updates=True,
-    )
-    results = solver.solve(sp)
-    results.write("results.json", indent=4)
-    print("Writing results to 'results.json'")
-
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--lf-ef", action="store_true")
-parser.add_argument("--hf-ef", action="store_true")
-parser.add_argument("--hf-ph", action="store_true")
-parser.add_argument("--lf-ph", action="store_true")
-parser.add_argument("--mf-ph", action="store_true")
-parser.add_argument("--cache", action="store_true", default=False)
-parser.add_argument(
-    "-f", "--finalize_all_iterations", action="store_true", default=False
-)
-parser.add_argument("--max-iter", action="store", default=100, type=int)
-parser.add_argument("-l", "--loglevel", action="store", default="INFO")
-args = parser.parse_args()  # parse sys.argv
-
-if args.lf_ef:
-    LF_EF()
-elif args.hf_ef:
-    HF_EF()
-elif args.hf_ph:
-    HF_PH(
-        cache=args.cache,
-        max_iter=args.max_iter,
-        loglevel=args.loglevel,
-        finalize_all_iters=args.finalize_all_iterations,
-    )
-elif args.lf_ph:
-    LF_PH(
-        cache=args.cache,
-        max_iter=args.max_iter,
-        loglevel=args.loglevel,
-        finalize_all_iters=args.finalize_all_iterations,
-    )
-elif args.mf_ph:
-    MF_PH(
-        cache=args.cache,
-        max_iter=args.max_iter,
-        loglevel=args.loglevel,
-        finalize_all_iters=args.finalize_all_iterations,
-    )
-else:
-    parser.print_help()
+    return sp

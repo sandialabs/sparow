@@ -79,114 +79,25 @@ def HF_builder(data, args):
     return M
 
 
-def HF_EF():
-    print("-" * 60)
-    print("Running HF_EF")
-    print("-" * 60)
+def HF_newsvendor():
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
         name="HF", model_data=model_data["HF"], model_builder=HF_builder
     )
-
-    solver = ExtensiveFormSolver()
-    solver.set_options(solver="gurobi")
-    results = solver.solve(sp)
-    results.write("results.json", indent=4)
-    print("Writing results to 'results.json'")
+    return sp
 
 
-def LF_EF():
-    print("-" * 60)
-    print("Running LF_EF")
-    print("-" * 60)
+def LF_newsvendor():
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
         name="LF", model_data=model_data["LF"], model_builder=LF_builder
     )
-
-    solver = ExtensiveFormSolver()
-    solver.set_options(solver="gurobi")
-    results = solver.solve(sp)
-    results.write("results.json", indent=4)
-    print("Writing results to 'results.json'")
+    return sp
 
 
-def HF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
-    print("-" * 60)
-    print("Running HF_PH")
-    print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["x"])
-    sp.initialize_application(app_data=app_data)
-    sp.initialize_model(
-        name="HF", model_data=model_data["HF"], model_builder=HF_builder
-    )
-
-    solver = ProgressiveHedgingSolver(sp)
-    solver.set_options(
-        solver="gurobi",
-        loglevel=loglevel,
-        cached_model_generation=cache,
-        max_iterations=max_iter,
-        finalize_all_xbar=finalize_all_iters,
-        rho_updates=True,
-    )
-    results = solver.solve(sp)
-    results.write("results.json", indent=4)
-    print("Writing results to 'results.json'")
-
-
-def LF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
-    print("-" * 60)
-    print("Running LF_PH")
-    print("-" * 60)
-    sp = stochastic_program(first_stage_variables=["x"])
-    sp.initialize_application(app_data=app_data)
-    sp.initialize_model(
-        name="LF", model_data=model_data["LF"], model_builder=LF_builder
-    )
-
-    solver = ProgressiveHedgingSolver(sp)
-    solver.set_options(
-        solver="gurobi",
-        loglevel=loglevel,
-        cached_model_generation=cache,
-        max_iterations=max_iter,
-        finalize_all_xbar=finalize_all_iters,
-        rho_updates=True,
-    )
-    results = solver.solve(sp)
-    results.write("results.json", indent=4)
-    print("Writing results to 'results.json'")
-
-
-def dist_map(data, models):
-    model0 = models[0]
-
-    HFscenarios = list(data[model0].keys())
-    LFscenarios = {}  # all other models are LF
-    for model in models[1:]:
-        LFscenarios[model] = list(data[model].keys())
-
-    HFdemands = list(data[model0][HFkey]["d"] for HFkey in HFscenarios)
-    LFdemands = list(
-        data[model][ls]["d"] for ls in LFscenarios[model] for model in models[1:]
-    )
-
-    # map each LF scenario to closest HF scenario using 1-norm of demand difference
-    demand_diffs = {}
-    for i in range(len(HFdemands)):
-        for j in range(len(LFdemands)):
-            demand_diffs[(i, j)] = abs(HFdemands[i] - LFdemands[j])
-
-    return demand_diffs
-
-
-def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
-    print("-" * 60)
-    print("Running MF_PH")
-    print("-" * 60)
+def MFrandom_newsvendor():
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
@@ -195,70 +106,10 @@ def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     sp.initialize_model(
         name="LF", model_data=model_data["LF"], model_builder=LF_builder, default=False
     )
-
-    bundle_num = 0
     sp.initialize_bundles(
-        scheme="dissimilar_partitions",
-        distance_function=dist_map,
+        scheme="mf_random",
         LF=2,
         seed=1234567890,
         model_weight={"HF": 2.0, "LF": 1.0},
     )
-    # pprint.pprint(sp.get_bundles())
-    sp.save_bundles(f"MF_PH_bundle_{bundle_num}.json", indent=4, sort_keys=True)
-
-    solver = ProgressiveHedgingSolver(sp)
-    solver.set_options(
-        solver="gurobi",
-        loglevel=loglevel,
-        cached_model_generation=cache,
-        max_iterations=max_iter,
-        finalize_all_xbar=finalize_all_iters,
-        rho_updates=True,
-    )
-    results = solver.solve(sp)
-    results.write("results.json", indent=4)
-    print("Writing results to 'results.json'")
-
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--lf-ef", action="store_true")
-parser.add_argument("--hf-ef", action="store_true")
-parser.add_argument("--hf-ph", action="store_true")
-parser.add_argument("--lf-ph", action="store_true")
-parser.add_argument("--mf-ph", action="store_true")
-parser.add_argument("--cache", action="store_true", default=False)
-parser.add_argument(
-    "-f", "--finalize_all_iterations", action="store_true", default=False
-)
-parser.add_argument("--max-iter", action="store", default=100, type=int)
-parser.add_argument("-l", "--loglevel", action="store", default="INFO")
-args = parser.parse_args()  # parse sys.argv
-
-if args.lf_ef:
-    LF_EF()
-elif args.hf_ef:
-    HF_EF()
-elif args.hf_ph:
-    HF_PH(
-        cache=args.cache,
-        max_iter=args.max_iter,
-        loglevel=args.loglevel,
-        finalize_all_iters=args.finalize_all_iterations,
-    )
-elif args.lf_ph:
-    LF_PH(
-        cache=args.cache,
-        max_iter=args.max_iter,
-        loglevel=args.loglevel,
-        finalize_all_iters=args.finalize_all_iterations,
-    )
-elif args.mf_ph:
-    MF_PH(
-        cache=args.cache,
-        max_iter=args.max_iter,
-        loglevel=args.loglevel,
-        finalize_all_iters=args.finalize_all_iterations,
-    )
-else:
-    parser.print_help()
+    return sp
