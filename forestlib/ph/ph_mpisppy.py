@@ -134,19 +134,26 @@ class Forestlib_client:
             "ignore.npy", first_stage_solution_writer=partial(writer, self)
         )
 
-    def get_first_stage_solution(self):
+    def get_first_stage_solutions(self):
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
-        if self.first_stage_solution:
-            if rank > 0:
+        size = comm.Get_size()
+        if rank > 0:
+            if self.first_stage_solution:
                 comm.send(self.first_stage_solution, dest=0, tag=0)
+            else:
+                comm.send([], dest=0, tag=0)
         elif rank == 0:
-            status = MPI.Status()
-            self.first_stage_solution = comm.recv(
-                source=MPI.ANY_SOURCE, tag=0, status=status
-            )
+            results = {}
+            while len(results) < size - 1:
+                status = MPI.Status()
+                tmp = comm.recv(source=MPI.ANY_SOURCE, tag=0, status=status)
+                results[status.Get_source()] = tmp
 
-        return self.first_stage_solution
+            solutions = [v for v in results.values() if v]
+            if self.first_stage_solution:
+                solutions.append(self.first_stage_solution)
+            return solutions
 
 
 def mpisppy_generic_cylinders_main(module, options):
@@ -226,7 +233,7 @@ def mpisppy_main(sp, options, argv):
 
     # Reset sys.argv
     sys.argv = old_argv
-    return guest.get_first_stage_solution()
+    return guest.get_first_stage_solutions()
 
 
 class ProgressiveHedgingSolver_MPISPPY(object):
@@ -386,7 +393,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             options["verbose"] = True
         options["xhatxbar"] = True
 
-        first_stage_solution = mpisppy_main(sp, options, self.mpisppy_options)
+        first_stage_solutions = mpisppy_main(sp, options, self.mpisppy_options)
 
         if self.mpi_rank == 0:
             end_time = datetime.datetime.now()
@@ -400,8 +407,8 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             logger.info("-" * 70)
             logger.info("ProgressiveHedgingSolver_MPISPPY - FINALIZING")
 
-            if first_stage_solution:
-                self.archive_solution(sp=sp, xbar=first_stage_solution)
+            for soln in first_stage_solutions:
+                self.archive_solution(sp=sp, xbar=soln)
 
             sp_metadata.end_time = str(end_time)
             sp_metadata.time_elapsed = str(end_time - start_time)
