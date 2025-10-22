@@ -1,5 +1,4 @@
 import pytest
-import pyomo.environ as pyo
 
 from forestlib.solnpool import PoolManager
 from forestlib.sp import stochastic_program
