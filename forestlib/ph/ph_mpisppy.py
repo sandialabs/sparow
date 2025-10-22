@@ -18,7 +18,7 @@ except:
 
 import pyomo.environ as pyo
 
-#from pyomo.common.timing import tic, toc, TicTocTimer
+# from pyomo.common.timing import tic, toc, TicTocTimer
 from forestlib import solnpool
 import forestlib.logs
 
@@ -127,7 +127,7 @@ class Forestlib_client:
             root_nonants = np.fromiter(
                 (pyo.value(var) for var in root.nonant_vardata_list), float
             )
-            comm = MPI.COMM_WORLD
+            # comm = MPI.COMM_WORLD
             client.first_stage_solution = root_nonants
 
         wheel.write_first_stage_solution(
@@ -215,9 +215,17 @@ def mpisppy_generic_cylinders_main(module, options):
         )
 
 
-def mpisppy_main(sp, options):
+def mpisppy_main(sp, options, argv):
+    # Cache sys.argv
+    old_argv = sys.argv
+    # Clear sys.argv to force mpisppy to ignore it
+    sys.argv = [sys.argv[0]] + argv
+
     guest = Forestlib_client(sp)
     mpisppy_generic_cylinders_main(guest, options)
+
+    # Reset sys.argv
+    sys.argv = old_argv
     return guest.get_first_stage_solution()
 
 
@@ -241,6 +249,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         self.solutions = None
         self.rho_updates = False
         self.default_rho = 1.5
+        self.mpisppy_options = []
 
     def set_options(
         self,
@@ -260,6 +269,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         # solution_manager=None,
         rho_updates=False,
         default_rho=None,
+        mpisppy_options=None,
     ):
         #
         # Misc configuration
@@ -292,6 +302,8 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             self.finalize_all_xbar = finalize_all_xbar
         # if solution_manager is not None:
         #    self.solution_manager = solution_manager
+        if mpisppy_options:
+            self.mpisppy_options = mpisppy_options
 
         if loglevel is not None:
             if loglevel == "DEBUG" or loglevel == "VERBOSE":
@@ -374,7 +386,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             options["verbose"] = True
         options["xhatxbar"] = True
 
-        first_stage_solution = mpisppy_main(sp, options)
+        first_stage_solution = mpisppy_main(sp, options, self.mpisppy_options)
 
         if self.mpi_rank == 0:
             end_time = datetime.datetime.now()

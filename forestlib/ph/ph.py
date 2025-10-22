@@ -311,7 +311,9 @@ class ProgressiveHedgingSolver(object):
             if self.normalize_convergence_norm:
                 g /= len(sfs_variables)
             logger.info(f"g = {g}")
-            G = norm([xbar[x] - xbar_prev[x] for x in sfs_variables], self.convergence_norm)/len(sfs_variables)
+            G = norm(
+                [xbar[x] - xbar_prev[x] for x in sfs_variables], self.convergence_norm
+            ) / len(sfs_variables)
             logger.info(f"G = {G}")
 
             # Step 9.1
@@ -333,7 +335,7 @@ class ProgressiveHedgingSolver(object):
                 rho=self.rho,
                 g=g,
                 G=G,
-                w=w
+                w=w,
             )
 
             # Step 10
@@ -394,7 +396,10 @@ class ProgressiveHedgingSolver(object):
         logger.info(f"time_last_iter:   {kwds['time_last_iter']}")
         if logger.isEnabledFor(logging.VERBOSE):
             tmp = kwds["w"]
-            tmp = {k:statistics.mean(abs(val) for val in v.values()) for k,v in tmp.items()}
+            tmp = {
+                k: statistics.mean(abs(val) for val in v.values())
+                for k, v in tmp.items()
+            }
             if len(tmp) > 10:
                 _vals = list(tmp.values())
                 logger.verbose(f"w_min:            {min(_vals)}")
@@ -410,7 +415,7 @@ class ProgressiveHedgingSolver(object):
                 logger.verbose(f"xbar_mean_abs:    {statistics.mean(_vals)}")
                 logger.verbose(f"xbar_max_abs:     {max(_vals)}")
             else:
-                tmp = {k:v for k,v in tmp.items() if v != 0}
+                tmp = {k: v for k, v in tmp.items() if v != 0}
                 logger.verbose(f"xbar_abs:         {tmp}")
 
             tmp = kwds["rho"]
