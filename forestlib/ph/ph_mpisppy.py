@@ -20,6 +20,7 @@ import pyomo.environ as pyo
 
 # from pyomo.common.timing import tic, toc, TicTocTimer
 from forestlib import solnpool
+from forestlib.sp.sp_pyomo import find_objective
 import forestlib.logs
 
 logger = forestlib.logs.logger
@@ -31,6 +32,7 @@ class Forestlib_client:
         self._sp = sp
         self._scenario_probability = {}
         self.first_stage_solution = None
+        self.minimizing = None
 
     def scenario_creator(self, scenario_name, **kwargs):
         """
@@ -43,8 +45,13 @@ class Forestlib_client:
 
         # Create the concrete model object
         model = self._sp.create_subproblem(scenario_name)
+        obj = find_objective(model)
+        self.minimizing = obj.is_minimizing()
+
+        # Add _mpisppy_probability
         model._mpisppy_probability = self._scenario_probability[scenario_name]
 
+        # Add _nonant_vardata_list
         varlist = [
             self._sp.int_to_FirstStageVar[scenario_name][i]
             for i in sorted(self._sp.int_to_FirstStageVar[scenario_name].keys())
@@ -52,6 +59,8 @@ class Forestlib_client:
         model._nonant_vardata_list = mpisppy.utils.sputils.build_vardatalist(
             model, varlist
         )
+
+        # Attach model to root node
         mpisppy.utils.sputils.attach_root_node(model, 0, varlist)
 
         return model
@@ -212,14 +221,29 @@ def mpisppy_generic_cylinders_main(module, options):
             bundle_wrapper=bundle_wrapper,
         )
     else:
-        gc._do_decomp(
-            module,
-            cfg,
-            scenario_creator,
-            scenario_creator_kwargs,
-            scenario_denouement,
-            bundle_wrapper=bundle_wrapper,
-        )
+        if hasattr(gc, "do_decomp"):
+            wheel = gc.do_decomp(
+                module,
+                cfg,
+                scenario_creator,
+                scenario_creator_kwargs,
+                scenario_denouement,
+                bundle_wrapper=bundle_wrapper,
+            )
+            return dict(
+                BestInnerBound=wheel.BestInnerBound, BestOuterBound=wheel.BestOuterBound
+            )
+
+        else:
+            gc._do_decomp(
+                module,
+                cfg,
+                scenario_creator,
+                scenario_creator_kwargs,
+                scenario_denouement,
+                bundle_wrapper=bundle_wrapper,
+            )
+            return dict()
 
 
 def mpisppy_main(sp, options, argv):
@@ -229,11 +253,22 @@ def mpisppy_main(sp, options, argv):
     sys.argv = [sys.argv[0]] + argv
 
     guest = Forestlib_client(sp)
-    mpisppy_generic_cylinders_main(guest, options)
+    results = mpisppy_generic_cylinders_main(guest, options)
+    if guest.minimizing:
+        results = dict(
+            lower_bound=results.get("BestOuterBound", None),
+            best_value=results.get("BestInnerBound", None),
+        )
+    else:
+        results = dict(
+            upper_bound=results.get("BestInnerBound", None),
+            best_value=results.get("BestOuterBound", None),
+        )
+    results["first_stage_solutions"] = guest.get_first_stage_solutions()
 
     # Reset sys.argv
     sys.argv = old_argv
-    return guest.get_first_stage_solutions()
+    return results
 
 
 class ProgressiveHedgingSolver_MPISPPY(object):
@@ -368,11 +403,6 @@ class ProgressiveHedgingSolver_MPISPPY(object):
                 solver_options=self.solver_options,
             )
 
-        # The StochProgram object manages the sub-solver interface.  By default, we assume
-        #   the user has initialized the sub-solver within the SP object.
-        # if self.solver_name:
-        #    sp.set_solver(self.solver_name)
-
         if self.mpi_rank == 0:
             logger.info("ProgressiveHedgingSolver_MPISPPY - START")
 
@@ -393,22 +423,31 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             options["verbose"] = True
         options["xhatxbar"] = True
 
-        first_stage_solutions = mpisppy_main(sp, options, self.mpisppy_options)
+        results = mpisppy_main(sp, options, self.mpisppy_options)
 
         if self.mpi_rank == 0:
             end_time = datetime.datetime.now()
 
             sp_metadata = self.solutions.metadata
             # sp_metadata.iterations = iteration
-            # sp_metadata.termination_condition = termination_condition
+            sp_metadata.termination_condition = "ok"
             sp_metadata.start_time = str(start_time)
+            if results["lower_bound"]:
+                sp_metadata.lower_bound = float(results["lower_bound"])
+            elif results["upper_bound"]:
+                sp_metadata.upper_bound = float(results["upper_bound"])
 
             logger.info("")
             logger.info("-" * 70)
             logger.info("ProgressiveHedgingSolver_MPISPPY - FINALIZING")
 
-            for soln in first_stage_solutions:
-                self.archive_solution(sp=sp, xbar=soln)
+            for soln in results["first_stage_solutions"]:
+                args = dict(sp=sp, xbar=soln)
+                if results["best_value"]:
+                    args["objective"] = solnpool.Objective(
+                        value=float(results["best_value"])
+                    )
+                self.archive_solution(**args)
 
             sp_metadata.end_time = str(end_time)
             sp_metadata.time_elapsed = str(end_time - start_time)
