@@ -1,7 +1,7 @@
 import pytest
 
 from forestlib.sp.examples import LF_newsvendor, HF_newsvendor, MFrandom_newsvendor
-from forestlib.ef import ExtensiveFormSolver
+from forestlib.ph import ProgressiveHedgingSolver
 
 import pyomo.opt
 from pyomo.common import unittest
@@ -15,40 +15,43 @@ class TestEFNewsvendor:
 
     def test_LF(self, mip_solver):
         sp = LF_newsvendor()
-        solver = ExtensiveFormSolver()
+        solver = ProgressiveHedgingSolver()
         solver.set_options(solver=mip_solver)
+        #solver.set_options(loglevel="DEBUG")
         results = solver.solve(sp)
         results_dict = results.to_dict()
-        soln = next(iter(results_dict[None]["solutions"].values()))
+        #import pprint
+        #pprint.pprint(results_dict)
+        soln = next(iter(results_dict['Finalized Last PH Solution']["solutions"].values()))
 
-        obj_val = soln["objectives"][0]["value"]
-        assert obj_val == pytest.approx(76.5)
         x = soln["variables"][0]["value"]
         assert x == pytest.approx(60.0)
+        obj_val = soln["objectives"][0]["value"]
+        assert obj_val == pytest.approx(76.5)
 
     def test_HF(self, mip_solver):
         sp = HF_newsvendor()
-        solver = ExtensiveFormSolver()
+        solver = ProgressiveHedgingSolver()
         solver.set_options(solver=mip_solver)
         results = solver.solve(sp)
         results_dict = results.to_dict()
-        soln = next(iter(results_dict[None]["solutions"].values()))
+        soln = next(iter(results_dict['Finalized Last PH Solution']["solutions"].values()))
 
-        obj_val = soln["objectives"][0]["value"]
-        assert obj_val == pytest.approx(82.335)
         x = soln["variables"][0]["value"]
         assert x == pytest.approx(54.0)
+        obj_val = soln["objectives"][0]["value"]
+        assert obj_val == pytest.approx(82.335)
 
     def test_MFrandom(self, mip_solver):
         sp = MFrandom_newsvendor()
-        solver = ExtensiveFormSolver()
+        solver = ProgressiveHedgingSolver()
         solver.set_options(solver=mip_solver)
         results = solver.solve(sp)
         results_dict = results.to_dict()
-        soln = next(iter(results_dict[None]["solutions"].values()))
+        soln = next(iter(results_dict['Finalized Last PH Solution']["solutions"].values()))
 
-        obj_val = soln["objectives"][0]["value"]
-        assert obj_val == pytest.approx(79.4775)
         x = soln["variables"][0]["value"]
         assert x == pytest.approx(60.0)
+        obj_val = soln["objectives"][0]["value"]
+        assert obj_val == pytest.approx(79.4775)
 
