@@ -70,8 +70,9 @@ class ProgressiveHedgingSolver(object):
         self.cached_model_generation = True
         self.max_iterations = 100
         self.convergence_tolerance = 1e-3
-        self.normalize_convergence_norm = True
+        self.normalize_convergence_norm = False
         self.convergence_norm = 1
+        self.minstep_tolerance = 1e-3
         self.solver_name = None
         self.solver_options = {}
         self.finalize_xbar_by_rounding = True
@@ -89,6 +90,7 @@ class ProgressiveHedgingSolver(object):
         convergence_tolerance=None,
         normalize_convergence_norm=None,
         convergence_norm=None,
+        minstep_tolerance=None,
         solver=None,
         solver_options=None,
         loglevel=None,
@@ -117,6 +119,8 @@ class ProgressiveHedgingSolver(object):
             self.normalize_convergence_norm = normalize_convergence_norm
         if convergence_norm is not None:
             self.convergence_norm = convergence_norm
+        if minstep_tolerance is not None:
+            self.minstep_tolerance = minstep_tolerance
         if solver is not None:
             self.solver_name = solver
         if solver_options is not None:
@@ -142,6 +146,7 @@ class ProgressiveHedgingSolver(object):
             print(f"  cached_model_generation    {self.cached_model_generation}")
             print(f"  convergence_norm           {self.convergence_norm}")
             print(f"  convergence_tolerance      {self.convergence_tolerance}")
+            print(f"  minstep_tolerance          {self.minstep_tolerance}")
             print(f"  finalize_xbar_by_rounding  {self.finalize_xbar_by_rounding}")
             print(f"  finalize_all_xbar          {self.finalize_all_xbar}")
             print(f"  max_iterations             {self.max_iterations}")
@@ -311,7 +316,9 @@ class ProgressiveHedgingSolver(object):
             if self.normalize_convergence_norm:
                 g /= len(sfs_variables)
             logger.info(f"g = {g}")
-            G = norm([xbar[x] - xbar_prev[x] for x in sfs_variables], self.convergence_norm)/len(sfs_variables)
+            G = norm(
+                [xbar[x] - xbar_prev[x] for x in sfs_variables], self.convergence_norm
+            ) / len(sfs_variables)
             logger.info(f"G = {G}")
 
             # Step 9.1
@@ -333,12 +340,12 @@ class ProgressiveHedgingSolver(object):
                 rho=self.rho,
                 g=g,
                 G=G,
-                w=w
+                w=w,
             )
 
             # Step 10
-            if g < self.convergence_tolerance:
-                termination_condition = f"Termination: convergence tolerance ({g} < {self.convergence_tolerance})"
+            if G < self.minstep_tolerance and g < self.convergence_tolerance:
+                termination_condition = f"Termination: minstep tolerance ({G} < {self.minstep_tolerance}) and convergence tolerance ({g} < {self.convergence_tolerance})"
                 logger.info(termination_condition)
                 break
 
@@ -394,7 +401,10 @@ class ProgressiveHedgingSolver(object):
         logger.info(f"time_last_iter:   {kwds['time_last_iter']}")
         if logger.isEnabledFor(logging.VERBOSE):
             tmp = kwds["w"]
-            tmp = {k:statistics.mean(abs(val) for val in v.values()) for k,v in tmp.items()}
+            tmp = {
+                k: statistics.mean(abs(val) for val in v.values())
+                for k, v in tmp.items()
+            }
             if len(tmp) > 10:
                 _vals = list(tmp.values())
                 logger.verbose(f"w_min:            {min(_vals)}")
@@ -410,7 +420,7 @@ class ProgressiveHedgingSolver(object):
                 logger.verbose(f"xbar_mean_abs:    {statistics.mean(_vals)}")
                 logger.verbose(f"xbar_max_abs:     {max(_vals)}")
             else:
-                tmp = {k:v for k,v in tmp.items() if v != 0}
+                tmp = {k: v for k, v in tmp.items() if v != 0}
                 logger.verbose(f"xbar_abs:         {tmp}")
 
             tmp = kwds["rho"]
