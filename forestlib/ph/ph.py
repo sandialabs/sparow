@@ -70,9 +70,8 @@ class ProgressiveHedgingSolver(object):
         self.cached_model_generation = True
         self.max_iterations = 100
         self.convergence_tolerance = 1e-3
-        self.normalize_convergence_norm = False
+        self.normalize_convergence_norm = True
         self.convergence_norm = 1
-        self.minstep_tolerance = 1e-3
         self.solver_name = None
         self.solver_options = {}
         self.finalize_xbar_by_rounding = True
@@ -90,7 +89,6 @@ class ProgressiveHedgingSolver(object):
         convergence_tolerance=None,
         normalize_convergence_norm=None,
         convergence_norm=None,
-        minstep_tolerance=None,
         solver=None,
         solver_options=None,
         loglevel=None,
@@ -119,8 +117,6 @@ class ProgressiveHedgingSolver(object):
             self.normalize_convergence_norm = normalize_convergence_norm
         if convergence_norm is not None:
             self.convergence_norm = convergence_norm
-        if minstep_tolerance is not None:
-            self.minstep_tolerance = minstep_tolerance
         if solver is not None:
             self.solver_name = solver
         if solver_options is not None:
@@ -146,7 +142,6 @@ class ProgressiveHedgingSolver(object):
             print(f"  cached_model_generation    {self.cached_model_generation}")
             print(f"  convergence_norm           {self.convergence_norm}")
             print(f"  convergence_tolerance      {self.convergence_tolerance}")
-            print(f"  minstep_tolerance          {self.minstep_tolerance}")
             print(f"  finalize_xbar_by_rounding  {self.finalize_xbar_by_rounding}")
             print(f"  finalize_all_xbar          {self.finalize_all_xbar}")
             print(f"  max_iterations             {self.max_iterations}")
@@ -307,6 +302,12 @@ class ProgressiveHedgingSolver(object):
                 logger.debug(f"w[{b}] = {w[b]}")
 
             # Step 9
+            #
+            # NOTE: We use xbar_prev instead of xbar to compute 'g'.  If you use xbar, then
+            #       all subproblems could have hte same value, but in the *next* iteration they
+            #       subproblems could have different values.  We need to assess the difference
+            #       between the xbar that generated the current values.
+            #
             g = 0.0
             for b in sp.bundles:
                 g += sp.bundles[b].probability * norm(
@@ -318,7 +319,9 @@ class ProgressiveHedgingSolver(object):
             logger.info(f"g = {g}")
             G = norm(
                 [xbar[x] - xbar_prev[x] for x in sfs_variables], self.convergence_norm
-            ) / len(sfs_variables)
+            )
+            if self.normalize_convergence_norm:
+                G /= len(sfs_variables)
             logger.info(f"G = {G}")
 
             # Step 9.1
@@ -344,8 +347,8 @@ class ProgressiveHedgingSolver(object):
             )
 
             # Step 10
-            if G < self.minstep_tolerance and g < self.convergence_tolerance:
-                termination_condition = f"Termination: minstep tolerance ({G} < {self.minstep_tolerance}) and convergence tolerance ({g} < {self.convergence_tolerance})"
+            if G + g < self.convergence_tolerance:
+                termination_condition = f"Termination: convergence tolerance ({G} + {g} < {self.convergence_tolerance})"
                 logger.info(termination_condition)
                 break
 
