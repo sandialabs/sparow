@@ -3,7 +3,7 @@ import pyomo.environ as pyo
 
 from forestlib.solnpool import PoolManager
 from forestlib.sp import stochastic_program
-from forestlib.sp.examples import HF_facilityloc
+from forestlib.sp.examples import AMPL_facilityloc
 from forestlib.ef import ExtensiveFormSolver
 
 import pyomo.opt
@@ -138,7 +138,7 @@ class TestFacilityLoc:
         assert obj_val == pytest.approx(16758018.59625)
 
     def test_facilityloc(self, mip_solver):
-        sp = HF_facilityloc()
+        sp = AMPL_facilityloc()
         solver = ExtensiveFormSolver()
         solver.set_options(solver=mip_solver)
         pool_manager = PoolManager()
