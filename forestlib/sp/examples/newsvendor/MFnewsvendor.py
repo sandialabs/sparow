@@ -9,10 +9,10 @@ model_data = {
     "LF": {
         "scenarios": [
             {"ID": "1", "d": 15, "Probability": 0.1},
-            {"ID": "2", "d": 60, "Probability": 0.3},
-            {"ID": "3", "d": 72, "Probability": 0.15},
-            {"ID": "4", "d": 78, "Probability": 0.25},
-            {"ID": "5", "d": 82, "Probability": 0.2},
+            {"ID": "2", "d": 60, "Probability": 0.2},
+            {"ID": "3", "d": 72, "Probability": 0.1},
+            {"ID": "4", "d": 78, "Probability": 0.3},
+            {"ID": "5", "d": 82, "Probability": 0.3},
         ]
     },
     "HF": {
