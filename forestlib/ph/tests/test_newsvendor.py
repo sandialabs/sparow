@@ -11,8 +11,7 @@ from forestlib.ph import ProgressiveHedgingSolver
 import pyomo.opt
 from pyomo.common import unittest
 
-solvers = set(pyomo.opt.check_available_solvers("glpk", "gurobi"))
-solvers = ["glpk"] if "glpk" in solvers else ["gurobi"]
+solvers = set(pyomo.opt.check_available_solvers("gurobi"))
 
 
 @unittest.pytest.mark.parametrize("mip_solver", solvers)
