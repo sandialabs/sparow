@@ -202,6 +202,14 @@ def HF_builder(data, args):
 # options to solve, LF, HF, or MF models:
 #
 
+def AMPL_facilityloc():
+    sp = stochastic_program(first_stage_variables=["x"])
+    sp.initialize_application(app_data=app_data)
+    sp.initialize_model(
+        name="HF", model_data=model_data["LF"], model_builder=HF_builder
+    )
+    return sp
+
 
 def HF_facilityloc():
     sp = stochastic_program(first_stage_variables=["x"])

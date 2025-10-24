@@ -52,8 +52,8 @@ class ExtensiveFormSolver(object):
 
         M = sp.create_EF()
         if logger.isEnabledFor(logging.DEBUG):
+            # Print extensive form model
             M.pprint()
-            M.display()
             sys.stdout.flush()
 
         toc("Created extensive form", logger=logger, level=logging.VERBOSE)

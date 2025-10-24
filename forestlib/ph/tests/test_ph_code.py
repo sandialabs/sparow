@@ -1,6 +1,7 @@
 import pprint
 import pytest
-#from IPython import embed
+
+# from IPython import embed
 import random
 import numpy as np
 
@@ -14,7 +15,7 @@ from forestlib.sp import stochastic_program
 from forestlib.ph import ProgressiveHedgingSolver
 from pyomo.opt import check_available_solvers
 
-gurobi_available = len(check_available_solvers('gurobi', 'appsi_gurobi')) == 2
+gurobi_available = len(check_available_solvers("gurobi", "appsi_gurobi")) == 2
 
 verbose = False
 if verbose:
@@ -324,8 +325,8 @@ class TestSolverAgainstMPISPPY(object):
         if verbose:
             print("xbar_mpi:", xbar_mpi)
             print("xbar_ph:", xbar_ph)
-        assert np.allclose(xbar_ph, xbar_mpi)    
-        
+        assert np.allclose(xbar_ph, xbar_mpi)
+
     @pytest.mark.skipif(not gurobi_available, reason="gurobi not installed")
     def test_PH_model_solve_w_scen(self):
         options = {
