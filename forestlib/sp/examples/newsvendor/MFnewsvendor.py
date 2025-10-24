@@ -107,3 +107,16 @@ def MFrandom_newsvendor():
         model_weight={"HF": 2.0, "LF": 1.0},
     )
     return sp
+
+
+def MFpaired_newsvendor():
+    sp = stochastic_program(first_stage_variables=["x"])
+    sp.initialize_application(app_data=app_data)
+    sp.initialize_model(
+        name="HF", model_data=model_data["HF"], model_builder=HF_builder
+    )
+    sp.initialize_model(
+        name="LF", model_data=model_data["LF"], model_builder=LF_builder, default=False
+    )
+    sp.initialize_bundles(scheme="mf_paired")
+    return sp
