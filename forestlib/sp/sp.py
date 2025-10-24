@@ -119,10 +119,30 @@ class StochasticProgram(object):
     def solve(self, M, *, solver_options=None):
         pass
 
-    def create_subproblem(self, b, *, w=None, x_bar=None, rho=None, cached=False):
-        return self.create_EF(b=b, w=w, x_bar=x_bar, rho=rho, cached=cached)
+    def create_EF(self, cache_bundles=False):
+        if cache_bundles:
+            _int_toFirstStageVar = self.int_to_FirstStageVar
+            _model_cache = self._model_cache
+            _bundles = self.bundles
 
-    def create_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
+        self.initialize_bundles(scheme="single_bundle")
+        assert (
+            len(self.bundles) == 1
+        ), f"The extensive form should only have one bundle: {len(self.bundles)}"
+
+        b = next(iter(self.bundles))
+        M = self.create_subproblem(b)
+
+        if cache_bundles:
+            self.int_to_FirstStageVar = _int_toFirstStageVar
+            self._model_cache = _model_cache
+            self.bundles = _bundles
+        return M
+
+    def create_subproblem(self, b, *, w=None, x_bar=None, rho=None, cached=False):
+        return self.create_bundle_EF(b=b, w=w, x_bar=x_bar, rho=rho, cached=cached)
+
+    def create_bundle_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
         pass
 
     def evaluate(self, x, solver_options=None, cached=False):

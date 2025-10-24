@@ -89,6 +89,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         self.int_to_FirstStageVar[b][v].fix(value)
 
     def get_variable_value(self, b, v):
+        print(f"{list(self.int_to_FirstStageVar.keys())=}")
         return pyo.value(self.int_to_FirstStageVar[b][v])
 
     def get_variable_name(self, v):
@@ -142,7 +143,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
 
             # Return the value of the 'first' objective
 
-            if self.solver == 'ipopt':
+            if self.solver == "ipopt":
                 return munch.Munch(
                     obj_value=pyo.value(M.obj),
                     termination_condition=results.solver.termination_condition,
@@ -154,6 +155,26 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
                     termination_condition=results.solver.termination_condition,
                     status=results.solver.status,
                 )
+
+    def create_EF(self, cache_bundles=False):
+        if cache_bundles:
+            _int_toFirstStageVar = self.int_to_FirstStageVar
+            _model_cache = self._model_cache
+            _bundles = self.bundles
+
+        self.initialize_bundles(scheme="single_bundle")
+        assert (
+            len(self.bundles) == 1
+        ), f"The extensive form should only have one bundle: {len(self.bundles)}"
+
+        b = next(iter(self.bundles))
+        M = self.create_subproblem(b)
+
+        if cache_bundles:
+            self.int_to_FirstStageVar = _int_toFirstStageVar
+            self._model_cache = _model_cache
+            self.bundles = _bundles
+        return M
 
 
 class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
@@ -273,7 +294,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
         return self.int_to_ObjectiveCoef[v]
 
-    def create_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
+    def create_bundle_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
         scenarios = self.bundles[b].scenarios
         if cached and b in self._model_cache:
             M = self._model_cache[b]
@@ -397,3 +418,22 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             self._model_cache[b] = EF_model
 
         return EF_model
+
+
+def initialize_EF(sp, model, solution, resolve=True):
+    for i in sp.shared_variables():
+        model.rootx[i].fix(solution.variable(i).value)
+
+    if resolve:
+        # NOTE - we could solve each subproblem separately
+        sp.solve(model)
+
+    for i in sp.shared_variables():
+        model.rootx[i].unfix()
+
+    return model
+
+
+def create_and_initialize_EF(sp, solution, resolve=True):
+    M = sp.create_EF(cache_bundles=False)
+    return initialize_EF(sp, M, solution, resolve=resolve)

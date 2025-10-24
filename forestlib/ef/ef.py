@@ -50,13 +50,7 @@ class ExtensiveFormSolver(object):
                 print(f"    {k}= {v}")
         tic(None)
 
-        sp.initialize_bundles(scheme="single_bundle")
-        assert (
-            len(sp.bundles) == 1
-        ), f"The extensive form should only have one bundle: {len(sp.bundles)}"
-
-        b = next(iter(sp.bundles))
-        M = sp.create_subproblem(b)
+        M = sp.create_EF()
         if logger.isEnabledFor(logging.DEBUG):
             M.pprint()
             M.display()
