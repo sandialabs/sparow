@@ -607,10 +607,10 @@ def mf_random_nested(data, model_weight, models, bundle_args=None):
     # This bundling strategy requires that all models have the same scenario keys.
     #
     model0 = models[0]  # the first model in models is assumed to be the HF model
-    bundleIDs = set(data[model0].keys())
+    bundleIDs = sorted(data[model0].keys())
     for model in models[1:]:
-        assert bundleIDs == set(
-            data[model].keys()
+        assert sorted(bundleIDs) == sorted(
+            list(data[model].keys())
         ), "All models have the same scenario keys"
     #
     # Process bundle_args
@@ -679,7 +679,7 @@ def mf_random(data, model_weight, models, bundle_args=None):
     assert len(models) > 1, "Expecting multiple models for mf_random"
 
     model0 = models[0]  # the first model in models is assumed to be the HF model
-    bundleIDs = set(data[model0].keys())
+    bundleIDs = sorted(data[model0].keys())
 
     """
     Process bundle_args
