@@ -436,4 +436,3 @@ def initialize_EF(sp, model, solution, resolve=True):
 def create_and_initialize_EF(sp, solution, resolve=True):
     M = sp.create_EF(cache_bundles=False)
     return initialize_EF(sp, M, solution, resolve=resolve)
-

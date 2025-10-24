@@ -68,5 +68,5 @@ class TestEFNewsvendor:
         obj_val = soln["objectives"][0]["value"]
         assert obj_val == pytest.approx(81.3525)
         # WEH - The optimal x value is not unique, so we don't test its value
-        #x = soln["variables"][0]["value"]
-        #assert x == pytest.approx(60.0)
+        # x = soln["variables"][0]["value"]
+        # assert x == pytest.approx(60.0)

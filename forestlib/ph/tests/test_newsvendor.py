@@ -12,7 +12,7 @@ import pyomo.opt
 from pyomo.common import unittest
 
 solvers = set(pyomo.opt.check_available_solvers("gurobi"))
-solvers = [] # Ignore these tests for now
+solvers = []  # Ignore these tests for now
 
 
 @unittest.pytest.mark.parametrize("mip_solver", solvers)

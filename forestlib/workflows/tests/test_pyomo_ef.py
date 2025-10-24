@@ -21,13 +21,11 @@ def test_initialize_EF(mip_solver):
 
     # Double check that the solution value looks good
     results_dict = results.to_dict()
-    soln = next(
-            iter(results_dict["Finalized Last PH Solution"]["solutions"].values())
-        )
+    soln = next(iter(results_dict["Finalized Last PH Solution"]["solutions"].values()))
     obj_val = soln["objectives"][0]["value"]
     assert obj_val == pytest.approx(76.5, 0.01)
 
-    results.set_pool('Finalized Last PH Solution')
+    results.set_pool("Finalized Last PH Solution")
     soln = next(iter(results.solutions))
 
     # Check that 'resolve=False' does not compute the objective

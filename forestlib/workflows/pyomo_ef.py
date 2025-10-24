@@ -1,6 +1,5 @@
-
 def initialize_EF(sp, model, solution, resolve=True):
-    # NOTE - we could solve each subproblem separately, but that 
+    # NOTE - we could solve each subproblem separately, but that
     #           wouldn't compute the objective
     if resolve:
         for i in sp.shared_variables():
@@ -21,4 +20,3 @@ def initialize_EF(sp, model, solution, resolve=True):
 def create_and_initialize_EF(sp, solution, resolve=True):
     M = sp.create_EF(cache_bundles=False)
     return initialize_EF(sp, M, solution, resolve=resolve)
-
