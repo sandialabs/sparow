@@ -89,7 +89,6 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         self.int_to_FirstStageVar[b][v].fix(value)
 
     def get_variable_value(self, b, v):
-        print(f"{list(self.int_to_FirstStageVar.keys())=}")
         return pyo.value(self.int_to_FirstStageVar[b][v])
 
     def get_variable_name(self, v):
@@ -437,3 +436,4 @@ def initialize_EF(sp, model, solution, resolve=True):
 def create_and_initialize_EF(sp, solution, resolve=True):
     M = sp.create_EF(cache_bundles=False)
     return initialize_EF(sp, M, solution, resolve=resolve)
+
