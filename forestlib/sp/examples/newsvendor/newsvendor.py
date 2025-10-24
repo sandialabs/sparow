@@ -24,6 +24,7 @@ model_data = {
     ],
 }
 
+
 #
 # Function that constructs a newsvendor model
 # including a single second stage

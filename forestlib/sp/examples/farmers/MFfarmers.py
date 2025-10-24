@@ -5,6 +5,7 @@ from forestlib.sp import stochastic_program
 
 random.seed(923874938740938740)
 
+
 #
 # Global data for the HF model:
 #
