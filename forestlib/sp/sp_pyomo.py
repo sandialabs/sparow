@@ -155,13 +155,16 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
                     status=results.solver.status,
                 )
 
-    def create_EF(self, cache_bundles=False):
+    def create_EF(self, model_fidelities=None, cache_bundles=False):
         if cache_bundles:
             _int_toFirstStageVar = self.int_to_FirstStageVar
             _model_cache = self._model_cache
             _bundles = self.bundles
 
-        self.initialize_bundles(scheme="single_bundle")
+        if model_fidelities is None:
+            self.initialize_bundles(scheme="single_bundle")
+        else:
+            self.initialize_bundles(scheme="single_bundle", models=model_fidelities)
         assert (
             len(self.bundles) == 1
         ), f"The extensive form should only have one bundle: {len(self.bundles)}"

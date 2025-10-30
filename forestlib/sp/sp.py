@@ -119,7 +119,7 @@ class StochasticProgram(object):
     def solve(self, M, *, solver_options=None):
         pass
 
-    def create_EF(self, cache_bundles=False):
+    def create_EF(self, model_fidelities=None, cache_bundles=False):
         pass
 
     def create_subproblem(self, b, *, w=None, x_bar=None, rho=None, cached=False):

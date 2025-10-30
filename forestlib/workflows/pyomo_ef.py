@@ -17,6 +17,6 @@ def initialize_EF(sp, model, solution, resolve=True):
     return model
 
 
-def create_and_initialize_EF(sp, solution, resolve=True):
-    M = sp.create_EF(cache_bundles=False)
+def create_and_initialize_EF(sp, solution, model_fidelities=None, resolve=True):
+    M = sp.create_EF(cache_bundles=False, model_fidelities=model_fidelities)
     return initialize_EF(sp, M, solution, resolve=resolve)
