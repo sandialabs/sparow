@@ -1,4 +1,5 @@
 import pytest
+import pyomo.environ as pyo
 
 from forestlib.sp.examples import (
     LF_newsvendor,
@@ -30,6 +31,22 @@ class TestEFNewsvendor:
         assert obj_val == pytest.approx(76.5)
         x = soln["variables"][0]["value"]
         assert x == pytest.approx(60.0)
+
+    def test_simple_return_EF(self, mip_solver):
+        sp = simple_newsvendor()
+        solver = ExtensiveFormSolver()
+        solver.set_options(solver=mip_solver)
+        results = solver.solve_and_return_EF(sp)
+        results_dict = results.solutions.to_dict()
+        soln = next(iter(results_dict[None]["solutions"].values()))
+
+        obj_val = soln["objectives"][0]["value"]
+        assert obj_val == pytest.approx(76.5)
+        x = soln["variables"][0]["value"]
+        assert x == pytest.approx(60.0)
+
+        assert obj_val == pytest.approx(pyo.value(results.model.obj))
+        assert x == pytest.approx(pyo.value(results.model.rootx[0]))
 
     def test_LF(self, mip_solver):
         sp = LF_newsvendor()
