@@ -58,8 +58,8 @@ class ExtensiveFormSolver(object):
         b = next(iter(sp.bundles))
         M = sp.create_subproblem(b)
         if logger.isEnabledFor(logging.DEBUG):
+            # Print extensive form model
             M.pprint()
-            M.display()
             sys.stdout.flush()
 
         toc("Created extensive form", logger=logger, level=logging.VERBOSE)

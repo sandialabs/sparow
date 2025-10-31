@@ -9,10 +9,10 @@ model_data = {
     "LF": {
         "scenarios": [
             {"ID": "1", "d": 15, "Probability": 0.1},
-            {"ID": "2", "d": 60, "Probability": 0.3},
-            {"ID": "3", "d": 72, "Probability": 0.15},
-            {"ID": "4", "d": 78, "Probability": 0.25},
-            {"ID": "5", "d": 82, "Probability": 0.2},
+            {"ID": "2", "d": 60, "Probability": 0.2},
+            {"ID": "3", "d": 72, "Probability": 0.1},
+            {"ID": "4", "d": 78, "Probability": 0.3},
+            {"ID": "5", "d": 82, "Probability": 0.3},
         ]
     },
     "HF": {
@@ -106,4 +106,17 @@ def MFrandom_newsvendor():
         seed=1234567890,
         model_weight={"HF": 2.0, "LF": 1.0},
     )
+    return sp
+
+
+def MFpaired_newsvendor():
+    sp = stochastic_program(first_stage_variables=["x"])
+    sp.initialize_application(app_data=app_data)
+    sp.initialize_model(
+        name="HF", model_data=model_data["HF"], model_builder=HF_builder
+    )
+    sp.initialize_model(
+        name="LF", model_data=model_data["LF"], model_builder=LF_builder, default=False
+    )
+    sp.initialize_bundles(scheme="mf_paired")
     return sp

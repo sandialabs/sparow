@@ -1,14 +1,16 @@
 import pytest
 import pyomo.environ as pyo
+
 from forestlib.solnpool import PoolManager
 from forestlib.sp import stochastic_program
+from forestlib.sp.examples import AMPL_facilityloc
 from forestlib.ef import ExtensiveFormSolver
 
 import pyomo.opt
 from pyomo.common import unittest
 
 solvers = set(pyomo.opt.check_available_solvers("glpk", "gurobi"))
-solvers = ["glpk"] if "glpk" in solvers else ["gurobi"]
+# solvers = ["glpk"] if "glpk" in solvers else ["gurobi"]
 
 
 """
@@ -20,7 +22,7 @@ Note that this test just ensures our extensive form solution matches AMPL's!! It
 @unittest.pytest.mark.parametrize("mip_solver", solvers)
 class TestFacilityLoc:
 
-    def test_facilityloc(self, mip_solver):
+    def test_facilityloc_old(self, mip_solver):
         app_data = {"n": 3, "t": 4}  # number of facilities & customers
         app_data["f"] = [400000, 200000, 600000]  # fixed costs for opening facilities
         app_data["c"] = [
@@ -135,5 +137,14 @@ class TestFacilityLoc:
 
         assert obj_val == pytest.approx(16758018.59625)
 
+    def test_facilityloc(self, mip_solver):
+        sp = AMPL_facilityloc()
+        solver = ExtensiveFormSolver()
+        solver.set_options(solver=mip_solver)
+        pool_manager = PoolManager()
+        pool_manager.reset_solution_counter()
+        results = solver.solve(sp)
+        results_dict = results.to_dict()
+        obj_val = results_dict[None]["solutions"][0]["objectives"][0]["value"]
 
-### TODO: suppress warning
+        assert obj_val == pytest.approx(16758018.59625)

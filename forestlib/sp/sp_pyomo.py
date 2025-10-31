@@ -142,7 +142,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
 
             # Return the value of the 'first' objective
 
-            if self.solver == 'ipopt':
+            if self.solver == "ipopt":
                 return munch.Munch(
                     obj_value=pyo.value(M.obj),
                     termination_condition=results.solver.termination_condition,
