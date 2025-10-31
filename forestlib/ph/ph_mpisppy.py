@@ -422,6 +422,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         if logger.isEnabledFor(logging.VERBOSE):
             options["verbose"] = True
         options["xhatxbar"] = True
+        options["num_scens"] = len(sp.bundles)
 
         results = mpisppy_main(sp, options, self.mpisppy_options)
 
