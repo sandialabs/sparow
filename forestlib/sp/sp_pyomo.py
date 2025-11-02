@@ -155,6 +155,29 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
                     status=results.solver.status,
                 )
 
+    def create_EF(self, model_fidelities=None, cache_bundles=False):
+        if cache_bundles:
+            _int_toFirstStageVar = self.int_to_FirstStageVar
+            _model_cache = self._model_cache
+            _bundles = self.bundles
+
+        if model_fidelities is None:
+            self.initialize_bundles(scheme="single_bundle")
+        else:
+            self.initialize_bundles(scheme="single_bundle", models=model_fidelities)
+        assert (
+            len(self.bundles) == 1
+        ), f"The extensive form should only have one bundle: {len(self.bundles)}"
+
+        b = next(iter(self.bundles))
+        M = self.create_subproblem(b)
+
+        if cache_bundles:
+            self.int_to_FirstStageVar = _int_toFirstStageVar
+            self._model_cache = _model_cache
+            self.bundles = _bundles
+        return M
+
 
 class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
@@ -273,7 +296,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
         return self.int_to_ObjectiveCoef[v]
 
-    def create_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
+    def create_bundle_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
         scenarios = self.bundles[b].scenarios
         if cached and b in self._model_cache:
             M = self._model_cache[b]

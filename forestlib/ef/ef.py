@@ -31,7 +31,7 @@ class ExtensiveFormSolver(object):
                 forestlib.logs.use_debugging_formatter()
             logger.setLevel(loglevel)
 
-    def solve(self, sp, **options):
+    def solve_and_return_EF(self, sp, **options):
         start_time = datetime.datetime.now()
         if len(options) > 0:
             self.set_options(**options)
@@ -50,13 +50,7 @@ class ExtensiveFormSolver(object):
                 print(f"    {k}= {v}")
         tic(None)
 
-        sp.initialize_bundles(scheme="single_bundle")
-        assert (
-            len(sp.bundles) == 1
-        ), f"The extensive form should only have one bundle: {len(sp.bundles)}"
-
-        b = next(iter(sp.bundles))
-        M = sp.create_subproblem(b)
+        M = sp.create_EF()
         if logger.isEnabledFor(logging.DEBUG):
             # Print extensive form model
             M.pprint()
@@ -94,4 +88,7 @@ class ExtensiveFormSolver(object):
         logger.info("-" * 70)
         logger.info("ExtensiveFormSolver - STOP")
 
-        return solutions
+        return munch.Munch(solutions=solutions, model=M)
+
+    def solve(self, sp, **options):
+        return self.solve_and_return_EF(sp, **options).solutions
