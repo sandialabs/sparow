@@ -409,7 +409,7 @@ class PoolManager:
 
     @property
     def solutions(self):
-        return self.pool.solutions.values()
+        return self.pool.solutions
 
     @property
     def last_solution(self):

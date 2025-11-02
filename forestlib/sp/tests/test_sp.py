@@ -35,7 +35,7 @@ def sp2():
     return sp
 
 
-class TestPHPyomo(object):
+class TestSP(object):
 
     def test_simple1(self, sp1):
         M = sp1.create_subproblem("1")

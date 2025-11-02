@@ -205,9 +205,10 @@ class ProgressiveHedgingSolver(object):
         # Step 3
         xbar = {}
         for x in sfs_variables:
-            xbar[x] = 0.0
-            for b in sp.bundles:
-                xbar[x] += sp.bundles[b].probability * sp.get_variable_value(b, x)
+            xbar[x] = sum(
+                sp.bundles[b].probability * sp.get_variable_value(b, x)
+                for b in sp.bundles
+            )
         self.update_rho(sfs_variables, xbar, sp)
 
         # Step 4
@@ -281,13 +282,16 @@ class ProgressiveHedgingSolver(object):
             # Step 7
             xbar = {}
             for x in sfs_variables:
-                xbar[x] = 0.0
+                xbar[x] = sum(
+                    sp.bundles[b].probability * sp.get_variable_value(b, x)
+                    for b in sp.bundles
+                )
                 for b in sp.bundles:
                     logger.debug(
                         f"Variable: {x} {b} {sp.get_variable_name(x)} {sp.get_variable_value(b, x)}"
                     )
-                    xbar[x] += sp.bundles[b].probability * sp.get_variable_value(b, x)
             logger.debug(f"xbar = {xbar}")
+
             self.update_rho(sfs_variables, xbar, sp)
             logger.debug(f"rho = {self.rho}")
 
@@ -302,16 +306,29 @@ class ProgressiveHedgingSolver(object):
                 logger.debug(f"w[{b}] = {w[b]}")
 
             # Step 9
-            g = 0.0
-            for b in sp.bundles:
-                g += sp.bundles[b].probability * norm(
+            #
+            # NOTE: Should we use xbar_prev instead of xbar to compute 'g'?  If you use xbar, then
+            #       all subproblems could have the same value, but in the *next* iteration they
+            #       subproblems could have different values.  We need to assess the difference
+            #       between the xbar that generated the current values.
+            #
+            g = sum(
+                sp.bundles[b].probability
+                * norm(
                     [sp.get_variable_value(b, x) - xbar[x] for x in sfs_variables],
                     self.convergence_norm,
                 )
+                for b in sp.bundles
+            )
             if self.normalize_convergence_norm:
                 g /= len(sfs_variables)
             logger.info(f"g = {g}")
-            G = norm([xbar[x] - xbar_prev[x] for x in sfs_variables], self.convergence_norm)/len(sfs_variables)
+
+            G = norm(
+                [xbar[x] - xbar_prev[x] for x in sfs_variables], self.convergence_norm
+            )
+            if self.normalize_convergence_norm:
+                G /= len(sfs_variables)
             logger.info(f"G = {G}")
 
             # Step 9.1
@@ -333,12 +350,12 @@ class ProgressiveHedgingSolver(object):
                 rho=self.rho,
                 g=g,
                 G=G,
-                w=w
+                w=w,
             )
 
             # Step 10
-            if g < self.convergence_tolerance:
-                termination_condition = f"Termination: convergence tolerance ({g} < {self.convergence_tolerance})"
+            if G + g < self.convergence_tolerance:
+                termination_condition = f"Termination: convergence tolerance ({G} + {g} < {self.convergence_tolerance})"
                 logger.info(termination_condition)
                 break
 
@@ -394,7 +411,10 @@ class ProgressiveHedgingSolver(object):
         logger.info(f"time_last_iter:   {kwds['time_last_iter']}")
         if logger.isEnabledFor(logging.VERBOSE):
             tmp = kwds["w"]
-            tmp = {k:statistics.mean(abs(val) for val in v.values()) for k,v in tmp.items()}
+            tmp = {
+                k: statistics.mean(abs(val) for val in v.values())
+                for k, v in tmp.items()
+            }
             if len(tmp) > 10:
                 _vals = list(tmp.values())
                 logger.verbose(f"w_min:            {min(_vals)}")
@@ -410,7 +430,7 @@ class ProgressiveHedgingSolver(object):
                 logger.verbose(f"xbar_mean_abs:    {statistics.mean(_vals)}")
                 logger.verbose(f"xbar_max_abs:     {max(_vals)}")
             else:
-                tmp = {k:v for k,v in tmp.items() if v != 0}
+                tmp = {k: v for k, v in tmp.items() if v != 0}
                 logger.verbose(f"xbar_abs:         {tmp}")
 
             tmp = kwds["rho"]
