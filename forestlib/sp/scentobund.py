@@ -782,7 +782,6 @@ def mf_random(data, model_weight, models, bundle_args=None):
 """
 
 
-### TODO: add output message (not warning) for this scheme -R
 def single_scenario(data, model_weight=None, models=None, bundle_args=None):
     """
     Each scenario is its own bundle (i.e., no bundling)
@@ -829,10 +828,7 @@ def single_bundle(data, model_weight=None, models=None, bundle_args=None):
     """
     Combine scenarios from the specified models into a single bundle (i.e., the subproblem is the master problem).
     """
-    if model_weight:
-        warnings.warn(
-            "Single fidelity schemes do not utilize model_weight", UserWarning
-        )
+    print(f"Using single_bundle scheme (extensive form solve).")
 
     if models is None:
         models = list(data.keys())

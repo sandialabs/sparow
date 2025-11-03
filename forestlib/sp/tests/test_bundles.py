@@ -251,7 +251,7 @@ class TestBundleFunctions(object):
         with pytest.warns(
             UserWarning, match="Single fidelity schemes do not utilize model_weight"
         ) as warninfo:
-            single_bundle(rand_data, model_weight={"HF": 2, "LF": 1})
+            kmeans_similar(rand_data, model_weight={"HF": 2, "LF": 1})
         assert (
             warninfo[0].message.args[0]
             == "Single fidelity schemes do not utilize model_weight"
