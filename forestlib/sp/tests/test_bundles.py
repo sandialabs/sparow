@@ -277,6 +277,25 @@ class TestBundleFunctions(object):
                 "Probability": 0.25,
             },
         }
+        assert mf_kmeans_similar(similar_scenarios, model_weight={"HF": 2, "LF": 1}) == {
+            "bundle_4.0": {
+                "scenarios": {("HF", "scen_0"): 0.6666666666666666, ("LF", "scen_7"): 0.3333333333333333},
+                "Probability": 0.2,
+            },
+            "bundle_1.0": {
+                "scenarios": {("HF", "scen_1"): 0.5714285714285714, ("LF", "scen_6"): 0.42857142857142855},
+                "Probability": 0.2333333333333333333,
+            },
+            "bundle_2.0": {
+                "scenarios": {("HF", "scen_2"): 0.6666666666666666, ("LF", "scen_5"): 0.3333333333333333},
+                "Probability": 0.3,
+            },
+            "bundle_5.0": {
+                "scenarios": {("HF", "scen_3"): 0.7499999999999999, ("LF", "scen_4"): 0.25},
+                "Probability": 0.26666666666666666,
+            },
+        }
+
 
     def test_mf_kmeans_dissimilar(self, similar_scenarios):
         assert mf_kmeans_dissimilar(similar_scenarios) == {
@@ -299,6 +318,28 @@ class TestBundleFunctions(object):
                 "Probability": 0.44999999999999996,
             },
         }
+
+        assert mf_kmeans_dissimilar(similar_scenarios, model_weight={"HF": 2, "LF": 1}) == {
+            "bundle_4.0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.2},
+            "bundle_1.0": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.5,
+                    ("LF", "scen_7"): 0.25,
+                    ("LF", "scen_4"): 0.25,
+                },
+                "Probability": 0.2,
+            },
+            "bundle_2.0": {"scenarios": {("HF", "scen_2"): 1.0}, "Probability": 0.3},
+            "bundle_5.0": {
+                "scenarios": {
+                    ("HF", "scen_3"): 0.5,
+                    ("LF", "scen_6"): 0.25,
+                    ("LF", "scen_5"): 0.25,
+                },
+                "Probability": 0.3,
+            },
+        }
+
 
     def test_similar_partitions(self, MF_data):
         assert similar_partitions(
