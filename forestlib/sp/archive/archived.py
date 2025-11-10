@@ -1,7 +1,6 @@
-'''
-    Code that's been archived
-'''
-
+"""
+Code that's been archived
+"""
 
 ### ARCHIVED FROM sp_pyomo.py
 """ class StochasticProgram_Pyomo_MultistageBuilder(StochasticProgram_Pyomo_Base):

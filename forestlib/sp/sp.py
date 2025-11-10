@@ -119,10 +119,13 @@ class StochasticProgram(object):
     def solve(self, M, *, solver_options=None):
         pass
 
-    def create_subproblem(self, b, *, w=None, x_bar=None, rho=None, cached=False):
-        return self.create_EF(b=b, w=w, x_bar=x_bar, rho=rho, cached=cached)
+    def create_EF(self, model_fidelities=None, cache_bundles=False):
+        pass
 
-    def create_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
+    def create_subproblem(self, b, *, w=None, x_bar=None, rho=None, cached=False):
+        return self.create_bundle_EF(b=b, w=w, x_bar=x_bar, rho=rho, cached=cached)
+
+    def create_bundle_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
         pass
 
     def evaluate(self, x, solver_options=None, cached=False):
