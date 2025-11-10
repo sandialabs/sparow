@@ -7,9 +7,13 @@ import math
 import logging
 import datetime
 
-import snoglode as sno
-from snoglode.utils.solve_stats import OneUpperBoundSolve
-import snoglode.utils.compute as compute
+try:
+    import snoglode as sno
+    from snoglode.utils.solve_stats import OneUpperBoundSolve
+    import snoglode.utils.compute as compute
+    snoglode_available=True
+except:
+    snoglode_available=False
 
 import pyomo.environ as pyo
 from pyomo.contrib.alternative_solutions.aos_utils import get_active_objective
@@ -42,7 +46,17 @@ import forestlib.logs
 logger = forestlib.logs.logger
 
 
-class CustomCandidateGenerator(sno.AbstractCandidateGenerator):
+if snoglode_available:
+    AbstractCandidateGenerator=sno.AbstractCandidateGenerator
+    Subproblems = sno.Subproblems
+    Node = sno.Node
+else:
+    class AbstractCandidateGenerator:
+        pass
+    Subproblems = None
+    Node = None
+
+class CustomCandidateGenerator(AbstractCandidateGenerator):
     """
     Here, we want to just mimic the logic of the sno.AverageLowerBoundSolution
     candidate generator, with an extra step of saving candidate solutions
@@ -53,7 +67,7 @@ class CustomCandidateGenerator(sno.AbstractCandidateGenerator):
     any solution is; this is for demonstrative purposes.
     """
 
-    def __init__(self, solver, subproblems: sno.Subproblems, time_ub: int) -> None:
+    def __init__(self, solver, subproblems: Subproblems, time_ub: int) -> None:
 
         super().__init__(solver=solver, subproblems=subproblems, time_ub=time_ub)
 
@@ -142,7 +156,7 @@ class CustomCandidateGenerator(sno.AbstractCandidateGenerator):
             return False, None
 
     def generate_candidate(
-        self, node: sno.Node, subproblems: sno.Subproblems
+        self, node: Node, subproblems: Subproblems
     ) -> Tuple[bool, dict, float]:
         """
         This method should return a boolean (candidate_found) to indicate
