@@ -7,6 +7,9 @@ from sklearn.cluster import KMeans
 import numpy as np
 import numbers
 import warnings
+import forestlib.logs
+
+logger = forestlib.logs.logger
 
 """
 * specify which bundling scheme (function) is used via "bundle_scheme" in sp.py
@@ -828,7 +831,7 @@ def single_bundle(data, model_weight=None, models=None, bundle_args=None):
     """
     Combine scenarios from the specified models into a single bundle (i.e., the subproblem is the master problem).
     """
-    print(f"Using single_bundle scheme (extensive form solve).")
+    logger.info("Using single_bundle scheme (extensive form solve).")
 
     if models is None:
         models = list(data.keys())
