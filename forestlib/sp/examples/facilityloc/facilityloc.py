@@ -210,7 +210,7 @@ def AMPL_facilityloc():
     sp.initialize_model(
         name="HF", model_data=model_data["LF"], model_builder=HF_builder
     )
-    return Munch(sp=sp)
+    return Munch(sp=sp, objective_value=16758018.59625)
 
 
 def HF_facilityloc():

@@ -53,4 +53,9 @@ def simple_newsvendor():
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(model_data=model_data, model_builder=builder)
-    return Munch(sp=sp)
+    return Munch(
+        sp=sp,
+        objective_value=76.5,
+        unique_solution=True,
+        solution_values={"x": 60.0, "s[None,1].x": 15.0, "s[None,2].x": 60.0},
+    )

@@ -10,7 +10,6 @@ import pyomo.opt
 from pyomo.common import unittest
 
 solvers = set(pyomo.opt.check_available_solvers("glpk", "gurobi"))
-# solvers = ["glpk"] if "glpk" in solvers else ["gurobi"]
 
 
 """
@@ -147,4 +146,4 @@ class TestFacilityLoc:
         results_dict = results.to_dict()
         obj_val = results_dict[None]["solutions"][0]["objectives"][0]["value"]
 
-        assert obj_val == pytest.approx(16758018.59625)
+        assert obj_val == pytest.approx(app.objective_value)
