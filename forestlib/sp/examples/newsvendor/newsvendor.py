@@ -7,6 +7,7 @@
 # https://www.epoc.org.nz/papers/ShapiroTutorialSP.pdf
 #
 
+from munch import Munch
 import pyomo.environ as pyo
 from forestlib.sp import stochastic_program
 
@@ -52,4 +53,4 @@ def simple_newsvendor():
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(model_data=model_data, model_builder=builder)
-    return sp
+    return Munch(sp=sp)

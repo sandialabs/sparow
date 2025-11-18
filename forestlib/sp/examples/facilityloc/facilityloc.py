@@ -1,7 +1,8 @@
-import pyomo.environ as pyo
 import itertools
 import math
 import random
+from munch import Munch
+import pyomo.environ as pyo
 from forestlib.sp import stochastic_program
 
 """
@@ -209,7 +210,7 @@ def AMPL_facilityloc():
     sp.initialize_model(
         name="HF", model_data=model_data["LF"], model_builder=HF_builder
     )
-    return sp
+    return Munch(sp=sp)
 
 
 def HF_facilityloc():
@@ -218,7 +219,7 @@ def HF_facilityloc():
     sp.initialize_model(
         name="HF", model_data=model_data["HF"], model_builder=HF_builder
     )
-    return sp
+    return Munch(sp=sp)
 
 
 def LF_facilityloc():
@@ -227,7 +228,7 @@ def LF_facilityloc():
     sp.initialize_model(
         name="LF", model_data=model_data["LF"], model_builder=LF_builder
     )
-    return sp
+    return Munch(sp=sp)
 
 
 def MFrandom_facilityloc():
@@ -244,4 +245,4 @@ def MFrandom_facilityloc():
         LF=2,
         seed=1234567890,
     )
-    return sp
+    return Munch(sp=sp)

@@ -138,12 +138,12 @@ class TestFacilityLoc:
         assert obj_val == pytest.approx(16758018.59625)
 
     def test_facilityloc(self, mip_solver):
-        sp = AMPL_facilityloc()
+        app = AMPL_facilityloc()
         solver = ExtensiveFormSolver()
         solver.set_options(solver=mip_solver)
         pool_manager = PoolManager()
         pool_manager.reset_solution_counter()
-        results = solver.solve(sp)
+        results = solver.solve(app.sp)
         results_dict = results.to_dict()
         obj_val = results_dict[None]["solutions"][0]["objectives"][0]["value"]
 

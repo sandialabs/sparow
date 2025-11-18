@@ -18,7 +18,8 @@ solvers = ["glpk"] if "glpk" in solvers else ["gurobi"]
 
 @unittest.pytest.mark.parametrize("mip_solver", solvers)
 def test_sp_simple_newsvendor(mip_solver):
-    sp = simple_newsvendor()
+    app = simple_newsvendor()
+    sp = app.sp
 
     assert sp.get_objective_coef(0) == 0
 
@@ -56,7 +57,8 @@ class TestMFNewsVendor:
 
 @unittest.pytest.mark.parametrize("mip_solver", solvers)
 def test_sp_LF_newsvendor(mip_solver):
-    sp = LF_newsvendor()
+    app = LF_newsvendor()
+    sp = app.sp
 
     assert set(sp.bundles.keys()) == {"LF_1", "LF_2", "LF_3", "LF_4", "LF_5"}
     assert sp.bundles["LF_1"].probability == 0.1
@@ -84,7 +86,8 @@ def test_sp_LF_newsvendor(mip_solver):
 
 @unittest.pytest.mark.parametrize("mip_solver", solvers)
 def test_sp_HF_newsvendor(mip_solver):
-    sp = HF_newsvendor()
+    app = HF_newsvendor()
+    sp = app.sp
 
     assert set(sp.bundles.keys()) == {"HF_1", "HF_2", "HF_3", "HF_4", "HF_5"}
     assert sp.bundles["HF_1"].probability == 0.05
@@ -112,7 +115,8 @@ def test_sp_HF_newsvendor(mip_solver):
 
 @unittest.pytest.mark.parametrize("mip_solver", solvers)
 def test_MFpaired(mip_solver):
-    sp = MFpaired_newsvendor()
+    app = MFpaired_newsvendor()
+    sp = app.sp
 
     assert set(sp.bundles.keys()) == {"1", "2", "3", "4", "5"}
     assert sp.bundles["1"].probability == 0.2
@@ -152,7 +156,8 @@ def test_MFpaired(mip_solver):
 
 @unittest.pytest.mark.parametrize("mip_solver", solvers)
 def test_MFrandom(mip_solver):
-    sp = MFrandom_newsvendor()
+    app = MFrandom_newsvendor()
+    sp = app.sp
 
     assert sp.get_bundles() == {
         "HF_1": {
