@@ -183,6 +183,40 @@ def check_data_dict_keys(data, model0, bundle_args):
 ******************* MULTI-FIDELITY SCHEMES *******************
 """
 
+def mf_bundle_from_list(data, model_weight=None, models=None, bundle_args=None):
+    """
+    Assumes user will pass in a list of lists to bundle_args with key "bundles"
+
+    bundle_args["bundles"] = [[(HF, scen_1), (LF, scen_3)], [(HF, scen_0), (LF, scen_2)]]
+    """
+
+    if "bundles" not in bundle_args:
+        raise RuntimeError(f"mf_bundle_from_list scheme requires 'bundles' key")
+    
+    if models is None:
+        models = list(data.keys())
+    assert (
+        len(models) > 1
+    ), "Expecting multiple models for mf_bundle_from_list; see bundle_from_list for equivalent single fidelity scheme"
+    
+    model0 = models[0]  # the first model in models is assumed to be the HF model
+    pkey = check_data_dict_keys(data, model0, bundle_args)[1]
+
+    bundle = {}
+    for bundle_list_idx, bundle_list in enumerate(bundle_args["bundles"]):
+        bundle[f"bundle_{bundle_list_idx}"] = dict(
+            scenarios={bundle_list[b_tuple_idx]: data[f"{b_tuple[0]}"][f"{b_tuple[1]}"][pkey] for b_tuple_idx, b_tuple in enumerate(bundle_list)},
+            Probability=sum(data[f"{b_tuple[0]}"][f"{b_tuple[1]}"][pkey] for b_tuple in bundle_list) / len(data.keys()),
+        )
+
+    # normalize scenario probabilities within bundles
+    for b_key in bundle.keys():
+        norm_factor = sum(bundle[b_key]["scenarios"].values())
+        for s_key in bundle[b_key]["scenarios"]:
+            bundle[b_key]["scenarios"][s_key] *= ( 1 / norm_factor )
+
+    return bundle
+
 
 def mf_kmeans_similar(data, model_weight=None, models=None, bundle_args=None):
     """
@@ -1152,6 +1186,7 @@ scheme = {
     "kmeans_dissimilar": kmeans_dissimilar,
     "mf_kmeans_dissimilar": mf_kmeans_dissimilar,
     "mf_kmeans_similar": mf_kmeans_similar,
+    "mf_bundle_from_list": mf_bundle_from_list,
 }
 
 

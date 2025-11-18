@@ -14,6 +14,7 @@ from forestlib.sp.scentobund import (
     kmeans_similar,
     kmeans_dissimilar,
     check_data_dict_keys,
+    mf_bundle_from_list,
 )
 
 
@@ -258,6 +259,35 @@ class TestBundleFunctions(object):
         )
         assert warninfo[0].category == UserWarning
 
+    def test_mf_bundle_from_list(self, probable_key_names):
+        ## TODO: assert that empty bundle_args throws error
+        assert mf_bundle_from_list(
+            probable_key_names,
+            bundle_args={
+                "bundles": [
+                    [("HF", "s_1"), ("LF", "s_2"), ("LF", "s_3")],
+                    [("HF", "s_0"), ("LF", "s_4")],
+                ],
+                #"probability_key": "Pr"
+            },
+        ) == {
+            "bundle_0": {
+                "scenarios": {
+                    ("HF", "s_1"): 0.3846153846153846,
+                    ("LF", "s_2"): 0.15384615384615385,
+                    ("LF", "s_3"): 0.46153846153846145,
+                },
+                "Probability": 0.65,
+            },
+            "bundle_1": {
+                "scenarios": {
+                    ("HF", "s_0"): 0.7142857142857143,
+                    ("LF", "s_4"): 0.28571428571428575,
+                },
+                "Probability": 0.35,
+            },
+        }
+
     def test_mf_kmeans_similar(self, similar_scenarios):
         assert mf_kmeans_similar(similar_scenarios) == {
             "bundle_4.0": {
@@ -277,25 +307,38 @@ class TestBundleFunctions(object):
                 "Probability": 0.25,
             },
         }
-        assert mf_kmeans_similar(similar_scenarios, model_weight={"HF": 2, "LF": 1}) == {
+        assert mf_kmeans_similar(
+            similar_scenarios, model_weight={"HF": 2, "LF": 1}
+        ) == {
             "bundle_4.0": {
-                "scenarios": {("HF", "scen_0"): 0.6666666666666666, ("LF", "scen_7"): 0.3333333333333333},
+                "scenarios": {
+                    ("HF", "scen_0"): 0.6666666666666666,
+                    ("LF", "scen_7"): 0.3333333333333333,
+                },
                 "Probability": 0.2,
             },
             "bundle_1.0": {
-                "scenarios": {("HF", "scen_1"): 0.5714285714285714, ("LF", "scen_6"): 0.42857142857142855},
+                "scenarios": {
+                    ("HF", "scen_1"): 0.5714285714285714,
+                    ("LF", "scen_6"): 0.42857142857142855,
+                },
                 "Probability": 0.2333333333333333333,
             },
             "bundle_2.0": {
-                "scenarios": {("HF", "scen_2"): 0.6666666666666666, ("LF", "scen_5"): 0.3333333333333333},
+                "scenarios": {
+                    ("HF", "scen_2"): 0.6666666666666666,
+                    ("LF", "scen_5"): 0.3333333333333333,
+                },
                 "Probability": 0.3,
             },
             "bundle_5.0": {
-                "scenarios": {("HF", "scen_3"): 0.7499999999999999, ("LF", "scen_4"): 0.25},
+                "scenarios": {
+                    ("HF", "scen_3"): 0.7499999999999999,
+                    ("LF", "scen_4"): 0.25,
+                },
                 "Probability": 0.26666666666666666,
             },
         }
-
 
     def test_mf_kmeans_dissimilar(self, similar_scenarios):
         assert mf_kmeans_dissimilar(similar_scenarios) == {
@@ -319,7 +362,9 @@ class TestBundleFunctions(object):
             },
         }
 
-        assert mf_kmeans_dissimilar(similar_scenarios, model_weight={"HF": 2, "LF": 1}) == {
+        assert mf_kmeans_dissimilar(
+            similar_scenarios, model_weight={"HF": 2, "LF": 1}
+        ) == {
             "bundle_4.0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.2},
             "bundle_1.0": {
                 "scenarios": {
@@ -339,7 +384,6 @@ class TestBundleFunctions(object):
                 "Probability": 0.3,
             },
         }
-
 
     def test_similar_partitions(self, MF_data):
         assert similar_partitions(
