@@ -185,12 +185,16 @@ def check_data_dict_keys(data, model0, bundle_args):
 
 def mf_bundle_from_list(data, model_weight=None, models=None, bundle_args=None):
     """
-    Assumes user will pass in a list of lists to bundle_args with key "bundles"
-
-    bundle_args["bundles"] = [[(HF, scen_1), (LF, scen_3)], [(HF, scen_0), (LF, scen_2)]]
+    This scheme accepts a list of lists provided by the user, where each inner list is a bundle.
+    Assumes user will pass in the list of lists to bundle_args with key "bundles",
+        e.g., bundle_args["bundles"] = [[(HF, scen_1), (LF, scen_3)], [(HF, scen_0), (LF, scen_2)]].
+    This scheme is well-suited for users who wish to specify their own bundles.
     """
-
-    if "bundles" not in bundle_args:
+    if bundle_args:
+        list_of_bundles = bundle_args.get("bundles")
+    else:
+        list_of_bundles = None
+    if list_of_bundles is None or len(list_of_bundles)==0:
         raise RuntimeError(f"mf_bundle_from_list scheme requires 'bundles' key")
     
     if models is None:
@@ -203,7 +207,7 @@ def mf_bundle_from_list(data, model_weight=None, models=None, bundle_args=None):
     pkey = check_data_dict_keys(data, model0, bundle_args)[1]
 
     bundle = {}
-    for bundle_list_idx, bundle_list in enumerate(bundle_args["bundles"]):
+    for bundle_list_idx, bundle_list in enumerate(list_of_bundles):
         bundle[f"bundle_{bundle_list_idx}"] = dict(
             scenarios={bundle_list[b_tuple_idx]: data[f"{b_tuple[0]}"][f"{b_tuple[1]}"][pkey] for b_tuple_idx, b_tuple in enumerate(bundle_list)},
             Probability=sum(data[f"{b_tuple[0]}"][f"{b_tuple[1]}"][pkey] for b_tuple in bundle_list) / len(data.keys()),
@@ -903,6 +907,57 @@ def single_bundle(data, model_weight=None, models=None, bundle_args=None):
     return bundle
 
 
+def bundle_from_list(data, model_weight=None, models=None, bundle_args=None):
+    """
+    This scheme accepts a list of lists provided by the user, where each inner list is a bundle.
+    Assumes user will pass in the list of lists to bundle_args with key "bundles",
+        e.g., bundle_args["bundles"] = [[("HF", "scen_1"), ("HF", "scen_3")], [("HF", "scen_0"), ("HF", "scen_2")]], OR
+              bunlde_args["bundles"] = [["scen_1", "scen_3"], ["scen_0", "scen_2"]] (if scenario names are unique).
+    This scheme is well-suited for users who wish to specify their own bundles.
+    """
+
+    if bundle_args:
+        list_of_bundles = bundle_args.get("bundles")
+    else:
+        list_of_bundles = None
+    if list_of_bundles is None or len(list_of_bundles)==0:
+        raise RuntimeError(f"bundle_from_list scheme requires 'bundles' key")
+        
+    if models is None:
+        models = list(data.keys())
+    
+    model0 = models[0]  # the first model in models is assumed to be the HF model
+    pkey = check_data_dict_keys(data, model0, bundle_args)[1]
+
+    tuple_type = True
+    string_type = True
+    # checks if user specified tuples or scenario string names:
+    for bundle_list in list_of_bundles:
+        if all(isinstance(scen, tuple) for scen in bundle_list) and tuple_type:
+            string_type = False
+        elif all(isinstance(scen, str) for scen in bundle_list) and string_type:
+            tuple_type = False
+        else:
+            raise RuntimeError(f"User-specified bundle list contains inconsistent entries.")
+        
+    bundle = {}
+    if tuple_type:
+        for bundle_list_idx, bundle_list in enumerate(list_of_bundles):
+            bundle[f"bundle_{bundle_list_idx}"] = dict(
+                scenarios={bundle_list[b_tuple_idx]: data[f"{b_tuple[0]}"][f"{b_tuple[1]}"][pkey] for b_tuple_idx, b_tuple in enumerate(bundle_list)},
+                Probability=sum(data[f"{b_tuple[0]}"][f"{b_tuple[1]}"][pkey] for b_tuple in bundle_list),
+            )
+    else:
+        assert string_type == True, "Inner bundle lists must contain only strings or only tuples"
+        for bundle_list_idx, bundle_list in enumerate(list_of_bundles):
+            bundle[f"bundle_{bundle_list_idx}"] = dict(
+                scenarios={(model0, bundle_list[b_idx]): data[model0][f"{b}"][pkey] for b_idx, b in enumerate(bundle_list)},
+                Probability=sum(data[model0][f"{b}"][pkey] for b in bundle_list),
+            )
+
+    return bundle
+
+
 def kmeans_similar(data, model_weight=None, models=None, bundle_args=None):
     """
     Each scenario is paired by closest distance
@@ -1187,6 +1242,7 @@ scheme = {
     "mf_kmeans_dissimilar": mf_kmeans_dissimilar,
     "mf_kmeans_similar": mf_kmeans_similar,
     "mf_bundle_from_list": mf_bundle_from_list,
+    "bundle_from_list": bundle_from_list,
 }
 
 

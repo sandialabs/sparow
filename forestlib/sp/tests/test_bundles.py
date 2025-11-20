@@ -15,6 +15,7 @@ from forestlib.sp.scentobund import (
     kmeans_dissimilar,
     check_data_dict_keys,
     mf_bundle_from_list,
+    bundle_from_list,
 )
 
 
@@ -130,6 +131,19 @@ def weird_key_names():
             "s_2": {"weird_key_d": [4, 4], "weird_key_p": 0.2},
             "s_3": {"weird_key_d": [1.5, 1.5], "weird_key_p": 0.6},
             "s_4": {"weird_key_d": [5, 5], "weird_key_p": 0.2},
+        },
+    }
+
+## TODO: update tests with this dict -R
+@pytest.fixture
+def sf_scenarios():
+    return {
+        "only_model_fidelity": {
+            "s_1": {"demand": [3, 3], "probability": 0.25},
+            "s_0": {"demand": [1, 1], "probability": 0.25},
+            "s_2": {"demand": [4, 4], "probability": 0.1},
+            "s_3": {"demand": [1.5, 1.5], "probability": 0.3},
+            "s_4": {"demand": [5, 5], "probability": 0.1},
         },
     }
 
@@ -260,7 +274,10 @@ class TestBundleFunctions(object):
         assert warninfo[0].category == UserWarning
 
     def test_mf_bundle_from_list(self, probable_key_names):
-        ## TODO: assert that empty bundle_args throws error
+        with pytest.raises(RuntimeError) as excinfo:
+            mf_bundle_from_list(probable_key_names)
+        assert excinfo.type is RuntimeError
+
         assert mf_bundle_from_list(
             probable_key_names,
             bundle_args={
@@ -268,7 +285,6 @@ class TestBundleFunctions(object):
                     [("HF", "s_1"), ("LF", "s_2"), ("LF", "s_3")],
                     [("HF", "s_0"), ("LF", "s_4")],
                 ],
-                #"probability_key": "Pr"
             },
         ) == {
             "bundle_0": {
@@ -283,6 +299,60 @@ class TestBundleFunctions(object):
                 "scenarios": {
                     ("HF", "s_0"): 0.7142857142857143,
                     ("LF", "s_4"): 0.28571428571428575,
+                },
+                "Probability": 0.35,
+            },
+        }
+
+    def test_bundle_from_list(self, sf_scenarios):
+        with pytest.raises(RuntimeError) as excinfo:
+            bundle_from_list(sf_scenarios)
+        assert excinfo.type is RuntimeError
+
+        assert bundle_from_list(
+            sf_scenarios,
+            bundle_args={
+                "bundles": [
+                    [("only_model_fidelity", "s_1"), ("only_model_fidelity", "s_2"), ("only_model_fidelity", "s_3")],
+                    [("only_model_fidelity", "s_0"), ("only_model_fidelity", "s_4")],
+                ],
+            },
+        ) == {
+            "bundle_0": {
+                "scenarios": {
+                    ("only_model_fidelity", "s_1"): 0.25,
+                    ("only_model_fidelity", "s_2"): 0.1,
+                    ("only_model_fidelity", "s_3"): 0.3,
+                },
+                "Probability": 0.65,
+            },
+            "bundle_1": {
+                "scenarios": {
+                    ("only_model_fidelity", "s_0"): 0.25,
+                    ("only_model_fidelity", "s_4"): 0.1,
+                },
+                "Probability": 0.35,
+            },
+        }
+
+        assert bundle_from_list(
+            sf_scenarios,
+            bundle_args={
+                "bundles": [["s_1", "s_2", "s_3"], ["s_0", "s_4"]],
+            },
+        ) == {
+            "bundle_0": {
+                "scenarios": {
+                    ("only_model_fidelity", "s_1"): 0.25,
+                    ("only_model_fidelity", "s_2"): 0.1,
+                    ("only_model_fidelity", "s_3"): 0.3,
+                },
+                "Probability": 0.65,
+            },
+            "bundle_1": {
+                "scenarios": {
+                    ("only_model_fidelity", "s_0"): 0.25,
+                    ("only_model_fidelity", "s_4"): 0.1,
                 },
                 "Probability": 0.35,
             },
