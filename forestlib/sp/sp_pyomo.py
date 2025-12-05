@@ -150,7 +150,8 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
                 )
             else:
                 return munch.Munch(
-                    obj_value=list(results.Solution[0].Objective.values())[0]["Value"],
+                    obj_value=pyo.value(M.obj),
+                    #obj_value=list(results.Solution[0].Objective.values())[0]["Value"],
                     termination_condition=results.solver.termination_condition,
                     status=results.solver.status,
                 )

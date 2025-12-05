@@ -1,3 +1,4 @@
+from munch import Munch
 import pyomo.environ as pyo
 from forestlib.sp import stochastic_program
 
@@ -79,7 +80,12 @@ def HF_newsvendor():
     sp.initialize_model(
         name="HF", model_data=model_data["HF"], model_builder=HF_builder
     )
-    return sp
+    return Munch(
+        sp=sp,
+        objective_value=82.335,
+        unique_solution=True,
+        solution_values={"x": 54.0, "s[HF,'1'].x": 9.0, "s[HF,'2'].x": 40.0},
+    )
 
 
 def LF_newsvendor():
@@ -88,7 +94,12 @@ def LF_newsvendor():
     sp.initialize_model(
         name="LF", model_data=model_data["LF"], model_builder=LF_builder
     )
-    return sp
+    return Munch(
+        sp=sp,
+        objective_value=80.01,
+        unique_solution=True,
+        solution_values={"x": 72.0, "s[LF,'1'].x": 15.0, "s[LF,'2'].x": 60.0},
+    )
 
 
 def MFrandom_newsvendor():
@@ -106,7 +117,7 @@ def MFrandom_newsvendor():
         seed=1234567890,
         model_weight={"HF": 2.0, "LF": 1.0},
     )
-    return sp
+    return Munch(sp=sp, objective_value=81.3525, unique_solution=False)
 
 
 def MFpaired_newsvendor():
@@ -119,4 +130,12 @@ def MFpaired_newsvendor():
         name="LF", model_data=model_data["LF"], model_builder=LF_builder, default=False
     )
     sp.initialize_bundles(scheme="mf_paired")
-    return sp
+    return Munch(
+        sp=sp,
+        solution_values={
+            "s[HF,'2'].x": 60.0,
+            "s[LF,'2'].x": 60.0,
+            "s[HF,'2'].y": 78.0,
+            "s[LF,'2'].y": 60.0,
+        },
+    )

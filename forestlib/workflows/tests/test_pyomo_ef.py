@@ -14,11 +14,11 @@ solvers = set(pyomo.opt.check_available_solvers("gurobi"))
 
 @unittest.pytest.mark.parametrize("mip_solver", solvers)
 def test_initialize_EF(mip_solver):
-    sp = simple_newsvendor()
+    app = simple_newsvendor()
     solver = ProgressiveHedgingSolver()
     solver.set_options(solver=mip_solver)
     solver.set_options(max_iterations=5)
-    results = solver.solve(sp)
+    results = solver.solve(app.sp)
 
     # Double check that the solution value looks good
     results_dict = results.to_dict()
@@ -30,20 +30,20 @@ def test_initialize_EF(mip_solver):
     soln = next(iter(results.solutions))
 
     # Check that 'resolve=False' does not compute the objective
-    M = create_and_initialize_EF(sp, soln, resolve=False)
+    M = create_and_initialize_EF(app.sp, soln, resolve=False)
     assert pyo.value(M.obj, exception=False) is None
 
     # Check that 'resolve=True' computes the objective
-    M = create_and_initialize_EF(sp, soln, resolve=True)
+    M = create_and_initialize_EF(app.sp, soln, resolve=True)
     assert pyo.value(M.obj, exception=False) == pytest.approx(76.5, 0.01)
 
 
 @unittest.pytest.mark.parametrize("mip_solver", solvers)
 def test_initialize_MF_EF(mip_solver):
-    sp = MFpaired_newsvendor()
+    app = MFpaired_newsvendor()
     solver = ExtensiveFormSolver()
     solver.set_options(solver=mip_solver)
-    results = solver.solve(sp)
+    results = solver.solve(app.sp)
 
     # Double check that the solution value looks good
     results_dict = results.to_dict()
@@ -55,17 +55,17 @@ def test_initialize_MF_EF(mip_solver):
     soln = next(iter(results.solutions))
 
     # Create EF with LF scenarios
-    M = create_and_initialize_EF(sp, soln, model_fidelities=["LF"], resolve=True)
+    M = create_and_initialize_EF(app.sp, soln, model_fidelities=["LF"], resolve=True)
     assert pyo.value(M.obj, exception=False) == pytest.approx(80.25, 0.01)
 
     # Create EF with LF scenarios
-    M = create_and_initialize_EF(sp, soln, model_fidelities=["HF"], resolve=True)
+    M = create_and_initialize_EF(app.sp, soln, model_fidelities=["HF"], resolve=True)
     assert pyo.value(M.obj, exception=False) == pytest.approx(82.455, 0.01)
 
     # Create EF with LF and HF scenarios
-    M = create_and_initialize_EF(sp, soln, model_fidelities=["LF", "HF"], resolve=True)
+    M = create_and_initialize_EF(app.sp, soln, model_fidelities=["LF", "HF"], resolve=True)
     assert pyo.value(M.obj, exception=False) == pytest.approx(81.3525, 0.01)
 
     # Check EF with the unspecified scenarios, which pulls-in all model fidelities
-    M = create_and_initialize_EF(sp, soln, resolve=True)
+    M = create_and_initialize_EF(app.sp, soln, resolve=True)
     assert pyo.value(M.obj, exception=False) == pytest.approx(81.3525, 0.01)
