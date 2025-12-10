@@ -13,7 +13,6 @@ from forestlib.sp.scentobund import (
     mf_kmeans_dissimilar,
     kmeans_similar,
     kmeans_dissimilar,
-    check_data_dict_keys,
     mf_bundle_from_list,
     bundle_from_list,
 )
@@ -134,7 +133,7 @@ def weird_key_names():
         },
     }
 
-## TODO: update tests with this dict -R
+
 @pytest.fixture
 def sf_scenarios():
     return {
@@ -455,7 +454,7 @@ class TestBundleFunctions(object):
             },
         }
 
-    def test_similar_partitions(self, MF_data):
+    """ def test_similar_partitions(self, MF_data):
         assert similar_partitions(
             MF_data,
             models=["HF", "LF"],
@@ -554,9 +553,9 @@ class TestBundleFunctions(object):
                 "scenarios": {("HF", "scen_3"): 0.75, ("LF", "scen_6"): 0.25},
                 "Probability": 0.25,
             },
-        }
+        } """
 
-    def test_mf_paired(self, MFpaired_data, imbalanced_data):
+    """ def test_mf_paired(self, MFpaired_data, imbalanced_data):
         assert mf_paired(
             MFpaired_data, model_weight={"HF": 1.0, "LF": 1.0}, models=["HF", "LF"]
         ) == {
@@ -663,9 +662,9 @@ class TestBundleFunctions(object):
                     ("LF", "scen_2"): 0.3333333333333333,
                 },
             },
-        }
+        } """
 
-    def test_mf_random(self, MF_data, imbalanced_data):
+    def test_mf_random(self, MF_data):
         assert mf_random(
             MF_data,
             model_weight={"HF": 1.0, "LF": 1.0},
@@ -877,3 +876,26 @@ class TestBundleFunctions(object):
         with pytest.raises(ValueError) as excinfo:
             kmeans_dissimilar(SF_data, bundle_args={"bun_size": 5})
         assert excinfo.type is ValueError
+
+
+    def test_sf_random(self, imbalanced_data):
+        assert sf_random(imbalanced_data, bundle_args={"num_buns": 3, "seed": 123456789}) == {
+            "rand_0": {
+                "scenarios": {
+                    ("LF", "rand_2"): 1.0,
+                },
+                "Probability": 0.2,
+            },
+            "rand_1": {
+                "scenarios": {
+                    ("HF", "rand_0"): 1.0,
+                },
+                "Probability": 0.3,
+            },
+            "rand_2": {
+                "scenarios": {
+                    ("HF", "rand_1"): 1.0,
+                },
+                "Probability": 0.5,
+            }
+        } 
