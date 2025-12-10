@@ -346,22 +346,30 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         self, *, b, w=None, x_bar=None, rho=None, cached=False, compact_repn=False
     ):
         if len(self.bundles[b].scenarios) == 1:
-            return self._create_single_scenario_EF_repn(b=b, w=w, x_bar=x_bar, rho=rho, cached=cached)
+            EF_model = self._create_single_scenario_EF_repn(
+                b=b, w=w, x_bar=x_bar, rho=rho, cached=cached
+            )
 
-        if compact_repn:
-            return self._create_compact_bundle_EF_repn(
+        elif compact_repn:
+            EF_model = self._create_compact_bundle_EF_repn(
                 b=b, w=w, x_bar=x_bar, rho=rho, cached=cached
             )
         else:
-            return self._create_noncompact_bundle_EF_repn(
+            EF_model = self._create_noncompact_bundle_EF_repn(
                 b=b, w=w, x_bar=x_bar, rho=rho, cached=cached
             )
+
+        # Cache the model if the 'cached' flag has been specified
+        if cached:
+            self._model_cache[b] = EF_model
+
+        return EF_model
 
     def _create_single_scenario_EF_repn(
         self, *, b, w=None, x_bar=None, rho=None, cached=False
     ):
         """
-        Create a pyomo model for EF with a single scenario. 
+        Create a pyomo model for EF with a single scenario.
         """
         scenarios = self.bundles[b].scenarios
 
@@ -434,13 +442,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
         # 1) create scenario dictionary
         scen_dict = {}
-        if len(scenarios) > 1:
-            for s in scenarios:
-                scenario_model = self._create_scenario(s)
-                self._initialize_cuid_map(M=scenario_model, b=b)
-                scen_dict[s] = scenario_model
-        else:
-            s = scenarios[0]
+        for s in scenarios:
             scenario_model = self._create_scenario(s)
             self._initialize_cuid_map(M=scenario_model, b=b)
             scen_dict[s] = scenario_model
@@ -469,12 +471,10 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 obj[s].deactivate()
 
         # 2.5) Create first stage variables
-        if len(scenarios) > 1:
-            EF_model.first_stage_variables = pyo.Var(list(self.varcuid_to_int.values()))
-            self.int_to_FirstStageVar[b] = {
-                i: EF_model.first_stage_variables[i]
-                for i in self.varcuid_to_int.values()
-            }
+        EF_model.first_stage_variables = pyo.Var(list(self.varcuid_to_int.values()))
+        self.int_to_FirstStageVar[b] = {
+            i: EF_model.first_stage_variables[i] for i in self.varcuid_to_int.values()
+        }
 
         # 3) Store objective parameters in a common format
         if cached:
@@ -502,27 +502,6 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 )
             )
         EF_model.obj = pyo.Objective(expr=obj)
-
-        # 4) Constrain First Stage Variable values to be equal under all scenarios
-        if len(scenarios) > 1:
-            EF_model.non_ant_cons = pyo.ConstraintList()
-
-            for cuid, i in self.varcuid_to_int.items():
-                for s in scenarios:
-                    var = cuid.find_component_on(EF_model.s[s])
-                    assert (
-                        var is not None
-                    ), "Pyomo error: Unknown variable '%s' on scenario model '%s'" % (
-                        cuid,
-                        s,
-                    )
-                    EF_model.non_ant_cons.add(
-                        expr=EF_model.first_stage_variables[i] == var
-                    )
-
-        # Cache the model if the 'cached' flag has been specified
-        if cached:
-            self._model_cache[b] = EF_model
 
         return EF_model
 
@@ -568,8 +547,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         # 2.5) Create first stage variables
         EF_model.first_stage_variables = pyo.Var(list(self.varcuid_to_int.values()))
         self.int_to_FirstStageVar[b] = {
-            i: EF_model.first_stage_variables[i]
-            for i in self.varcuid_to_int.values()
+            i: EF_model.first_stage_variables[i] for i in self.varcuid_to_int.values()
         }
 
         # 3) Store objective parameters in a common format
@@ -611,12 +589,6 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                     cuid,
                     s,
                 )
-                EF_model.non_ant_cons.add(
-                    expr=EF_model.first_stage_variables[i] == var
-                )
-
-        # Cache the model if the 'cached' flag has been specified
-        if cached:
-            self._model_cache[b] = EF_model
+                EF_model.non_ant_cons.add(expr=EF_model.first_stage_variables[i] == var)
 
         return EF_model
