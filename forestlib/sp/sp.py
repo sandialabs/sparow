@@ -125,7 +125,9 @@ class StochasticProgram(object):
     def create_subproblem(self, b, *, w=None, x_bar=None, rho=None, cached=False):
         return self.create_bundle_EF(b=b, w=w, x_bar=x_bar, rho=rho, cached=cached)
 
-    def create_bundle_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
+    def create_bundle_EF(
+        self, *, b, w=None, x_bar=None, rho=None, cached=False, compact_repn=False
+    ):
         pass
 
     def evaluate(self, x, solver_options=None, cached=False):
