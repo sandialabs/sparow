@@ -370,6 +370,9 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
     ):
         """
         Create a pyomo model for EF with a single scenario.
+
+        Even though there's a single scenario, we use an indexed Block to
+        ensure consistency of model structure.
         """
         scenarios = self.bundles[b].scenarios
 
@@ -411,9 +414,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             params = munch.Munch(rho=rho, w=w, x_bar=x_bar)
 
         # 3) Create Obj:sum of scenario obj * probability
-        obj = sum(
-            self.bundles[b].scenario_probability[s] * obj[s].expr for s in scenarios
-        )
+        obj = self.bundles[b].scenario_probability[s] * obj[s].expr
         if cached or w is not None:
             obj = (
                 obj
