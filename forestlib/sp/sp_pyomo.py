@@ -369,9 +369,9 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
         # 2.5) Create first stage variables
         if len(scenarios) > 1:
-            EF_model.rootx = pyo.Var(list(self.varcuid_to_int.values()))
+            EF_model.first_stage_variables = pyo.Var(list(self.varcuid_to_int.values()))
             self.int_to_FirstStageVar[b] = {
-                i: EF_model.rootx[i] for i in self.varcuid_to_int.values()
+                i: EF_model.first_stage_variables[i] for i in self.varcuid_to_int.values()
             }
 
         # 3) Store objective parameters in a common format
@@ -414,7 +414,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                         cuid,
                         s,
                     )
-                    EF_model.non_ant_cons.add(expr=EF_model.rootx[i] == var)
+                    EF_model.non_ant_cons.add(expr=EF_model.first_stage_variables[i] == var)
 
         # Cache the model if the 'cached' flag has been specified
         if cached:

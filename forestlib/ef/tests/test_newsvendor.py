@@ -47,7 +47,7 @@ class TestEFNewsvendor:
         assert x == pytest.approx(app.solution_values['x'])
 
         assert obj_val == pytest.approx(pyo.value(results.model.obj))
-        assert x == pytest.approx(pyo.value(results.model.rootx[0]))
+        assert x == pytest.approx(pyo.value(results.model.first_stage_variables[0]))
 
     def test_LF(self, mip_solver):
         app = LF_newsvendor()
