@@ -288,16 +288,16 @@ class TestBundleFunctions(object):
         ) == {
             "bundle_0": {
                 "scenarios": {
-                    ("HF", "s_1"): 0.3846153846153846,
-                    ("LF", "s_2"): 0.15384615384615385,
-                    ("LF", "s_3"): 0.46153846153846145,
+                    ("HF", "s_1"): pytest.approx(0.3846153846153846),
+                    ("LF", "s_2"): pytest.approx(0.15384615384615385),
+                    ("LF", "s_3"): pytest.approx(0.46153846153846145),
                 },
-                "Probability": 0.65,
+                "Probability": pytest.approx(0.65),
             },
             "bundle_1": {
                 "scenarios": {
-                    ("HF", "s_0"): 0.7142857142857143,
-                    ("LF", "s_4"): 0.28571428571428575,
+                    ("HF", "s_0"): pytest.approx(0.7142857142857143),
+                    ("LF", "s_4"): pytest.approx(0.28571428571428575),
                 },
                 "Probability": 0.35,
             },
@@ -323,7 +323,7 @@ class TestBundleFunctions(object):
                     ("only_model_fidelity", "s_2"): 0.1,
                     ("only_model_fidelity", "s_3"): 0.3,
                 },
-                "Probability": 0.65,
+                "Probability": pytest.approx(0.65),
             },
             "bundle_1": {
                 "scenarios": {
@@ -346,7 +346,7 @@ class TestBundleFunctions(object):
                     ("only_model_fidelity", "s_2"): 0.1,
                     ("only_model_fidelity", "s_3"): 0.3,
                 },
-                "Probability": 0.65,
+                "Probability": pytest.approx(0.65),
             },
             "bundle_1": {
                 "scenarios": {
