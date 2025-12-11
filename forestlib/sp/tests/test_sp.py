@@ -4,6 +4,23 @@ import pytest
 import pyomo.environ as pyo
 from forestlib.sp import stochastic_program
 
+# TODO - Remove the extraneous 'd' data in the model_data after fixing
+#        bundling bugs associated with this.
+
+@pytest.fixture
+def sp0():
+    def builder(*args, **kwargs):
+        M = pyo.ConcreteModel()
+        M.x = pyo.Var()
+        M.y = pyo.Var()
+        M.o = pyo.Objective(expr=M.x)
+        return M
+
+    sp = stochastic_program(first_stage_variables=["x"])
+    sp.initialize_model(model_builder=builder)
+    sp.initialize_model(model_data=dict(scenarios=[dict(ID=1, d=0)]))
+    return sp
+
 
 @pytest.fixture
 def sp1():
@@ -16,7 +33,7 @@ def sp1():
 
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_model(model_builder=builder)
-    sp.initialize_model(model_data=dict(scenarios=[dict(ID=1), dict(ID=2)]))
+    sp.initialize_model(model_data=dict(scenarios=[dict(ID=1, d=0), dict(ID=2, d=0)]))
     return sp
 
 
@@ -31,11 +48,27 @@ def sp2():
 
     sp = stochastic_program(first_stage_variables=["y", "x"])
     sp.initialize_model(model_builder=builder)
-    sp.initialize_model(model_data=dict(scenarios=[dict(ID=1), dict(ID=2)]))
+    sp.initialize_model(model_data=dict(scenarios=[dict(ID=1, d=0), dict(ID=2, d=0)]))
     return sp
 
 
 class TestSP(object):
+
+    def test_simple0(self, sp0):
+        M = sp0.create_subproblem("1")
+
+        assert sp0.varcuid_to_int == {pyo.ComponentUID("x"): 0}
+        assert list(sp0.int_to_FirstStageVar["1"].keys()) == [0]
+        assert sp0.shared_variables() == [0]
+        assert sp0.get_objective_coef(0) == 1.0  # x
+
+    def test_simple1(self, sp1):
+        M = sp1.create_subproblem("1")
+
+        assert sp1.varcuid_to_int == {pyo.ComponentUID("x"): 0}
+        assert list(sp1.int_to_FirstStageVar["1"].keys()) == [0]
+        assert sp1.shared_variables() == [0]
+        assert sp1.get_objective_coef(0) == 0.5  # x
 
     def test_simple1(self, sp1):
         M = sp1.create_subproblem("1")
@@ -66,3 +99,51 @@ class TestSP(object):
         M = sp2.create_subproblem("1")
         assert not sp2.continuous_fsv()
         assert sp2._binary_or_integer_fsv == {0}
+
+    def test_sp0_EF_noncompact(self, sp0):
+        M = sp0.create_EF(compact_repn=False)
+        assert getattr(M, "non_ant_cons", None) == None
+        assert len(M.s) == 1
+        assert len(M.first_stage_variables) == 1
+
+    def test_sp0_EF_compact(self, sp0):
+        M = sp0.create_EF(compact_repn=True)
+        assert getattr(M, "non_ant_cons", None) == None
+        assert len(M.s) == 1
+        assert len(M.first_stage_variables) == 1
+
+    def test_sp1_EF_noncompact(self, sp1):
+        M = sp1.create_EF(compact_repn=False)
+        assert len(M.non_ant_cons) == 2
+        assert len(M.s) == 2
+        assert len(M.first_stage_variables) == 1
+
+    def test_sp1_EF_compact(self, sp1):
+        M = sp1.create_EF(compact_repn=True)
+        assert getattr(M, "non_ant_cons", None) == None
+        assert len(M.s) == 2
+        assert len(M.first_stage_variables) == 1
+
+    def test_sp1_EF_default(self, sp1):
+        M = sp1.create_EF()
+        assert getattr(M, "non_ant_cons", None) == None
+        assert len(M.s) == 2
+        assert len(M.first_stage_variables) == 1
+
+    def test_sp2_EF_noncompact(self, sp2):
+        M = sp2.create_EF(compact_repn=False)
+        assert len(M.non_ant_cons) == 4
+        assert len(M.s) == 2
+        assert len(M.first_stage_variables) == 2
+
+    def test_sp2_EF_compact(self, sp2):
+        M = sp2.create_EF(compact_repn=True)
+        assert getattr(M, "non_ant_cons", None) == None
+        assert len(M.s) == 2
+        assert len(M.first_stage_variables) == 2
+
+    def test_sp2_EF_default(self, sp2):
+        M = sp2.create_EF()
+        assert getattr(M, "non_ant_cons", None) == None
+        assert len(M.s) == 2
+        assert len(M.first_stage_variables) == 2
