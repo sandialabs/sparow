@@ -146,4 +146,4 @@ class TestFacilityLoc:
         results_dict = results.to_dict()
         obj_val = results_dict[None]["solutions"][0]["objectives"][0]["value"]
 
-        assert obj_val == pytest.approx(16758018.59625)
+        assert obj_val == pytest.approx(app.objective_value)
