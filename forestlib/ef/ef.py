@@ -50,7 +50,7 @@ class ExtensiveFormSolver(object):
                 print(f"    {k}= {v}")
         tic(None)
 
-        M = sp.create_EF()
+        M = sp.create_EF(compact_repn=True)
         if logger.isEnabledFor(logging.DEBUG):
             # Print extensive form model
             M.pprint()

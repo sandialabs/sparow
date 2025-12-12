@@ -11,6 +11,7 @@ import pyomo.util.vars_from_expressions as vfe
 
 import forestlib.logs
 from .sp import StochasticProgram
+from .replace_variables_transformation import ReplaceVariablesTransformation
 
 logger = forestlib.logs.logger
 
@@ -151,12 +152,12 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
             else:
                 return munch.Munch(
                     obj_value=pyo.value(M.obj),
-                    #obj_value=list(results.Solution[0].Objective.values())[0]["Value"],
+                    # obj_value=list(results.Solution[0].Objective.values())[0]["Value"],
                     termination_condition=results.solver.termination_condition,
                     status=results.solver.status,
                 )
 
-    def create_EF(self, model_fidelities=None, cache_bundles=False):
+    def create_EF(self, model_fidelities=None, cache_bundles=False, compact_repn=True):
         if cache_bundles:
             _int_toFirstStageVar = self.int_to_FirstStageVar
             _model_cache = self._model_cache
@@ -171,7 +172,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         ), f"The extensive form should only have one bundle: {len(self.bundles)}"
 
         b = next(iter(self.bundles))
-        M = self.create_subproblem(b)
+        M = self.create_subproblem(b, compact_repn=compact_repn)
 
         if cache_bundles:
             self.int_to_FirstStageVar = _int_toFirstStageVar
@@ -297,8 +298,25 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
         return self.int_to_ObjectiveCoef[v]
 
-    def create_bundle_EF(self, *, b, w=None, x_bar=None, rho=None, cached=False):
-        scenarios = self.bundles[b].scenarios
+    def create_bundle_EF(
+        self,
+        *,
+        b,
+        w=None,
+        x_bar=None,
+        rho=None,
+        cached=False,
+        compact_repn=True,
+    ):
+        """
+        Create an integer programming representation for the bundle extensive form.
+
+        If the cached flag is on, then the model will be constructed with mutable parameter
+        objects.  Repeated calls to create_bundle_EF() will avoid reconstructing the entire model.
+        Instead, the mutable parameters will be set with the values of rho, w and x_bar.
+
+        If the cached flag is False, then the model is constructed with fixed values for rho, w and x_bar.
+        """
         if cached and b in self._model_cache:
             M = self._model_cache[b]
 
@@ -331,15 +349,225 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
             return M
 
+        EF_model = self.create_bundle_EF_repn(
+            b=b,
+            w=w,
+            x_bar=x_bar,
+            rho=rho,
+            cached=cached,
+            compact_repn=compact_repn,
+        )
+
+        # Cache the model if the 'cached' flag has been specified
+        if cached:
+            self._model_cache[b] = EF_model
+
+        return EF_model
+
+    def create_bundle_EF_repn(
+        self, *, b, w=None, x_bar=None, rho=None, cached=False, compact_repn=True
+    ):
+        if len(self.bundles[b].scenarios) == 1:
+            EF_model = self._create_single_scenario_EF_repn(
+                b=b, w=w, x_bar=x_bar, rho=rho, cached=cached
+            )
+
+        elif compact_repn:
+            EF_model = self._create_compact_bundle_EF_repn(
+                b=b, w=w, x_bar=x_bar, rho=rho, cached=cached
+            )
+        else:
+            EF_model = self._create_noncompact_bundle_EF_repn(
+                b=b, w=w, x_bar=x_bar, rho=rho, cached=cached
+            )
+
+        # Cache the model if the 'cached' flag has been specified
+        if cached:
+            self._model_cache[b] = EF_model
+
+        return EF_model
+
+    def _create_single_scenario_EF_repn(
+        self, *, b, w=None, x_bar=None, rho=None, cached=False
+    ):
+        """
+        Create a pyomo model for EF with a single scenario.
+
+        Even though there's a single scenario, we use an indexed Block to
+        ensure consistency of model structure.
+        """
+        scenarios = self.bundles[b].scenarios
+
+        # 1) create scenario dictionary
+        s = scenarios[0]
+        scen_model = self._create_scenario(s)
+        self._initialize_cuid_map(M=scen_model, b=b)
+
+        # 2) Loop through scenario dictionary, add block, deactivate Obj
+        EF_model = pyo.ConcreteModel()
+        EF_model.s = pyo.Block(scenarios)
+        if self.objective is None:
+            obj = {}
+            EF_model.s[s].transfer_attributes_from(scen_model)
+            obj[s] = find_objective(EF_model.s[s])
+            assert (
+                obj[s] is not None
+            ), f"Cannot find objective on model for scenario '{s}'"
+        else:
+            objective_cuid = pyo.ComponentUID(self.objective)
+            obj = {}
+            EF_model.s[s].transfer_attributes_from(scen_model)
+            obj[s] = objective_cuid.find_component_on(EF_model.s[s])
+            assert (
+                obj[s] is not None
+            ), f"Cannot find objective '{self.objective}' on model for scenario '{s}'"
+        obj[s].deactivate()
+
+        # 2.5) Collect first stage variables
+        EF_model.first_stage_variables = {
+            i: var for i, var in self.int_to_FirstStageVar[b].items()
+        }
+
+        # 3) Store objective parameters in a common format
+        if cached:
+            params = pyo.Block()
+            A = list(self.int_to_FirstStageVar[b].keys())
+            assert len(A) > 0, f"ERROR: b {b}, {self.int_to_FirstStageVar}"
+            params.rho = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
+            params.w = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
+            params.x_bar = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
+            EF_model.forestlib_params = params
+        else:
+            params = munch.Munch(rho=rho, w=w, x_bar=x_bar)
+
+        # 3) Create Obj:sum of scenario obj * probability
+        obj = self.bundles[b].scenario_probability[s] * obj[s].expr
+        if cached or w is not None:
+            obj = (
+                obj
+                + sum(params.w[i] * x for i, x in self.int_to_FirstStageVar[b].items())
+                + sum(
+                    (params.rho[i] / 2.0) * ((x - params.x_bar[i]) ** 2)
+                    for i, x in self.int_to_FirstStageVar[b].items()
+                )
+            )
+        EF_model.obj = pyo.Objective(expr=obj)
+
+        EF_model.scenario_varmap = {}
+
+        return EF_model
+
+    def _create_compact_bundle_EF_repn(
+        self, *, b, w=None, x_bar=None, rho=None, cached=False
+    ):
+        """
+        Create a pyomo model for EF that does not include separate copies of first stage variables along
+        with non-anticipativity constraints.  Each scenario model, after the first, is processed to
+        ensure that all scenario models use the same pyomo variable objects for the first stage variables.
+
+        This involves more up-front processing of the scenario models, but it results in a more compact EF
+        representation.
+        """
+        scenarios = self.bundles[b].scenarios
+
         # 1) create scenario dictionary
         scen_dict = {}
-        if len(scenarios) > 1:
-            for s in scenarios:
-                scenario_model = self._create_scenario(s)
-                self._initialize_cuid_map(M=scenario_model, b=b)
-                scen_dict[s] = scenario_model
+        for s in scenarios:
+            scenario_model = self._create_scenario(s)
+            self._initialize_cuid_map(M=scenario_model, b=b)
+            scen_dict[s] = scenario_model
+
+        # 2) Loop through scenario dictionary, add block, deactivate Obj
+        EF_model = pyo.ConcreteModel()
+        EF_model.s = pyo.Block(scenarios)
+        if self.objective is None:
+            obj = {}
+            for s, scen_model in scen_dict.items():
+                EF_model.s[s].transfer_attributes_from(scen_model)
+                obj[s] = find_objective(EF_model.s[s])
+                assert (
+                    obj[s] is not None
+                ), f"Cannot find objective on model for scenario '{s}'"
         else:
-            s = scenarios[0]
+            objective_cuid = pyo.ComponentUID(self.objective)
+            obj = {}
+            for s, scen_model in scen_dict.items():
+                EF_model.s[s].transfer_attributes_from(scen_model)
+                obj[s] = objective_cuid.find_component_on(EF_model.s[s])
+                assert (
+                    obj[s] is not None
+                ), f"Cannot find objective '{self.objective}' on model for scenario '{s}'"
+
+        # 2.5) Find the first stage variables
+        s = scenarios[0]
+        EF_model.first_stage_variables = {}
+        for cuid, i in self.varcuid_to_int.items():
+            var = cuid.find_component_on(EF_model.s[s])
+            assert (
+                var is not None
+            ), f"Pyomo error: Unknown variable '{cuid}' on scenario model '{s}'"
+            EF_model.first_stage_variables[i] = var
+        self.int_to_FirstStageVar[b] = EF_model.first_stage_variables
+
+        # 2.6) Walk the expression trees for scenarios 1+ to use the same first stage variables as scenario 0
+        xfrm = ReplaceVariablesTransformation()
+        EF_model.scenario_varmap = {i: list() for i in self.shared_variables()}
+
+        for s in scenarios[1:]:
+            variable_map = {}
+            for cuid, i in self.varcuid_to_int.items():
+                var = cuid.find_component_on(EF_model.s[s])
+                variable_map[id(var)] = EF_model.first_stage_variables[i]
+                var.fix(var.lb)  # Ignore this variable
+                EF_model.scenario_varmap[i].append(var)
+            xfrm.apply_to(EF_model.s[s], substitution_map=variable_map)
+
+        # 3) Store objective parameters in a common format
+        if cached:
+            params = pyo.Block()
+            A = list(EF_model.first_stage_variables.keys())
+            assert len(A) > 0, f"ERROR: b {b}, {EF_model.first_stage_variables}"
+            params.rho = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
+            params.w = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
+            params.x_bar = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
+            EF_model.forestlib_params = params
+        else:
+            params = munch.Munch(rho=rho, w=w, x_bar=x_bar)
+
+        # 3) Create Obj:sum of scenario obj * probability
+        for s in scenarios:
+            obj[s].deactivate()
+
+        obj = sum(
+            self.bundles[b].scenario_probability[s] * obj[s].expr for s in scenarios
+        )
+        if cached or w is not None:
+            obj = (
+                obj
+                + sum(
+                    params.w[i] * x for i, x in EF_model.first_stage_variables.items()
+                )
+                + sum(
+                    (params.rho[i] / 2.0) * ((x - params.x_bar[i]) ** 2)
+                    for i, x in EF_model.first_stage_variables.items()
+                )
+            )
+        EF_model.obj = pyo.Objective(expr=obj)
+
+        return EF_model
+
+    def _create_noncompact_bundle_EF_repn(
+        self, *, b, w=None, x_bar=None, rho=None, cached=False
+    ):
+        """
+        Create a pyomo model for EF that includes separate copies of first stage variables along
+        with non-anticipativity constraints that ensure that all scenario solutions are the same.
+        """
+        scenarios = self.bundles[b].scenarios
+
+        # 1) create scenario dictionary
+        scen_dict = {}
+        for s in scenarios:
             scenario_model = self._create_scenario(s)
             self._initialize_cuid_map(M=scenario_model, b=b)
             scen_dict[s] = scenario_model
@@ -368,11 +596,10 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 obj[s].deactivate()
 
         # 2.5) Create first stage variables
-        if len(scenarios) > 1:
-            EF_model.rootx = pyo.Var(list(self.varcuid_to_int.values()))
-            self.int_to_FirstStageVar[b] = {
-                i: EF_model.rootx[i] for i in self.varcuid_to_int.values()
-            }
+        EF_model.first_stage_variables = pyo.Var(list(self.varcuid_to_int.values()))
+        self.int_to_FirstStageVar[b] = {
+            i: EF_model.first_stage_variables[i] for i in self.varcuid_to_int.values()
+        }
 
         # 3) Store objective parameters in a common format
         if cached:
@@ -386,7 +613,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         else:
             params = munch.Munch(rho=rho, w=w, x_bar=x_bar)
 
-        # 3)Create Obj:sum of scenario obj * probability
+        # 3) Create Obj:sum of scenario obj * probability
         obj = sum(
             self.bundles[b].scenario_probability[s] * obj[s].expr for s in scenarios
         )
@@ -401,23 +628,18 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             )
         EF_model.obj = pyo.Objective(expr=obj)
 
-        # 4)Constrain First Stage Variable values to be equal under all scenarios
-        if len(scenarios) > 1:
-            EF_model.non_ant_cons = pyo.ConstraintList()
+        # 4) Constrain First Stage Variable values to be equal under all scenarios
+        EF_model.non_ant_cons = pyo.ConstraintList()
 
-            for cuid, i in self.varcuid_to_int.items():
-                for s in scenarios:
-                    var = cuid.find_component_on(EF_model.s[s])
-                    assert (
-                        var is not None
-                    ), "Pyomo error: Unknown variable '%s' on scenario model '%s'" % (
-                        cuid,
-                        s,
-                    )
-                    EF_model.non_ant_cons.add(expr=EF_model.rootx[i] == var)
-
-        # Cache the model if the 'cached' flag has been specified
-        if cached:
-            self._model_cache[b] = EF_model
+        for cuid, i in self.varcuid_to_int.items():
+            for s in scenarios:
+                var = cuid.find_component_on(EF_model.s[s])
+                assert (
+                    var is not None
+                ), "Pyomo error: Unknown variable '%s' on scenario model '%s'" % (
+                    cuid,
+                    s,
+                )
+                EF_model.non_ant_cons.add(expr=EF_model.first_stage_variables[i] == var)
 
         return EF_model
