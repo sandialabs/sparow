@@ -299,7 +299,14 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         return self.int_to_ObjectiveCoef[v]
 
     def create_bundle_EF(
-        self, *, b, w=None, x_bar=None, rho=None, cached=False, compact_repn=True
+        self,
+        *,
+        b,
+        w=None,
+        x_bar=None,
+        rho=None,
+        cached=False,
+        compact_repn=True,
     ):
         """
         Create an integer programming representation for the bundle extensive form.
@@ -343,7 +350,12 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             return M
 
         EF_model = self.create_bundle_EF_repn(
-            b=b, w=w, x_bar=x_bar, rho=rho, cached=cached, compact_repn=compact_repn
+            b=b,
+            w=w,
+            x_bar=x_bar,
+            rho=rho,
+            cached=cached,
+            compact_repn=compact_repn,
         )
 
         # Cache the model if the 'cached' flag has been specified
@@ -441,6 +453,8 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             )
         EF_model.obj = pyo.Objective(expr=obj)
 
+        EF_model.scenario_varmap = {}
+
         return EF_model
 
     def _create_compact_bundle_EF_repn(
@@ -497,6 +511,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
         # 2.6) Walk the expression trees for scenarios 1+ to use the same first stage variables as scenario 0
         xfrm = ReplaceVariablesTransformation()
+        EF_model.scenario_varmap = {i: list() for i in self.shared_variables()}
 
         for s in scenarios[1:]:
             variable_map = {}
@@ -504,6 +519,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 var = cuid.find_component_on(EF_model.s[s])
                 variable_map[id(var)] = EF_model.first_stage_variables[i]
                 var.fix(var.lb)  # Ignore this variable
+                EF_model.scenario_varmap[i].append(var)
             xfrm.apply_to(EF_model.s[s], substitution_map=variable_map)
 
         # 3) Store objective parameters in a common format
