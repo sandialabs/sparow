@@ -301,6 +301,15 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
     def create_bundle_EF(
         self, *, b, w=None, x_bar=None, rho=None, cached=False, compact_repn=True
     ):
+        """
+        Create an integer programming representation for the bundle extensive form.
+
+        If the cached flag is on, then the model will be constructed with mutable parameter
+        objects.  Repeated calls to create_bundle_EF() will avoid reconstructing the entire model.
+        Instead, the mutable parameters will be set with the values of rho, w and x_bar.
+
+        If the cached flag is False, then the model is constructed with fixed values for rho, w and x_bar.
+        """
         if cached and b in self._model_cache:
             M = self._model_cache[b]
 
