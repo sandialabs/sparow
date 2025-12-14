@@ -13,7 +13,8 @@ from forestlib.sp.scentobund import (
     mf_kmeans_dissimilar,
     kmeans_similar,
     kmeans_dissimilar,
-    check_data_dict_keys,
+    mf_bundle_from_list,
+    bundle_from_list,
 )
 
 
@@ -129,6 +130,19 @@ def weird_key_names():
             "s_2": {"weird_key_d": [4, 4], "weird_key_p": 0.2},
             "s_3": {"weird_key_d": [1.5, 1.5], "weird_key_p": 0.6},
             "s_4": {"weird_key_d": [5, 5], "weird_key_p": 0.2},
+        },
+    }
+
+
+@pytest.fixture
+def sf_scenarios():
+    return {
+        "only_model_fidelity": {
+            "s_1": {"demand": [3, 3], "probability": 0.25},
+            "s_0": {"demand": [1, 1], "probability": 0.25},
+            "s_2": {"demand": [4, 4], "probability": 0.1},
+            "s_3": {"demand": [1.5, 1.5], "probability": 0.3},
+            "s_4": {"demand": [5, 5], "probability": 0.1},
         },
     }
 
@@ -251,12 +265,97 @@ class TestBundleFunctions(object):
         with pytest.warns(
             UserWarning, match="Single fidelity schemes do not utilize model_weight"
         ) as warninfo:
-            single_bundle(rand_data, model_weight={"HF": 2, "LF": 1})
+            kmeans_similar(rand_data, model_weight={"HF": 2, "LF": 1})
         assert (
             warninfo[0].message.args[0]
             == "Single fidelity schemes do not utilize model_weight"
         )
         assert warninfo[0].category == UserWarning
+
+    def test_mf_bundle_from_list(self, probable_key_names):
+        with pytest.raises(RuntimeError) as excinfo:
+            mf_bundle_from_list(probable_key_names)
+        assert excinfo.type is RuntimeError
+
+        assert mf_bundle_from_list(
+            probable_key_names,
+            bundle_args={
+                "bundles": [
+                    [("HF", "s_1"), ("LF", "s_2"), ("LF", "s_3")],
+                    [("HF", "s_0"), ("LF", "s_4")],
+                ],
+            },
+        ) == {
+            "bundle_0": {
+                "scenarios": {
+                    ("HF", "s_1"): pytest.approx(0.3846153846153846),
+                    ("LF", "s_2"): pytest.approx(0.15384615384615385),
+                    ("LF", "s_3"): pytest.approx(0.46153846153846145),
+                },
+                "Probability": pytest.approx(0.65),
+            },
+            "bundle_1": {
+                "scenarios": {
+                    ("HF", "s_0"): pytest.approx(0.7142857142857143),
+                    ("LF", "s_4"): pytest.approx(0.28571428571428575),
+                },
+                "Probability": 0.35,
+            },
+        }
+
+    def test_bundle_from_list(self, sf_scenarios):
+        with pytest.raises(RuntimeError) as excinfo:
+            bundle_from_list(sf_scenarios)
+        assert excinfo.type is RuntimeError
+
+        assert bundle_from_list(
+            sf_scenarios,
+            bundle_args={
+                "bundles": [
+                    [("only_model_fidelity", "s_1"), ("only_model_fidelity", "s_2"), ("only_model_fidelity", "s_3")],
+                    [("only_model_fidelity", "s_0"), ("only_model_fidelity", "s_4")],
+                ],
+            },
+        ) == {
+            "bundle_0": {
+                "scenarios": {
+                    ("only_model_fidelity", "s_1"): 0.25,
+                    ("only_model_fidelity", "s_2"): 0.1,
+                    ("only_model_fidelity", "s_3"): 0.3,
+                },
+                "Probability": pytest.approx(0.65),
+            },
+            "bundle_1": {
+                "scenarios": {
+                    ("only_model_fidelity", "s_0"): 0.25,
+                    ("only_model_fidelity", "s_4"): 0.1,
+                },
+                "Probability": 0.35,
+            },
+        }
+
+        assert bundle_from_list(
+            sf_scenarios,
+            bundle_args={
+                "bundles": [["s_1", "s_2", "s_3"], ["s_0", "s_4"]],
+            },
+        ) == {
+            "bundle_0": {
+                "scenarios": {
+                    ("only_model_fidelity", "s_1"): 0.25,
+                    ("only_model_fidelity", "s_2"): 0.1,
+                    ("only_model_fidelity", "s_3"): 0.3,
+                },
+                "Probability": pytest.approx(0.65),
+            },
+            "bundle_1": {
+                "scenarios": {
+                    ("only_model_fidelity", "s_0"): 0.25,
+                    ("only_model_fidelity", "s_4"): 0.1,
+                },
+                "Probability": 0.35,
+            },
+        }
 
     def test_mf_kmeans_similar(self, similar_scenarios):
         assert mf_kmeans_similar(similar_scenarios) == {
@@ -275,6 +374,38 @@ class TestBundleFunctions(object):
             "bundle_5.0": {
                 "scenarios": {("HF", "scen_3"): 0.6, ("LF", "scen_4"): 0.4},
                 "Probability": 0.25,
+            },
+        }
+        assert mf_kmeans_similar(
+            similar_scenarios, model_weight={"HF": 2, "LF": 1}
+        ) == {
+            "bundle_4.0": {
+                "scenarios": {
+                    ("HF", "scen_0"): 0.6666666666666666,
+                    ("LF", "scen_7"): 0.3333333333333333,
+                },
+                "Probability": 0.2,
+            },
+            "bundle_1.0": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.5714285714285714,
+                    ("LF", "scen_6"): 0.42857142857142855,
+                },
+                "Probability": 0.2333333333333333333,
+            },
+            "bundle_2.0": {
+                "scenarios": {
+                    ("HF", "scen_2"): 0.6666666666666666,
+                    ("LF", "scen_5"): 0.3333333333333333,
+                },
+                "Probability": 0.3,
+            },
+            "bundle_5.0": {
+                "scenarios": {
+                    ("HF", "scen_3"): 0.7499999999999999,
+                    ("LF", "scen_4"): 0.25,
+                },
+                "Probability": 0.26666666666666666,
             },
         }
 
@@ -297,6 +428,29 @@ class TestBundleFunctions(object):
                     ("LF", "scen_5"): 0.3333333333333333,
                 },
                 "Probability": 0.44999999999999996,
+            },
+        }
+
+        assert mf_kmeans_dissimilar(
+            similar_scenarios, model_weight={"HF": 2, "LF": 1}
+        ) == {
+            "bundle_4.0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.2},
+            "bundle_1.0": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.5,
+                    ("LF", "scen_7"): 0.25,
+                    ("LF", "scen_4"): 0.25,
+                },
+                "Probability": 0.2,
+            },
+            "bundle_2.0": {"scenarios": {("HF", "scen_2"): 1.0}, "Probability": 0.3},
+            "bundle_5.0": {
+                "scenarios": {
+                    ("HF", "scen_3"): 0.5,
+                    ("LF", "scen_6"): 0.25,
+                    ("LF", "scen_5"): 0.25,
+                },
+                "Probability": 0.3,
             },
         }
 
@@ -510,7 +664,7 @@ class TestBundleFunctions(object):
             },
         }
 
-    def test_mf_random(self, MF_data, imbalanced_data):
+    def test_mf_random(self, MF_data):
         assert mf_random(
             MF_data,
             model_weight={"HF": 1.0, "LF": 1.0},
@@ -722,3 +876,26 @@ class TestBundleFunctions(object):
         with pytest.raises(ValueError) as excinfo:
             kmeans_dissimilar(SF_data, bundle_args={"bun_size": 5})
         assert excinfo.type is ValueError
+
+
+    def test_sf_random(self, imbalanced_data):
+        assert sf_random(imbalanced_data, bundle_args={"num_buns": 3, "seed": 123456789}) == {
+            "rand_0": {
+                "scenarios": {
+                    ("LF", "rand_2"): 1.0,
+                },
+                "Probability": 0.2,
+            },
+            "rand_1": {
+                "scenarios": {
+                    ("HF", "rand_0"): 1.0,
+                },
+                "Probability": 0.3,
+            },
+            "rand_2": {
+                "scenarios": {
+                    ("HF", "rand_1"): 1.0,
+                },
+                "Probability": 0.5,
+            }
+        } 

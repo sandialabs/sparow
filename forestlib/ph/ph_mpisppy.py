@@ -148,7 +148,7 @@ class Forestlib_client:
         rank = comm.Get_rank()
         size = comm.Get_size()
         if rank > 0:
-            if self.first_stage_solution:
+            if self.first_stage_solution is not None:
                 comm.send(self.first_stage_solution, dest=0, tag=0)
             else:
                 comm.send([], dest=0, tag=0)
@@ -159,7 +159,7 @@ class Forestlib_client:
                 tmp = comm.recv(source=MPI.ANY_SOURCE, tag=0, status=status)
                 results[status.Get_source()] = tmp
 
-            solutions = [v for v in results.values() if v]
+            solutions = [v for v in results.values() if v is not None]
             if self.first_stage_solution:
                 solutions.append(self.first_stage_solution)
             return solutions
