@@ -58,7 +58,8 @@ jobs:
 
       - name: Install package
         run: |
-            cd sparow
+            pwd
+            ls
             pip install -e .
 
       - name: Lint with flake8
