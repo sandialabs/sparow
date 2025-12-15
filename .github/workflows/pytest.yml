@@ -50,6 +50,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: or-fusion/or_topas
+          token: ${{ secrets.PAT_FOR_OR_TOPAS }}
           path: './or_topas'
 
       - name: Install or-topas
