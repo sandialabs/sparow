@@ -7,9 +7,9 @@ from sklearn.cluster import KMeans
 import numpy as np
 import numbers
 import warnings
-import forestlib.logs
+import sparow.logs
 
-logger = forestlib.logs.logger
+logger = sparow.logs.logger
 
 """
 * specify which bundling scheme (function) is used via "bundle_scheme" in sp.py

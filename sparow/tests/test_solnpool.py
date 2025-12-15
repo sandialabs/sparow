@@ -1,7 +1,7 @@
 import pytest
 import pprint
 
-from forestlib.solnpool import PoolManager, Solution, Variable, Objective
+from sparow.solnpool import PoolManager, Solution, Variable, Objective
 
 
 def soln(value, objective):

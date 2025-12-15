@@ -1,4 +1,4 @@
-# forestlib.ph
+# sparow.ph
 
 # from . import ph
 from .ph import ProgressiveHedgingSolver

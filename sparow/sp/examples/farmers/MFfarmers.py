@@ -2,7 +2,7 @@ import random
 import math
 from munch import Munch
 import pyomo.environ as pyo
-from forestlib.sp import stochastic_program
+from sparow.sp import stochastic_program
 
 random.seed(923874938740938740)
 

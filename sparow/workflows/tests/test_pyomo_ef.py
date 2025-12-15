@@ -1,10 +1,10 @@
 import pytest
 import pyomo.environ as pyo
 
-from forestlib.sp.examples import simple_newsvendor, MFpaired_newsvendor
-from forestlib.ph import ProgressiveHedgingSolver
-from forestlib.ef import ExtensiveFormSolver
-from forestlib.workflows import initialize_EF, create_and_initialize_EF
+from sparow.sp.examples import simple_newsvendor, MFpaired_newsvendor
+from sparow.ph import ProgressiveHedgingSolver
+from sparow.ef import ExtensiveFormSolver
+from sparow.workflows import initialize_EF, create_and_initialize_EF
 
 import pyomo.opt
 from pyomo.common import unittest

@@ -11,8 +11,8 @@ import mpisppy.utils.sputils as sputils
 from mpisppy.opt.ef import ExtensiveForm
 from mpisppy.opt.ph import PH
 
-from forestlib.sp import stochastic_program
-from forestlib.ph import ProgressiveHedgingSolver
+from sparow.sp import stochastic_program
+from sparow.ph import ProgressiveHedgingSolver
 from pyomo.opt import check_available_solvers
 
 gurobi_available = len(check_available_solvers("gurobi", "appsi_gurobi")) == 2

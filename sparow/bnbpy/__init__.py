@@ -1,4 +1,4 @@
-# forestlib.bnbpy
+# sparow.bnbpy
 
 from . import bb
 from .bb import SerialBBSolver, BranchAndBound

@@ -2,7 +2,7 @@
 
 import pytest
 import pyomo.environ as pyo
-from forestlib.sp import stochastic_program
+from sparow.sp import stochastic_program
 
 # TODO - Remove the extraneous 'd' data in the model_data after fixing
 #        bundling bugs associated with this.

@@ -8,10 +8,10 @@ import datetime
 import logging
 
 from pyomo.common.timing import tic, toc, TicTocTimer
-import forestlib.logs
-from forestlib import solnpool
+import sparow.logs
+from sparow import solnpool
 
-logger = forestlib.logs.logger
+logger = sparow.logs.logger
 
 
 def norm(values, p):
@@ -130,7 +130,7 @@ class ProgressiveHedgingSolver(object):
 
         if loglevel is not None:
             if loglevel == "DEBUG" or loglevel == "VERBOSE":
-                forestlib.logs.use_debugging_formatter()
+                sparow.logs.use_debugging_formatter()
             logger.setLevel(loglevel)
 
     def solve(self, sp, **options):

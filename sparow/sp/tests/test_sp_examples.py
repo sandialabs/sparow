@@ -1,6 +1,6 @@
 import pytest
 
-from forestlib.sp.examples import (
+from sparow.sp.examples import (
     simple_newsvendor,
     LF_newsvendor,
     HF_newsvendor,

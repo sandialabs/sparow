@@ -1,10 +1,10 @@
 import pytest
 import pyomo.environ as pyo
 
-from forestlib.solnpool import PoolManager
-from forestlib.sp import stochastic_program
-from forestlib.sp.examples import AMPL_facilityloc
-from forestlib.ef import ExtensiveFormSolver
+from sparow.solnpool import PoolManager
+from sparow.sp import stochastic_program
+from sparow.sp.examples import AMPL_facilityloc
+from sparow.ef import ExtensiveFormSolver
 
 import pyomo.opt
 from pyomo.common import unittest

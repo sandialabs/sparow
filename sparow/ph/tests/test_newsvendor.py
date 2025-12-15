@@ -1,12 +1,12 @@
 import pytest
 
-from forestlib.sp.examples import (
+from sparow.sp.examples import (
     LF_newsvendor,
     HF_newsvendor,
     MFrandom_newsvendor,
     simple_newsvendor,
 )
-from forestlib.ph import ProgressiveHedgingSolver
+from sparow.ph import ProgressiveHedgingSolver
 
 import pyomo.opt
 from pyomo.common import unittest

@@ -3,7 +3,7 @@ import math
 import random
 from munch import Munch
 import pyomo.environ as pyo
-from forestlib.sp import stochastic_program
+from sparow.sp import stochastic_program
 
 """
 CAPACITATED FACILITY LOCATION

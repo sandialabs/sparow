@@ -5,10 +5,10 @@ import logging
 import datetime
 
 from pyomo.common.timing import tic, toc
-import forestlib.logs
-import forestlib.solnpool
+import sparow.logs
+import sparow.solnpool
 
-logger = forestlib.logs.logger
+logger = sparow.logs.logger
 
 
 class ExtensiveFormSolver(object):
@@ -28,7 +28,7 @@ class ExtensiveFormSolver(object):
 
         if loglevel is not None:
             if loglevel == "DEBUG" or loglevel == "VERBOSE":
-                forestlib.logs.use_debugging_formatter()
+                sparow.logs.use_debugging_formatter()
             logger.setLevel(loglevel)
 
     def solve_and_return_EF(self, sp, **options):
@@ -63,7 +63,7 @@ class ExtensiveFormSolver(object):
         toc("Optimized extensive form", logger=logger, level=logging.VERBOSE)
         end_time = datetime.datetime.now()
 
-        solutions = forestlib.solnpool.PoolManager()
+        solutions = sparow.solnpool.PoolManager()
         metadata = solutions.metadata
         metadata.termination_condition = str(results.termination_condition)
         metadata.status = str(results.status)
@@ -74,14 +74,14 @@ class ExtensiveFormSolver(object):
         if results.obj_value is not None:
             b = next(iter(sp.bundles))
             variables = [
-                forestlib.solnpool.Variable(
+                sparow.solnpool.Variable(
                     value=sp.get_variable_value(b, i),
                     index=i,
                     name=sp.get_variable_name(i),
                 )
                 for i, _ in enumerate(sp.get_variables())
             ]
-            objective = forestlib.solnpool.Objective(value=results.obj_value)
+            objective = sparow.solnpool.Objective(value=results.obj_value)
             solutions.add(variables=variables, objective=objective)
 
         logger.info("")

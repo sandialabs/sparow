@@ -9,11 +9,11 @@ import pyomo.environ as pyo
 import pyomo.repn
 import pyomo.util.vars_from_expressions as vfe
 
-import forestlib.logs
+import sparow.logs
 from .sp import StochasticProgram
 from .replace_variables_transformation import ReplaceVariablesTransformation
 
-logger = forestlib.logs.logger
+logger = sparow.logs.logger
 
 
 def find_objective(model):
@@ -322,30 +322,30 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
             if rho is None:
                 for i, x in self.int_to_FirstStageVar[b].items():
-                    M.forestlib_params.rho[i].set_value(0.0)
+                    M.sparow_params.rho[i].set_value(0.0)
             else:
                 for i, x in self.int_to_FirstStageVar[b].items():
-                    M.forestlib_params.rho[i].set_value(rho[i])
+                    M.sparow_params.rho[i].set_value(rho[i])
 
             if w is None:
-                for i in M.forestlib_params.w:
-                    M.forestlib_params.w[i].set_value(0.0)
+                for i in M.sparow_params.w:
+                    M.sparow_params.w[i].set_value(0.0)
             else:
                 assert len(w) == len(
-                    M.forestlib_params.w
-                ), f"Inconsistent data sizes between param.w ({len(M.forestlib_params.w)}) and w ({len(w)})"
-                for i in M.forestlib_params.w:
-                    M.forestlib_params.w[i].set_value(w[i])
+                    M.sparow_params.w
+                ), f"Inconsistent data sizes between param.w ({len(M.sparow_params.w)}) and w ({len(w)})"
+                for i in M.sparow_params.w:
+                    M.sparow_params.w[i].set_value(w[i])
 
             if x_bar is None:
-                for i in M.forestlib_params.x_bar:
-                    M.forestlib_params.x_bar[i].set_value(0.0)
+                for i in M.sparow_params.x_bar:
+                    M.sparow_params.x_bar[i].set_value(0.0)
             else:
                 assert len(x_bar) == len(
-                    M.forestlib_params.x_bar
-                ), f"Inconsistent data sizes between param.x_bar ({len(M.forestlib_params.x_bar)}) and x_bar ({len(x_bar)})"
-                for i in M.forestlib_params.x_bar:
-                    M.forestlib_params.x_bar[i].set_value(x_bar[i])
+                    M.sparow_params.x_bar
+                ), f"Inconsistent data sizes between param.x_bar ({len(M.sparow_params.x_bar)}) and x_bar ({len(x_bar)})"
+                for i in M.sparow_params.x_bar:
+                    M.sparow_params.x_bar[i].set_value(x_bar[i])
 
             return M
 
@@ -436,7 +436,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             params.rho = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
             params.w = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
             params.x_bar = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
-            EF_model.forestlib_params = params
+            EF_model.sparow_params = params
         else:
             params = munch.Munch(rho=rho, w=w, x_bar=x_bar)
 
@@ -530,7 +530,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             params.rho = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
             params.w = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
             params.x_bar = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
-            EF_model.forestlib_params = params
+            EF_model.sparow_params = params
         else:
             params = munch.Munch(rho=rho, w=w, x_bar=x_bar)
 
@@ -609,7 +609,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             params.rho = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
             params.w = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
             params.x_bar = pyo.Param(A, mutable=True, default=0.0, domain=pyo.Reals)
-            EF_model.forestlib_params = params
+            EF_model.sparow_params = params
         else:
             params = munch.Munch(rho=rho, w=w, x_bar=x_bar)
 

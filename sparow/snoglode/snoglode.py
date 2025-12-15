@@ -40,10 +40,10 @@ except:
     )
 
 # from MFfarmers import LFScenario_dict, LF_model_builder
-from forestlib.sp import stochastic_program
-import forestlib.logs
+from sparow.sp import stochastic_program
+import sparow.logs
 
-logger = forestlib.logs.logger
+logger = sparow.logs.logger
 
 
 if snoglode_available:
@@ -311,7 +311,7 @@ class SnoglodeSolver(object):
 
         if loglevel is not None:
             if loglevel == "DEBUG" or loglevel == "VERBOSE":
-                forestlib.logs.use_debugging_formatter()
+                sparow.logs.use_debugging_formatter()
             logger.setLevel(loglevel)
 
     def solve(self, sp, **options):

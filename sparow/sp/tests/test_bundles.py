@@ -1,6 +1,6 @@
 import random
 import pytest
-from forestlib.sp.scentobund import (
+from sparow.sp.scentobund import (
     single_scenario,
     single_bundle,
     sf_random,

@@ -2,12 +2,12 @@ import mpisppy.utils.sputils as sputils
 from mpisppy.opt.ef import ExtensiveForm
 from mpisppy.opt.ph import PH
 import pyomo.environ as pyo
-from forestlib.ph import stochastic_program
+from sparow.ph import stochastic_program
 
 from IPython import embed
 import random
 import pytest
-from forestlib.ph import ProgressiveHedgingSolver
+from sparow.ph import ProgressiveHedgingSolver
 import numpy as np
 
 random.seed(923874938740938740)

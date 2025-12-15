@@ -19,11 +19,11 @@ except:
 import pyomo.environ as pyo
 
 # from pyomo.common.timing import tic, toc, TicTocTimer
-from forestlib import solnpool
-from forestlib.sp.sp_pyomo import find_objective
-import forestlib.logs
+from sparow import solnpool
+from sparow.sp.sp_pyomo import find_objective
+import sparow.logs
 
-logger = forestlib.logs.logger
+logger = sparow.logs.logger
 
 
 class Forestlib_client:
@@ -349,7 +349,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
 
         if loglevel is not None:
             if loglevel == "DEBUG" or loglevel == "VERBOSE":
-                forestlib.logs.use_debugging_formatter()
+                sparow.logs.use_debugging_formatter()
             logger.setLevel(loglevel)
 
     def solve(self, sp, **options):

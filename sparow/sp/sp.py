@@ -7,10 +7,10 @@ import logging
 
 from . import scentobund
 
-# import forestlib.util
-import forestlib.logs
+# import sparow.util
+import sparow.logs
 
-logger = forestlib.logs.logger
+logger = sparow.logs.logger
 
 
 class StochasticProgram(object):

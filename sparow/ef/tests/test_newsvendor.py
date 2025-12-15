@@ -1,13 +1,13 @@
 import pytest
 import pyomo.environ as pyo
 
-from forestlib.sp.examples import (
+from sparow.sp.examples import (
     LF_newsvendor,
     HF_newsvendor,
     MFrandom_newsvendor,
     simple_newsvendor,
 )
-from forestlib.ef import ExtensiveFormSolver
+from sparow.ef import ExtensiveFormSolver
 
 import pyomo.opt
 from pyomo.common import unittest
