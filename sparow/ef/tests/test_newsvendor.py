@@ -24,7 +24,8 @@ class TestEFNewsvendor:
         solver.set_options(solver=mip_solver)
         results = solver.solve(app.sp)
         results_dict = results.to_dict()
-        soln = next(iter(results_dict[None]["solutions"].values()))
+        import pprint; pprint.pprint(results_dict)
+        soln = next(iter(results_dict["solutions"].values()))
 
         obj_val = soln["objectives"][0]["value"]
         assert obj_val == pytest.approx(app.objective_value)
@@ -38,7 +39,7 @@ class TestEFNewsvendor:
         solver.set_options(solver=mip_solver)
         results = solver.solve_and_return_EF(app.sp)
         results_dict = results.solutions.to_dict()
-        soln = next(iter(results_dict[None]["solutions"].values()))
+        soln = next(iter(results_dict["solutions"].values()))
 
         obj_val = soln["objectives"][0]["value"]
         assert obj_val == pytest.approx(app.objective_value)
@@ -55,7 +56,7 @@ class TestEFNewsvendor:
         solver.set_options(solver=mip_solver)
         results = solver.solve(app.sp)
         results_dict = results.to_dict()
-        soln = next(iter(results_dict[None]["solutions"].values()))
+        soln = next(iter(results_dict["solutions"].values()))
 
         obj_val = soln["objectives"][0]["value"]
         assert obj_val == pytest.approx(app.objective_value)
@@ -69,7 +70,7 @@ class TestEFNewsvendor:
         solver.set_options(solver=mip_solver)
         results = solver.solve(app.sp)
         results_dict = results.to_dict()
-        soln = next(iter(results_dict[None]["solutions"].values()))
+        soln = next(iter(results_dict["solutions"].values()))
 
         obj_val = soln["objectives"][0]["value"]
         assert obj_val == pytest.approx(app.objective_value)
@@ -83,7 +84,7 @@ class TestEFNewsvendor:
         solver.set_options(solver=mip_solver)
         results = solver.solve(app.sp)
         results_dict = results.to_dict()
-        soln = next(iter(results_dict[None]["solutions"].values()))
+        soln = next(iter(results_dict["solutions"].values()))
 
         obj_val = soln["objectives"][0]["value"]
         assert obj_val == pytest.approx(app.objective_value)

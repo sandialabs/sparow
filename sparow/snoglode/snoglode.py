@@ -16,26 +16,26 @@ except:
     snoglode_available=False
 
 import pyomo.environ as pyo
-from pyomo.contrib.alternative_solutions.aos_utils import get_active_objective
+from or_topas.aos_utils import get_active_objective
 from pyomo.opt import TerminationCondition, SolverStatus
 from pyomo.common.timing import tic, toc
 
-try:
-    from pyomo.contrib.alternative_solutions.solnpool import (
+if True:
+    from or_topas.solnpool import (
         PoolCounter,
         SolutionPool_KeepBest,
         PoolManager,
     )
-    from pyomo.contrib.alternative_solutions.solution import Solution, PyomoSolution
-    from pyomo.contrib.alternative_solutions import Objective, Variable
+    from or_topas.solution import Solution, PyomoSolution
+    from or_topas import ObjectiveInfo, VariableInfo
 
     alt_sol_available = True
-    print("Alternative solutions package from pyomo.contrib is available.")
-except:
+    print("Alternative solutions package from or_topas is available.")
+else:
     PoolCounter, SolutionPool_KeepBest, Solution = None, None, None
     alt_sol_available = False
     print(
-        "Alternative solutions package from pyomo.contrib is unavailable. \
+        "Alternative solutions package from or_topas is unavailable. \
           \nReverting to simple saving behavior."
     )
 
@@ -239,13 +239,13 @@ class CustomCandidateGenerator(AbstractCandidateGenerator):
             # store vars
             variables = []
             for var in candidate_solution:
-                variables.append(Variable(name=var, value=candidate_solution[var]))
+                variables.append(VariableInfo(name=var, value=candidate_solution[var]))
 
             self.pm.add(
                 Solution(
                     variable=variables,
                     objectives=[
-                        Objective(value=pyo.value(statistics.aggregated_objective))
+                        ObjectiveInfo(value=pyo.value(statistics.aggregated_objective))
                     ],
                 )
             )

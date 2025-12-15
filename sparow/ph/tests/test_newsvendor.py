@@ -25,7 +25,7 @@ class TestPHNewsvendor:
         results = solver.solve(app.sp)
         results_dict = results.to_dict()
         soln = next(
-            iter(results_dict["Finalized Last PH Solution"]["solutions"].values())
+            iter(results_dict["solutions"].values())
         )
 
         x = soln["variables"][0]["value"]
@@ -41,7 +41,7 @@ class TestPHNewsvendor:
         results = solver.solve(app.sp)
         results_dict = results.to_dict()
         soln = next(
-            iter(results_dict["Finalized Last PH Solution"]["solutions"].values())
+            iter(results_dict["solutions"].values())
         )
 
         x = soln["variables"][0]["value"]
@@ -56,7 +56,7 @@ class TestPHNewsvendor:
         results = solver.solve(app.sp)
         results_dict = results.to_dict()
         soln = next(
-            iter(results_dict["Finalized Last PH Solution"]["solutions"].values())
+            iter(results_dict["solutions"].values())
         )
 
         x = soln["variables"][0]["value"]
@@ -72,7 +72,7 @@ class TestPHNewsvendor:
         results = solver.solve(app.sp)
         results_dict = results.to_dict()
         soln = next(
-            iter(results_dict["Finalized Last PH Solution"]["solutions"].values())
+            iter(results_dict["solutions"].values())
         )
 
         obj_val = soln["objectives"][0]["value"]

@@ -1,7 +1,7 @@
 import pytest
 import pyomo.environ as pyo
 
-from sparow.solnpool import PoolManager
+from or_topas import PoolManager
 from sparow.sp import stochastic_program
 from sparow.sp.examples import AMPL_facilityloc
 from sparow.ef import ExtensiveFormSolver
@@ -129,10 +129,10 @@ class TestFacilityLoc:
         solver = ExtensiveFormSolver()
         solver.set_options(solver=mip_solver)
         pool_manager = PoolManager()
-        pool_manager.reset_solution_counter()
+        pool_manager.solution_counter = 0
         results = solver.solve(sp)
         results_dict = results.to_dict()
-        obj_val = results_dict[None]["solutions"][0]["objectives"][0]["value"]
+        obj_val = results_dict["solutions"][0]["objectives"][0]["value"]
 
         assert obj_val == pytest.approx(16758018.59625)
 
@@ -141,9 +141,9 @@ class TestFacilityLoc:
         solver = ExtensiveFormSolver()
         solver.set_options(solver=mip_solver)
         pool_manager = PoolManager()
-        pool_manager.reset_solution_counter()
+        pool_manager.solution_counter = 0
         results = solver.solve(app.sp)
         results_dict = results.to_dict()
-        obj_val = results_dict[None]["solutions"][0]["objectives"][0]["value"]
+        obj_val = results_dict["solutions"][0]["objectives"][0]["value"]
 
         assert obj_val == pytest.approx(app.objective_value)

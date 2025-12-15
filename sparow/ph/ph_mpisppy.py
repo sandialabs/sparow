@@ -19,7 +19,7 @@ except:
 import pyomo.environ as pyo
 
 # from pyomo.common.timing import tic, toc, TicTocTimer
-from sparow import solnpool
+import or_topas
 from sparow.sp.sp_pyomo import find_objective
 import sparow.logs
 
@@ -383,7 +383,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         #
         if self.mpi_rank == 0:
             if self.solutions is None:
-                self.solutions = solnpool.PoolManager()
+                self.solutions = or_topas.PoolManager()
             if self.finalize_all_xbar:
                 sp_metadata = self.solutions.add_pool(
                     "PH Iterations", policy="keep_all"
@@ -444,7 +444,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             for soln in results["first_stage_solutions"]:
                 args = dict(sp=sp, xbar=soln)
                 if results["best_value"]:
-                    args["objective"] = solnpool.Objective(
+                    args["objective"] = or_topas.ObjectiveInfo(
                         value=float(results["best_value"])
                     )
                 self.archive_solution(**args)
@@ -468,7 +468,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
     def archive_solution(self, *, sp, xbar, w=None, **kwds):
         w = {} if w is None else w
         variables = [
-            solnpool.Variable(
+            or_topas.VariableInfo(
                 value=float(val),
                 index=i,
                 name=sp.get_variable_name(i),
