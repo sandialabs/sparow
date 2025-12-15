@@ -51,10 +51,12 @@ jobs:
         with:
           repository: or-fusion/or_topas
           token: ${{ secrets.PAT_FOR_OR_TOPAS }}
-          path: '../or_topas'
+          path: './or_topas'
 
       - name: Install or-topas
-        run: pip install ../or_topas
+        run: |
+            pip install ./or_topas
+            rm -Rf ./or_topas
 
       - name: Install package
         run: pip install -e .
