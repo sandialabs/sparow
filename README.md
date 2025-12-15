@@ -1,13 +1,13 @@
-# forestlib
+# sparow
 
 ## Description
 
-Forestlib is a Python library of optimization solvers for stochastic
-programming that is being developed by the FORESt LDRD project.
+Sparow is a Python library of optimization solvers for stochastic
+programming.
 
 ## Installation
 
-Developers should install Forestlib using **pip** as follows:
+Developers should install Sparow using **pip** as follows:
 
 ```bash
 pip install -e .
@@ -24,7 +24,7 @@ pytest .
 Additionally, the following syntax generates a summary that includes code coverage:
 
 ```bash
-pytest --cov-report term-missing --cov=forestlib .
+pytest --cov-report term-missing --cov=sparow .
 ```
 
 ## Getting started

@@ -1,4 +1,4 @@
-name: forest_dev
+name: sparow
 channels:
   - conda-forge
   - https://repo.anaconda.com/pkgs/main
