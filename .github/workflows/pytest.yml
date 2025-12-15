@@ -46,6 +46,9 @@ jobs:
           environment-file: dev_environment.yml
           use-mamba: true
 
+      - name: Move up a directory
+        run: cd ..
+
       - name: Checkout or-topas
         uses: actions/checkout@v4
         with:
@@ -54,12 +57,11 @@ jobs:
           path: './or_topas'
 
       - name: Install or-topas
-        run: pip install ./or_topas
+        run: pip install or_topas
 
       - name: Install package
         run: |
-            pwd
-            ls
+            cd sparow
             pip install -e .
 
       - name: Lint with flake8
