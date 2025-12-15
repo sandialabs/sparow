@@ -3,11 +3,11 @@ requires = ["setuptools >= 64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name="forestlib"
+name="sparow"
 version="1.0"
 dependencies = ["Pyomo", "munch", "mpi-sppy", "pytest", "black", "glpk", "pytest-cov", "scikit-learn", "rich"]
 readme = {file = "README.md", content-type = "text/plain"}
-description="A forest of optimization capabilities"
+description="Stochastic Programming And Related Optimization Workflows"
 classifiers=[
         "Intended Audience :: End Users/Desktop",
         "Intended Audience :: Science/Research",
