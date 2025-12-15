@@ -57,7 +57,9 @@ jobs:
         run: pip install ./or_topas
 
       - name: Install package
-        run: pip install -e .
+        run: |
+            cd sparow
+            pip install -e .
 
       - name: Lint with flake8
         run: |
