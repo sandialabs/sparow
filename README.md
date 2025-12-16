@@ -10,7 +10,15 @@ programming.
 Developers should install Sparow using **pip** as follows:
 
 ```bash
+git clone git@github.com:or-fusion/or_topas.git
+cd or_topas
 pip install -e .
+cd ..
+
+git clone git@github.com:or-fusion/sparow.git
+cd sparow
+pip install -e .
+cd ..
 ```
 
 ## Testing
