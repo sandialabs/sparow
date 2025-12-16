@@ -21,13 +21,13 @@ from pyomo.opt import TerminationCondition, SolverStatus
 from pyomo.common.timing import tic, toc
 
 if True:
-    from or_topas.solnpool import (
+    from or_topas.solnpool.solnpool import (
         PoolCounter,
         SolutionPool_KeepBest,
         PoolManager,
     )
-    from or_topas.solution import Solution, PyomoSolution
-    from or_topas import ObjectiveInfo, VariableInfo
+    from or_topas.solnpool.solution import Solution, PyomoSolution
+    from or_topas.solnpool.solution import ObjectiveInfo, VariableInfo
 
     alt_sol_available = True
     print("Alternative solutions package from or_topas is available.")
