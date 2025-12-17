@@ -1,12 +1,3 @@
-#
-# Newsvendor example adapted from
-#
-# A Tutorial on Stochastic Programming
-# Alexander Shapiro∗ and Andy Philpott†
-# March 21, 2007
-# https://www.epoc.org.nz/papers/ShapiroTutorialSP.pdf
-#
-
 from munch import Munch
 import pyomo.environ as pyo
 from sparow.sp import stochastic_program
@@ -50,6 +41,14 @@ def builder(data, args):
 
 
 def simple_newsvendor():
+    """
+    Newsvendor example adapted from
+
+    A Tutorial on Stochastic Programming
+    Alexander Shapiro∗ and Andy Philpott†
+    March 21, 2007
+    https://www.epoc.org.nz/papers/ShapiroTutorialSP.pdf
+    """
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(model_data=model_data, model_builder=builder)
