@@ -75,6 +75,16 @@ def HF_builder(data, args):
 
 
 def HF_newsvendor():
+    """
+    A 'high fidelity' newsvendor example adapted from
+
+    A Tutorial on Stochastic Programming
+    Alexander Shapiro∗ and Andy Philpott†
+    March 21, 2007
+    https://www.epoc.org.nz/papers/ShapiroTutorialSP.pdf
+
+    This model includes one additional constraint, using data values 'B' and 'C'.
+    """
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
@@ -89,6 +99,14 @@ def HF_newsvendor():
 
 
 def LF_newsvendor():
+    """
+    A 'low fidelity' newsvendor example adapted from
+
+    A Tutorial on Stochastic Programming
+    Alexander Shapiro∗ and Andy Philpott†
+    March 21, 2007
+    https://www.epoc.org.nz/papers/ShapiroTutorialSP.pdf
+    """
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
@@ -103,6 +121,11 @@ def LF_newsvendor():
 
 
 def MFrandom_newsvendor():
+    """
+    A multi-fidelity newsvendor example.  This example includes both low-
+    and high-fidelity scenarios that are bundled using the 'random'
+    bundling scheme.
+    """
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
@@ -121,6 +144,11 @@ def MFrandom_newsvendor():
 
 
 def MFpaired_newsvendor():
+    """
+    A multi-fidelity newsvendor example.  This example includes both low-
+    and high-fidelity scenarios that are bundled using the 'paired'
+    bundling scheme.
+    """
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
