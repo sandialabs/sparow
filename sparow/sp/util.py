@@ -30,7 +30,7 @@ def constrain_EF_model(
     for name in first_stage_variables:
         assert name in var, f"Missing variable {name} in model first stage variables"
 
-    if fraction_same >= 1-1e-3:
+    if fraction_same >= 1 - 1e-3:
         for name, value in first_stage_variables.items():
             var[name].fix(value)
         return M

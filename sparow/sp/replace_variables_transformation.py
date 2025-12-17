@@ -19,7 +19,8 @@ from pyomo.core.base import Transformation
 from pyomo.core.base.block import Block
 
 from pyomo.gdp import Disjunct, Disjunction
-#from pyomo.gdp.util import is_child_of
+
+# from pyomo.gdp.util import is_child_of
 from pyomo.network import Port
 
 from pyomo.core.expr import ExpressionReplacementVisitor

@@ -183,6 +183,7 @@ def check_data_dict_keys(data, model0, bundle_args):
 ******************* MULTI-FIDELITY SCHEMES *******************
 """
 
+
 def mf_bundle_from_list(data, model_weight=None, models=None, bundle_args=None):
     """
     This scheme accepts a list of lists provided by the user, where each inner list is a bundle.
@@ -194,30 +195,36 @@ def mf_bundle_from_list(data, model_weight=None, models=None, bundle_args=None):
         list_of_bundles = bundle_args.get("bundles")
     else:
         list_of_bundles = None
-    if list_of_bundles is None or len(list_of_bundles)==0:
+    if list_of_bundles is None or len(list_of_bundles) == 0:
         raise RuntimeError(f"mf_bundle_from_list scheme requires 'bundles' key")
-    
+
     if models is None:
         models = list(data.keys())
     assert (
         len(models) > 1
     ), "Expecting multiple models for mf_bundle_from_list; see bundle_from_list for equivalent single fidelity scheme"
-    
+
     model0 = models[0]  # the first model in models is assumed to be the HF model
     pkey = check_data_dict_keys(data, model0, bundle_args)[1]
 
     bundle = {}
     for bundle_list_idx, bundle_list in enumerate(list_of_bundles):
         bundle[f"bundle_{bundle_list_idx}"] = dict(
-            scenarios={bundle_list[b_tuple_idx]: data[f"{b_tuple[0]}"][f"{b_tuple[1]}"][pkey] for b_tuple_idx, b_tuple in enumerate(bundle_list)},
-            Probability=sum(data[f"{b_tuple[0]}"][f"{b_tuple[1]}"][pkey] for b_tuple in bundle_list) / len(data.keys()),
+            scenarios={
+                bundle_list[b_tuple_idx]: data[f"{b_tuple[0]}"][f"{b_tuple[1]}"][pkey]
+                for b_tuple_idx, b_tuple in enumerate(bundle_list)
+            },
+            Probability=sum(
+                data[f"{b_tuple[0]}"][f"{b_tuple[1]}"][pkey] for b_tuple in bundle_list
+            )
+            / len(data.keys()),
         )
 
     # normalize scenario probabilities within bundles
     for b_key in bundle.keys():
         norm_factor = sum(bundle[b_key]["scenarios"].values())
         for s_key in bundle[b_key]["scenarios"]:
-            bundle[b_key]["scenarios"][s_key] *= ( 1 / norm_factor )
+            bundle[b_key]["scenarios"][s_key] *= 1 / norm_factor
 
     return bundle
 
@@ -281,7 +288,7 @@ def mf_kmeans_similar(data, model_weight=None, models=None, bundle_args=None):
             for i in range(len(centers))
         ]
         diffs[hs] = dem_diffs.index(min(dem_diffs))
-    for ls in lf_scens: # map LF scenarios to closest bundle center
+    for ls in lf_scens:  # map LF scenarios to closest bundle center
         dem_diffs = [
             float(np.linalg.norm(centers[i] - lf_scens[ls][dkey]))
             for i in range(len(centers))
@@ -300,7 +307,10 @@ def mf_kmeans_similar(data, model_weight=None, models=None, bundle_args=None):
                     )
                 else:
                     bundle[f"bundle_{centers[diffs[s]][0]}"] = dict(
-                        scenarios={scen_key(model, s): model_weight[model] * data[model][s][pkey]},
+                        scenarios={
+                            scen_key(model, s): model_weight[model]
+                            * data[model][s][pkey]
+                        },
                         Probability=0,
                     )
             else:
@@ -321,7 +331,9 @@ def mf_kmeans_similar(data, model_weight=None, models=None, bundle_args=None):
             num_scens_per_fidelity = {model: 0 for model in models}
             for (mod, _), _ in bundle[bkey]["scenarios"].items():
                 num_scens_per_fidelity[mod] += 1
-            bundle_weight_factor = sum(model_weight[model]*num_scens_per_fidelity[model] for model in models)
+            bundle_weight_factor = sum(
+                model_weight[model] * num_scens_per_fidelity[model] for model in models
+            )
             for skey in bundle[bkey]["scenarios"]:
                 bundle[bkey]["scenarios"][skey] *= 1 / bundle_weight_factor
     # sum scenario probabilities within bundle to obtain pre-normalized bundle probability
@@ -404,7 +416,7 @@ def mf_kmeans_dissimilar(data, model_weight=None, models=None, bundle_args=None)
             for i in range(len(centers))
         ]
         diffs[hs] = dem_diffs.index(min(dem_diffs))
-    for ls in lf_scens: # map LF scenarios to furthest bundle center
+    for ls in lf_scens:  # map LF scenarios to furthest bundle center
         dem_diffs = [
             float(np.linalg.norm(centers[i] - lf_scens[ls][dkey]))
             for i in range(len(centers))
@@ -423,7 +435,10 @@ def mf_kmeans_dissimilar(data, model_weight=None, models=None, bundle_args=None)
                     )
                 else:
                     bundle[f"bundle_{centers[diffs[s]][0]}"] = dict(
-                        scenarios={scen_key(model, s): model_weight[model] * data[model][s][pkey]},
+                        scenarios={
+                            scen_key(model, s): model_weight[model]
+                            * data[model][s][pkey]
+                        },
                         Probability=0,
                     )
             else:
@@ -444,7 +459,9 @@ def mf_kmeans_dissimilar(data, model_weight=None, models=None, bundle_args=None)
             num_scens_per_fidelity = {model: 0 for model in models}
             for (mod, _), _ in bundle[bkey]["scenarios"].items():
                 num_scens_per_fidelity[mod] += 1
-            bundle_weight_factor = sum(model_weight[model]*num_scens_per_fidelity[model] for model in models)
+            bundle_weight_factor = sum(
+                model_weight[model] * num_scens_per_fidelity[model] for model in models
+            )
             for skey in bundle[bkey]["scenarios"]:
                 bundle[bkey]["scenarios"][skey] *= 1 / bundle_weight_factor
     # sum scenario probabilities within bundle to obtain pre-normalized bundle probability
@@ -920,12 +937,12 @@ def bundle_from_list(data, model_weight=None, models=None, bundle_args=None):
         list_of_bundles = bundle_args.get("bundles")
     else:
         list_of_bundles = None
-    if list_of_bundles is None or len(list_of_bundles)==0:
+    if list_of_bundles is None or len(list_of_bundles) == 0:
         raise RuntimeError(f"bundle_from_list scheme requires 'bundles' key")
-        
+
     if models is None:
         models = list(data.keys())
-    
+
     model0 = models[0]  # the first model in models is assumed to be the HF model
     pkey = check_data_dict_keys(data, model0, bundle_args)[1]
 
@@ -938,20 +955,35 @@ def bundle_from_list(data, model_weight=None, models=None, bundle_args=None):
         elif all(isinstance(scen, str) for scen in bundle_list) and string_type:
             tuple_type = False
         else:
-            raise RuntimeError(f"User-specified bundle list contains inconsistent entries.")
-        
+            raise RuntimeError(
+                f"User-specified bundle list contains inconsistent entries."
+            )
+
     bundle = {}
     if tuple_type:
         for bundle_list_idx, bundle_list in enumerate(list_of_bundles):
             bundle[f"bundle_{bundle_list_idx}"] = dict(
-                scenarios={bundle_list[b_tuple_idx]: data[f"{b_tuple[0]}"][f"{b_tuple[1]}"][pkey] for b_tuple_idx, b_tuple in enumerate(bundle_list)},
-                Probability=sum(data[f"{b_tuple[0]}"][f"{b_tuple[1]}"][pkey] for b_tuple in bundle_list),
+                scenarios={
+                    bundle_list[b_tuple_idx]: data[f"{b_tuple[0]}"][f"{b_tuple[1]}"][
+                        pkey
+                    ]
+                    for b_tuple_idx, b_tuple in enumerate(bundle_list)
+                },
+                Probability=sum(
+                    data[f"{b_tuple[0]}"][f"{b_tuple[1]}"][pkey]
+                    for b_tuple in bundle_list
+                ),
             )
     else:
-        assert string_type == True, "Inner bundle lists must contain only strings or only tuples"
+        assert (
+            string_type == True
+        ), "Inner bundle lists must contain only strings or only tuples"
         for bundle_list_idx, bundle_list in enumerate(list_of_bundles):
             bundle[f"bundle_{bundle_list_idx}"] = dict(
-                scenarios={(model0, bundle_list[b_idx]): data[model0][f"{b}"][pkey] for b_idx, b in enumerate(bundle_list)},
+                scenarios={
+                    (model0, bundle_list[b_idx]): data[model0][f"{b}"][pkey]
+                    for b_idx, b in enumerate(bundle_list)
+                },
                 Probability=sum(data[model0][f"{b}"][pkey] for b in bundle_list),
             )
 

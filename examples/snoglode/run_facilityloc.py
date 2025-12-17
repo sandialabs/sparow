@@ -1,6 +1,7 @@
 """
 Demonstration of solving the LF farmer SP using SNoGloDe
 """
+
 from pprint import pprint
 from facilityloc import LF_builder
 from forestlib.sp import stochastic_program
@@ -68,12 +69,11 @@ for lscen_idx, lscen in enumerate(LF_scenarios):
 model_data = {"scenarios": LFscens_list}
 sp = stochastic_program(first_stage_variables=["x"])
 sp.initialize_application(app_data=app_data)
-sp.initialize_model(
-    name="LF", model_data=model_data, model_builder=LF_builder
-)
+sp.initialize_model(name="LF", model_data=model_data, model_builder=LF_builder)
 
 if __name__ == "__main__":
     from forestlib.snoglode import SnoglodeSolver
+
     solver = SnoglodeSolver()
     solver.set_options(solver="gurobi")
     solutions = solver.solve(sp, solver="gurobi", loglevel="DEBUG")
