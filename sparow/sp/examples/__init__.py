@@ -4,7 +4,7 @@ from .facilityloc.facilityloc import (
     MFrandom_facilityloc,
     AMPL_facilityloc,
 )
-from .newsvendor.MFnewsvendor import (
+from .newsvendor.mf_newsvendor import (
     LF_newsvendor,
     HF_newsvendor,
     MFrandom_newsvendor,
