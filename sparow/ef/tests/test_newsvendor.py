@@ -24,9 +24,6 @@ class TestEFNewsvendor:
         solver.set_options(solver=mip_solver)
         results = solver.solve(app.sp)
         results_dict = results.to_dict()
-        import pprint
-
-        pprint.pprint(results_dict)
         soln = next(iter(results_dict["solutions"].values()))
 
         obj_val = soln["objectives"][0]["value"]
