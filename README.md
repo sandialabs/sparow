@@ -7,14 +7,18 @@ programming.
 
 ## Installation
 
-Developers should install Sparow using **pip** as follows:
+Sparow requires the installation of or-topas, which can be installed using **pip** as follows:
 
 ```bash
 git clone git@github.com:or-fusion/or_topas.git
 cd or_topas
 pip install -e .
 cd ..
+```
 
+Developers should install Sparow using **pip** as follows:
+
+```bash
 git clone git@github.com:or-fusion/sparow.git
 cd sparow
 pip install -e .
