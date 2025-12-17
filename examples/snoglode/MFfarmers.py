@@ -657,6 +657,7 @@ def model_builder(data, args):
 # options to solve, LF, HF, or MF models with PH or EF:
 #
 
+
 def HF_EF():
     print("-" * 60)
     print("Running HF_EF")
@@ -737,6 +738,7 @@ def HF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     results = solver.solve(sp)
     results.write("results.json", indent=4)
     print("Writing results to 'results.json'")
+
 
 def MF_PH(*, cache, max_iter, loglevel, finalize_all_iters):
     print("-" * 60)

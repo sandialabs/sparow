@@ -312,7 +312,11 @@ class TestBundleFunctions(object):
             sf_scenarios,
             bundle_args={
                 "bundles": [
-                    [("only_model_fidelity", "s_1"), ("only_model_fidelity", "s_2"), ("only_model_fidelity", "s_3")],
+                    [
+                        ("only_model_fidelity", "s_1"),
+                        ("only_model_fidelity", "s_2"),
+                        ("only_model_fidelity", "s_3"),
+                    ],
                     [("only_model_fidelity", "s_0"), ("only_model_fidelity", "s_4")],
                 ],
             },
@@ -877,9 +881,10 @@ class TestBundleFunctions(object):
             kmeans_dissimilar(SF_data, bundle_args={"bun_size": 5})
         assert excinfo.type is ValueError
 
-
     def test_sf_random(self, imbalanced_data):
-        assert sf_random(imbalanced_data, bundle_args={"num_buns": 3, "seed": 123456789}) == {
+        assert sf_random(
+            imbalanced_data, bundle_args={"num_buns": 3, "seed": 123456789}
+        ) == {
             "rand_0": {
                 "scenarios": {
                     ("LF", "rand_2"): 1.0,
@@ -897,5 +902,5 @@ class TestBundleFunctions(object):
                     ("HF", "rand_1"): 1.0,
                 },
                 "Probability": 0.5,
-            }
-        } 
+            },
+        }

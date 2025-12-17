@@ -159,9 +159,13 @@ class ProgressiveHedgingSolver(object):
         if self.solutions is None:
             self.solutions = or_topas.PoolManager()
         if self.finalize_all_xbar:
-            sp_metadata = self.solutions.add_pool(name="PH Iterations", policy=or_topas.PoolPolicy.keep_all)
+            sp_metadata = self.solutions.add_pool(
+                name="PH Iterations", policy=or_topas.PoolPolicy.keep_all
+            )
         else:
-            sp_metadata = self.solutions.add_pool(name="PH Iterations", policy=or_topas.PoolPolicy.keep_latest)
+            sp_metadata = self.solutions.add_pool(
+                name="PH Iterations", policy=or_topas.PoolPolicy.keep_latest
+            )
         sp_metadata.solver = "PH Iteration Results"
         sp_metadata.solver_options = dict(
             cached_model_generation=self.cached_model_generation,
@@ -376,12 +380,16 @@ class ProgressiveHedgingSolver(object):
         logger.info("ProgressiveHedgingSolver - FINALIZING")
         if self.finalize_all_xbar:
             all_iterations = list(self.solutions)
-            self.solutions.add_pool(name="Finalized All PH Iterations", policy=or_topas.PoolPolicy.keep_all)
+            self.solutions.add_pool(
+                name="Finalized All PH Iterations", policy=or_topas.PoolPolicy.keep_all
+            )
             for soln in all_iterations:
                 finalize_ph_results(soln, sp=sp, solutions=self.solutions)
         else:
             soln = self.solutions[latest_soln]
-            self.solutions.add_pool(name="Finalized Last PH Solution", policy=or_topas.PoolPolicy.keep_best)
+            self.solutions.add_pool(
+                name="Finalized Last PH Solution", policy=or_topas.PoolPolicy.keep_best
+            )
             finalize_ph_results(soln, sp=sp, solutions=self.solutions)
 
         sp_metadata.end_time = str(end_time)

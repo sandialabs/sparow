@@ -23,7 +23,9 @@ def test_initialize_EF(mip_solver):
 
     # Double check that the solution value looks good
     results_dict = results.to_dict()
-    import pprint; pprint.pprint(results_dict)
+    import pprint
+
+    pprint.pprint(results_dict)
     soln = next(iter(results_dict["solutions"].values()))
     obj_val = soln["objectives"][0]["value"]
     assert obj_val == pytest.approx(76.5, 0.01)

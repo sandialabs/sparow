@@ -24,14 +24,16 @@ class TestEFNewsvendor:
         solver.set_options(solver=mip_solver)
         results = solver.solve(app.sp)
         results_dict = results.to_dict()
-        import pprint; pprint.pprint(results_dict)
+        import pprint
+
+        pprint.pprint(results_dict)
         soln = next(iter(results_dict["solutions"].values()))
 
         obj_val = soln["objectives"][0]["value"]
         assert obj_val == pytest.approx(app.objective_value)
         assert app.unique_solution
         x = soln["variables"][0]["value"]
-        assert x == pytest.approx(app.solution_values['x'])
+        assert x == pytest.approx(app.solution_values["x"])
 
     def test_simple_return_EF(self, mip_solver):
         app = simple_newsvendor()
@@ -45,7 +47,7 @@ class TestEFNewsvendor:
         assert obj_val == pytest.approx(app.objective_value)
         assert app.unique_solution
         x = soln["variables"][0]["value"]
-        assert x == pytest.approx(app.solution_values['x'])
+        assert x == pytest.approx(app.solution_values["x"])
 
         assert obj_val == pytest.approx(pyo.value(results.model.obj))
         assert x == pytest.approx(pyo.value(results.model.first_stage_variables[0]))
@@ -62,7 +64,7 @@ class TestEFNewsvendor:
         assert obj_val == pytest.approx(app.objective_value)
         assert app.unique_solution
         x = soln["variables"][0]["value"]
-        assert x == pytest.approx(app.solution_values['x'])
+        assert x == pytest.approx(app.solution_values["x"])
 
     def test_HF(self, mip_solver):
         app = HF_newsvendor()
@@ -76,7 +78,7 @@ class TestEFNewsvendor:
         assert obj_val == pytest.approx(app.objective_value)
         assert app.unique_solution
         x = soln["variables"][0]["value"]
-        assert x == pytest.approx(app.solution_values['x'])
+        assert x == pytest.approx(app.solution_values["x"])
 
     def test_MFrandom(self, mip_solver):
         app = MFrandom_newsvendor()
@@ -90,4 +92,3 @@ class TestEFNewsvendor:
         assert obj_val == pytest.approx(app.objective_value)
         assert not app.unique_solution
         # The optimal x value is not unique, so we don't test its value
-

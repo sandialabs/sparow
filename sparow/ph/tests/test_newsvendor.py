@@ -12,7 +12,7 @@ import pyomo.opt
 from pyomo.common import unittest
 
 solvers = set(pyomo.opt.check_available_solvers("gurobi_direct"))
-#solvers = []  # Ignore these tests for now
+# solvers = []  # Ignore these tests for now
 
 
 @unittest.pytest.mark.parametrize("mip_solver", solvers)
@@ -24,12 +24,10 @@ class TestPHNewsvendor:
         solver.set_options(solver=mip_solver)
         results = solver.solve(app.sp)
         results_dict = results.to_dict()
-        soln = next(
-            iter(results_dict["solutions"].values())
-        )
+        soln = next(iter(results_dict["solutions"].values()))
 
         x = soln["variables"][0]["value"]
-        assert x == pytest.approx(app.solution_values['x'], 0.01)
+        assert x == pytest.approx(app.solution_values["x"], 0.01)
         obj_val = soln["objectives"][0]["value"]
         assert obj_val == pytest.approx(app.objective_value, 0.01)
 
@@ -40,12 +38,10 @@ class TestPHNewsvendor:
         solver.set_options(max_iterations=1000)
         results = solver.solve(app.sp)
         results_dict = results.to_dict()
-        soln = next(
-            iter(results_dict["solutions"].values())
-        )
+        soln = next(iter(results_dict["solutions"].values()))
 
         x = soln["variables"][0]["value"]
-        assert x == pytest.approx(app.solution_values['x'], 0.01)
+        assert x == pytest.approx(app.solution_values["x"], 0.01)
         obj_val = soln["objectives"][0]["value"]
         assert obj_val == pytest.approx(app.objective_value, 0.01)
 
@@ -55,12 +51,10 @@ class TestPHNewsvendor:
         solver.set_options(solver=mip_solver)
         results = solver.solve(app.sp)
         results_dict = results.to_dict()
-        soln = next(
-            iter(results_dict["solutions"].values())
-        )
+        soln = next(iter(results_dict["solutions"].values()))
 
         x = soln["variables"][0]["value"]
-        assert x == pytest.approx(app.solution_values['x'], 0.01)
+        assert x == pytest.approx(app.solution_values["x"], 0.01)
         obj_val = soln["objectives"][0]["value"]
         assert obj_val == pytest.approx(app.objective_value, 0.01)
 
@@ -71,9 +65,7 @@ class TestPHNewsvendor:
         solver.set_options(max_iterations=1000)
         results = solver.solve(app.sp)
         results_dict = results.to_dict()
-        soln = next(
-            iter(results_dict["solutions"].values())
-        )
+        soln = next(iter(results_dict["solutions"].values()))
 
         obj_val = soln["objectives"][0]["value"]
         assert obj_val == pytest.approx(app.objective_value, 0.1)

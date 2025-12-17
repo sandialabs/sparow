@@ -1,13 +1,16 @@
 """
 Demonstration of solving the LF farmer SP using SNoGloDe
 """
+
 from pprint import pprint
 from MFfarmers import LFScenario_dict, LF_model_builder
 from forestlib.sp import stochastic_program
 
+
 class GlobalData:
     num_plots = 1
     num_scens = 3  ### should be >= 3
+
 
 # list of possible per-plot scenarios for LF model:
 LF_scendata = {
@@ -41,6 +44,7 @@ sp.initialize_model(
 
 if __name__ == "__main__":
     from forestlib.snoglode import SnoglodeSolver
+
     solver = SnoglodeSolver()
     solutions = solver.solve(sp, solver="gurobi", loglevel="DEBUG")
     pprint(solutions.to_dict())

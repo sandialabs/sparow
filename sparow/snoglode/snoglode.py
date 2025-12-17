@@ -11,9 +11,10 @@ try:
     import snoglode as sno
     from snoglode.utils.solve_stats import OneUpperBoundSolve
     import snoglode.utils.compute as compute
-    snoglode_available=True
+
+    snoglode_available = True
 except:
-    snoglode_available=False
+    snoglode_available = False
 
 import pyomo.environ as pyo
 from or_topas.aos_utils import get_active_objective
@@ -47,14 +48,17 @@ logger = sparow.logs.logger
 
 
 if snoglode_available:
-    AbstractCandidateGenerator=sno.AbstractCandidateGenerator
+    AbstractCandidateGenerator = sno.AbstractCandidateGenerator
     Subproblems = sno.Subproblems
     Node = sno.Node
 else:
+
     class AbstractCandidateGenerator:
         pass
+
     Subproblems = None
     Node = None
+
 
 class CustomCandidateGenerator(AbstractCandidateGenerator):
     """
