@@ -17,7 +17,7 @@ except:
     snoglode_available = False
 
 import pyomo.environ as pyo
-from or_topas.aos_utils import get_active_objective
+from or_topas.util.pyomo_utils import get_active_objective
 from pyomo.opt import TerminationCondition, SolverStatus
 from pyomo.common.timing import tic, toc
 
