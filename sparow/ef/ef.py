@@ -6,7 +6,7 @@ import datetime
 
 from pyomo.common.timing import tic, toc
 import sparow.logs
-import or_topas
+import or_topas.solnpool
 
 logger = sparow.logs.logger
 
@@ -63,7 +63,7 @@ class ExtensiveFormSolver(object):
         toc("Optimized extensive form", logger=logger, level=logging.VERBOSE)
         end_time = datetime.datetime.now()
 
-        solutions = or_topas.PoolManager()
+        solutions = or_topas.solnpool.PoolManager()
         metadata = solutions.metadata
         metadata.termination_condition = str(results.termination_condition)
         metadata.status = str(results.status)
@@ -74,14 +74,14 @@ class ExtensiveFormSolver(object):
         if results.obj_value is not None:
             b = next(iter(sp.bundles))
             variables = [
-                or_topas.VariableInfo(
+                or_topas.solnpool.VariableInfo(
                     value=sp.get_variable_value(b, i),
                     index=i,
                     name=sp.get_variable_name(i),
                 )
                 for i, _ in enumerate(sp.get_variables())
             ]
-            objective = or_topas.ObjectiveInfo(value=results.obj_value)
+            objective = or_topas.solnpool.ObjectiveInfo(value=results.obj_value)
             solutions.add(variables=variables, objective=objective)
 
         logger.info("")

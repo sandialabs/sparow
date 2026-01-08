@@ -1,7 +1,7 @@
 import pytest
 import pyomo.environ as pyo
 
-from or_topas import PoolManager
+from or_topas.solnpool import PoolManager
 from sparow.sp import stochastic_program
 from sparow.sp.examples import AMPL_facilityloc
 from sparow.ef import ExtensiveFormSolver
