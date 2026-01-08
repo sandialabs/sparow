@@ -13,6 +13,7 @@ from pyomo.common.timing import tic, toc
 
 from or_topas.util import try_import
 from or_topas.util.pyomo_utils import get_active_objective
+
 if True:
     from or_topas.solnpool.solnpool import (
         PoolCounter,
@@ -47,6 +48,7 @@ if snoglode_available:
     Subproblems = sno.Subproblems
     Node = sno.Node
 else:
+
     class AbstractCandidateGenerator:
         pass
 
