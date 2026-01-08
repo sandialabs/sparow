@@ -381,14 +381,16 @@ class ProgressiveHedgingSolver(object):
         if self.finalize_all_xbar:
             all_iterations = list(self.solutions)
             self.solutions.add_pool(
-                name="Finalized All PH Iterations", policy=or_topas.solnpool.PoolPolicy.keep_all
+                name="Finalized All PH Iterations",
+                policy=or_topas.solnpool.PoolPolicy.keep_all,
             )
             for soln in all_iterations:
                 finalize_ph_results(soln, sp=sp, solutions=self.solutions)
         else:
             soln = self.solutions[latest_soln]
             self.solutions.add_pool(
-                name="Finalized Last PH Solution", policy=or_topas.solnpool.PoolPolicy.keep_best
+                name="Finalized Last PH Solution",
+                policy=or_topas.solnpool.PoolPolicy.keep_best,
             )
             finalize_ph_results(soln, sp=sp, solutions=self.solutions)
 
