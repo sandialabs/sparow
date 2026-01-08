@@ -3,23 +3,18 @@ import copy
 import sys
 import munch
 import pprint
-import numpy as np
 import datetime
 import logging
 from functools import partial
 
-try:
+import pyomo.environ as pyo
+import or_topas
+
+with or_topas.util.try_import() as mpisppy_available:
     import mpisppy.utils.sputils
     from mpisppy import MPI  # for debugging
+    import numpy as np  # mpisppy depends on numpy
 
-    mpisppy_available = True
-except:
-    mpisppy_available = False
-
-import pyomo.environ as pyo
-
-# from pyomo.common.timing import tic, toc, TicTocTimer
-import or_topas
 from sparow.sp.sp_pyomo import find_objective
 import sparow.logs
 
@@ -383,7 +378,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         #
         if self.mpi_rank == 0:
             if self.solutions is None:
-                self.solutions = or_topas.PoolManager()
+                self.solutions = or_topas.solnpool.PoolManager()
             if self.finalize_all_xbar:
                 sp_metadata = self.solutions.add_pool(
                     "PH Iterations", policy="keep_all"
@@ -444,7 +439,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             for soln in results["first_stage_solutions"]:
                 args = dict(sp=sp, xbar=soln)
                 if results["best_value"]:
-                    args["objective"] = or_topas.ObjectiveInfo(
+                    args["objective"] = or_topas.solnpool.ObjectiveInfo(
                         value=float(results["best_value"])
                     )
                 self.archive_solution(**args)
@@ -468,7 +463,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
     def archive_solution(self, *, sp, xbar, w=None, **kwds):
         w = {} if w is None else w
         variables = [
-            or_topas.VariableInfo(
+            or_topas.solnpool.VariableInfo(
                 value=float(val),
                 index=i,
                 name=sp.get_variable_name(i),

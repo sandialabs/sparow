@@ -7,19 +7,12 @@ import math
 import logging
 import datetime
 
-try:
-    import snoglode as sno
-    from snoglode.utils.solve_stats import OneUpperBoundSolve
-    import snoglode.utils.compute as compute
-
-    snoglode_available = True
-except:
-    snoglode_available = False
-
 import pyomo.environ as pyo
-from or_topas.util.pyomo_utils import get_active_objective
 from pyomo.opt import TerminationCondition, SolverStatus
 from pyomo.common.timing import tic, toc
+
+from or_topas.util import try_import
+from or_topas.util.pyomo_utils import get_active_objective
 
 if True:
     from or_topas.solnpool.solnpool import (
@@ -40,12 +33,15 @@ else:
           \nReverting to simple saving behavior."
     )
 
-# from MFfarmers import LFScenario_dict, LF_model_builder
 from sparow.sp import stochastic_program
 import sparow.logs
 
 logger = sparow.logs.logger
 
+with try_import() as snoglode_available:
+    import snoglode as sno
+    from snoglode.utils.solve_stats import OneUpperBoundSolve
+    import snoglode.utils.compute as compute
 
 if snoglode_available:
     AbstractCandidateGenerator = sno.AbstractCandidateGenerator
