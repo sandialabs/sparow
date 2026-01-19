@@ -157,7 +157,7 @@ class SerialBBSolver(BBSolver):
                 #
                 # Find new incumbent
                 #
-                (value, solution) = subproblem.get_solution()
+                value, solution = subproblem.get_solution()
                 if (not value is None) and (sense * value < sense * incumbent_value):
                     # New solution has a better value
                     incumbent_value = value

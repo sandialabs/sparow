@@ -8,7 +8,6 @@ from forestlib.ef import ExtensiveFormSolver
 from forestlib.ph import ProgressiveHedgingSolver
 import json
 
-
 random.seed(923874938740938740)
 
 
