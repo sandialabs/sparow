@@ -1,4 +1,4 @@
-name: Format Checks and Tests
+name: Github CI
 
 on:
   push:
