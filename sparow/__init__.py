@@ -9,4 +9,3 @@ from . import sp
 from . import ph
 from . import ef
 from . import snoglode
-from . import bnbpy
