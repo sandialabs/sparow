@@ -4,18 +4,18 @@ channels:
   - https://repo.anaconda.com/pkgs/main
   - https://repo.anaconda.com/pkgs/r
 dependencies:
-  - pyomo
+  - black 
+  - flake8
+  - glpk
   - munch
   - numpy
-  - glpk
-  - flake8
+  - parameterized
+  - pip 
+  - pyomo
   - pytest
   - pytest-cov
-  - pip 
-  - black 
-  - scikit-learn
   - rich
+  - scikit-learn
   - IPython
   - pip:
-    - haggis 
     - mpi-sppy
