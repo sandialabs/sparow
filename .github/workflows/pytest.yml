@@ -56,7 +56,7 @@ jobs:
       fail-fast: false  # If one job fails, the rest will still run
       matrix:
         os: [ubuntu-latest] # Omitting macos-latest because it is 10x more expensive
-        python-version: ["3.10", "3.11", "3.12"] # removing 3.13 for now b/c haggis isn't supported
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -91,8 +91,7 @@ jobs:
       - name: Checkout or-topas
         uses: actions/checkout@v4
         with:
-          repository: or-fusion/or_topas
-          token: ${{ secrets.PAT_FOR_OR_TOPAS }}
+          repository: sandialabs/or_topas
           path: './or_topas'
 
       - name: Install or-topas
