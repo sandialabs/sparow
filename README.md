@@ -1,5 +1,4 @@
 [![Pytest Tests](https://github.com/sandialabs/sparow/actions/workflows/pytest.yml/badge.svg?branch=main)](https://github.com/sandialabs/sparow/actions/workflows/pytest.yml?query=branch%3Amain)
-[![Coverage Status](https://github.com/sandialabs/sparow/actions/workflows/coverage.yml/badge.svg?branch=main)](https://github.com/sandialabs/sparow/actions/workflows/coverage.yml?query=branch%3Amain)
 [![codecov](https://codecov.io/gh/sandialabs/sparow/branch/main/graph/badge.svg)](https://codecov.io/gh/sandialabs/sparow)
 [![Documentation Status](https://readthedocs.org/projects/sparow/badge/?version=latest)](http://sparow.readthedocs.org/en/latest/)
 [![GitHub contributors](https://img.shields.io/github/contributors/sandialabs/sparow.svg)](https://github.com/sandialabs/sparow/graphs/contributors)
