@@ -7,6 +7,9 @@ import datetime
 from pyomo.common.timing import tic, toc
 import sparow.logs
 import or_topas.solnpool
+import or_topas.aos as aos
+from sparow.util import try_import
+    
 
 logger = sparow.logs.logger
 
@@ -57,32 +60,56 @@ class ExtensiveFormSolver(object):
             sys.stdout.flush()
 
         toc("Created extensive form", logger=logger, level=logging.VERBOSE)
-        results = sp.solve(M, solver_options=self.solver_options)
+        if options.get('solver') == "or_topas":
+            # if not or_topas_available:
+            #     raise RuntimeError("or_topas Solver Unavailable")
+            if solver_options == None:
+                solver_options = dict()
+            topas_method = options.pop("topas_method", "balas")
+            if topas_method == "balas":
+                solutions = aos.enumerate_binary_solutions(M, **options)
+            elif topas_method == "gurobi_solution_pool":
+                solutions = aos.gurobi_generate_solutions(M, **options)
+            else:
+                raise RuntimeError(f"Asked for {topas_method=}, which is not supported")
+            assert (
+                len(solutions.solutions) > 0
+            ), f"No solutions found for OR_TOPAS Solver use"
+            toc("Optimized extensive form", logger=logger, level=logging.VERBOSE)
+            end_time = datetime.datetime.now()
+            tc = 'ok'
+            status = 'aos_solve'
+        else:
+            results = sp.solve(M, solver_options=self.solver_options)
 
-        # TODO - show value of subproblem
-        toc("Optimized extensive form", logger=logger, level=logging.VERBOSE)
-        end_time = datetime.datetime.now()
-
-        solutions = or_topas.solnpool.PoolManager()
+            # TODO - show value of subproblem
+            toc("Optimized extensive form", logger=logger, level=logging.VERBOSE)
+            end_time = datetime.datetime.now()
+            tc = results.termination_condition
+            solutions = or_topas.solnpool.PoolManager()
+            status = results.status
+            #TODO: look at the difference between this and the AOS results
+            #this appears to be a custom as_solution method for sparow
+            if results.obj_value is not None:
+                b = next(iter(sp.bundles))
+                variables = [
+                    or_topas.solnpool.VariableInfo(
+                        value=sp.get_variable_value(b, i),
+                        index=i,
+                        name=sp.get_variable_name(i),
+                    )
+                    for i, _ in enumerate(sp.get_variables())
+                ]
+                objective = or_topas.solnpool.ObjectiveInfo(value=results.obj_value)
+                solutions.add(variables=variables, objective=objective)
         metadata = solutions.metadata
-        metadata.termination_condition = str(results.termination_condition)
-        metadata.status = str(results.status)
+        metadata.termination_condition = str(tc)
+        metadata.status = str(status)
         metadata.start_time = str(start_time)
         metadata.end_time = str(end_time)
         metadata.time_elapsed = str(end_time - start_time)
 
-        if results.obj_value is not None:
-            b = next(iter(sp.bundles))
-            variables = [
-                or_topas.solnpool.VariableInfo(
-                    value=sp.get_variable_value(b, i),
-                    index=i,
-                    name=sp.get_variable_name(i),
-                )
-                for i, _ in enumerate(sp.get_variables())
-            ]
-            objective = or_topas.solnpool.ObjectiveInfo(value=results.obj_value)
-            solutions.add(variables=variables, objective=objective)
+
 
         logger.info("")
         logger.info("-" * 70)
