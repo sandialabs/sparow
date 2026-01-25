@@ -159,7 +159,6 @@ def check_data_dict_keys(data, model0, bundle_args, dkey_required=False):
             set([list_item for sublist in all_keys for list_item in sublist])
         )
         existing_pkey = [list_item for list_item in flat_list if list_item in pkeys_to_check]
-        print("existing_pkey", existing_pkey)
         if len(existing_pkey) > 1:
             raise RuntimeError(f"Specify probability_key in bundle_args")
         elif len(existing_pkey) == 0:

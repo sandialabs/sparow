@@ -53,11 +53,9 @@ def MFpaired_data():
 @pytest.fixture
 def SF_data():
     return {
-        "HF": {
+        "scen_data": {
             "scen_1": {"Demand": 3, "Probability": 0.2},
             "scen_0": {"Demand": 1, "Probability": 0.3},
-        },
-        "LF": {
             "scen_3": {"Demand": 4, "Probability": 0.1},
             "scen_2": {"Demand": 2, "Probability": 0.4},
         },
@@ -67,11 +65,9 @@ def SF_data():
 @pytest.fixture
 def SF_missing_all_prob_data():
     return {
-        "HF": {
+        "scen_data": {
             "scen_1": {"Demand": 3},
             "scen_0": {"Demand": 1},
-        },
-        "LF": {
             "scen_3": {"Demand": 4},
             "scen_2": {"Demand": 2},
         },
@@ -81,11 +77,9 @@ def SF_missing_all_prob_data():
 @pytest.fixture
 def SF_missing_all_demand_data():
     return {
-        "HF": {
+        "scen_data": {
             "scen_1": {"pr": 0.2},
             "scen_0": {"pr": 0.4},
-        },
-        "LF": {
             "scen_3": {"pr": 0.3},
             "scen_2": {"pr": 0.1},
         },
@@ -93,24 +87,12 @@ def SF_missing_all_demand_data():
 
 
 @pytest.fixture
-def SF_missing_some_prob_data():
-    return {
-        "HF": {
-            "scen_1": {"Demand": 3, "Probability": 0.2},
-            "scen_0": {"Demand": 1},
-        },
-        "LF": {
-            "scen_3": {"Demand": 4},
-            "scen_2": {"Demand": 2},
-        },
-    }
-
-
-@pytest.fixture
 def rand_data():
     return {
-        "HF": {"scen_0": {"Demand": 1, "Probability": 0.6}},
-        "LF": {"scen_2": {"Demand": 2, "Probability": 0.4}},
+        "RD": {
+                "scen_0": {"Demand": 1, "Probability": 0.6},
+                "scen_2": {"Demand": 2, "Probability": 0.4}
+            },
     }
 
 
@@ -125,11 +107,10 @@ def rand_data_MF():
 @pytest.fixture
 def imbalanced_data():
     return {
-        "HF": {
+        "SF": {
             "rand_1": {"Demand": 3, "Probability": 0.5},
             "rand_0": {"Demand": 1, "Probability": 0.3},
-        },
-        "LF": {"rand_2": {"Demand": 4, "Probability": 0.2}},
+            "rand_2": {"Demand": 4, "Probability": 0.2}},
     }
 
 
@@ -235,10 +216,10 @@ class TestBundleFunctions(object):
         assert single_bundle(SF_missing_all_demand_data) == {
             "bundle": {
                 "scenarios": {
-                    ("HF", "scen_1"): 0.2,
-                    ("HF", "scen_0"): 0.4,
-                    ("LF", "scen_2"): 0.1,
-                    ("LF", "scen_3"): 0.3,
+                    ("scen_data", "scen_1"): 0.2,
+                    ("scen_data", "scen_0"): 0.4,
+                    ("scen_data", "scen_2"): 0.1,
+                    ("scen_data", "scen_3"): 0.3,
                 },
                 "Probability": 1.0,
             },
@@ -323,10 +304,10 @@ class TestBundleFunctions(object):
             assert single_bundle(SF_missing_all_prob_data) == {
                 "bundle": {
                     "scenarios": {
-                        ("HF", "scen_1"): 0.25,
-                        ("HF", "scen_0"): 0.25,
-                        ("LF", "scen_3"): 0.25,
-                        ("LF", "scen_2"): 0.25,
+                        ("scen_data", "scen_1"): 0.25,
+                        ("scen_data", "scen_0"): 0.25,
+                        ("scen_data", "scen_3"): 0.25,
+                        ("scen_data", "scen_2"): 0.25,
                     },
                     "Probability": 1.0,
                 }
@@ -800,11 +781,11 @@ class TestBundleFunctions(object):
 
     def test_single_scenario(self, SF_data, MF_data):
         # checking logic with no bundle_args
-        assert single_scenario(SF_data, models=["LF", "HF"]) == {
-            "HF_scen_1": {"scenarios": {("HF", "scen_1"): 1.0}, "Probability": 0.2},
-            "HF_scen_0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.3},
-            "LF_scen_3": {"scenarios": {("LF", "scen_3"): 1.0}, "Probability": 0.1},
-            "LF_scen_2": {"scenarios": {("LF", "scen_2"): 1.0}, "Probability": 0.4},
+        assert single_scenario(SF_data) == {
+            "scen_data_scen_1": {"scenarios": {("scen_data", "scen_1"): 1.0}, "Probability": 0.2},
+            "scen_data_scen_0": {"scenarios": {("scen_data", "scen_0"): 1.0}, "Probability": 0.3},
+            "scen_data_scen_3": {"scenarios": {("scen_data", "scen_3"): 1.0}, "Probability": 0.1},
+            "scen_data_scen_2": {"scenarios": {("scen_data", "scen_2"): 1.0}, "Probability": 0.4},
         }
 
         # checking logic with "fidelity" in bundle_args
@@ -821,13 +802,13 @@ class TestBundleFunctions(object):
 
     def test_single_bundle(self, SF_data, MF_data):
         # check logic with no bundle args
-        assert single_bundle(SF_data, models=["LF", "HF"]) == {
+        assert single_bundle(SF_data) == {
             "bundle": {
                 "scenarios": {
-                    ("HF", "scen_1"): 0.2,
-                    ("HF", "scen_0"): 0.3,
-                    ("LF", "scen_3"): 0.1,
-                    ("LF", "scen_2"): 0.4,
+                    ("scen_data", "scen_1"): 0.2,
+                    ("scen_data", "scen_0"): 0.3,
+                    ("scen_data", "scen_3"): 0.1,
+                    ("scen_data", "scen_2"): 0.4,
                 },
                 "Probability": 1.0,
             }
@@ -852,15 +833,15 @@ class TestBundleFunctions(object):
         assert kmeans_similar(SF_data) == {
             "bundle_1": {
                 "scenarios": {
-                    ("HF", "scen_0"): 0.42857142857142855,
-                    ("LF", "scen_2"): 0.5714285714285715,
+                    ("scen_data", "scen_0"): 0.42857142857142855,
+                    ("scen_data", "scen_2"): 0.5714285714285715,
                 },
                 "Probability": 0.7,
             },
             "bundle_0": {
                 "scenarios": {
-                    ("HF", "scen_1"): 0.6666666666666666,
-                    ("LF", "scen_3"): 0.3333333333333333,
+                    ("scen_data", "scen_1"): 0.6666666666666666,
+                    ("scen_data", "scen_3"): 0.3333333333333333,
                 },
                 "Probability": 0.30000000000000004,
             },
@@ -869,29 +850,29 @@ class TestBundleFunctions(object):
         # check logic with bun_size
         assert kmeans_similar(SF_data, bundle_args={"bun_size": 1}) == {
             "bundle_3": {
-                "scenarios": {("HF", "scen_0"): 1.0},
+                "scenarios": {("scen_data", "scen_0"): 1.0},
                 "Probability": 0.3,
             },
             "bundle_2": {
-                "scenarios": {("HF", "scen_1"): 1.0},
+                "scenarios": {("scen_data", "scen_1"): 1.0},
                 "Probability": 0.2,
             },
             "bundle_1": {
-                "scenarios": {("LF", "scen_2"): 1.0},
+                "scenarios": {("scen_data", "scen_2"): 1.0},
                 "Probability": 0.4,
             },
             "bundle_0": {
-                "scenarios": {("LF", "scen_3"): 1.0},
+                "scenarios": {("scen_data", "scen_3"): 1.0},
                 "Probability": 0.1,
             },
         }
         assert kmeans_similar(SF_data, bundle_args={"bun_size": 4}) == {
             "bundle_0": {
                 "scenarios": {
-                    ("HF", "scen_0"): 0.3,
-                    ("HF", "scen_1"): 0.2,
-                    ("LF", "scen_2"): 0.4,
-                    ("LF", "scen_3"): 0.1,
+                    ("scen_data", "scen_0"): 0.3,
+                    ("scen_data", "scen_1"): 0.2,
+                    ("scen_data", "scen_2"): 0.4,
+                    ("scen_data", "scen_3"): 0.1,
                 },
                 "Probability": 1.0,
             },
@@ -906,15 +887,15 @@ class TestBundleFunctions(object):
         assert kmeans_dissimilar(SF_data) == {
             "bundle_0": {
                 "scenarios": {
-                    ("HF", "scen_0"): 0.42857142857142855,
-                    ("LF", "scen_2"): 0.5714285714285715,
+                    ("scen_data", "scen_0"): 0.42857142857142855,
+                    ("scen_data", "scen_2"): 0.5714285714285715,
                 },
                 "Probability": 0.7,
             },
             "bundle_1": {
                 "scenarios": {
-                    ("HF", "scen_1"): 0.6666666666666666,
-                    ("LF", "scen_3"): 0.3333333333333333,
+                    ("scen_data", "scen_1"): 0.6666666666666666,
+                    ("scen_data", "scen_3"): 0.3333333333333333,
                 },
                 "Probability": 0.30000000000000004,
             },
@@ -924,15 +905,15 @@ class TestBundleFunctions(object):
         assert kmeans_dissimilar(SF_data, bundle_args={"bun_size": 1}) == {
             "bundle_0": {
                 "scenarios": {
-                    ("HF", "scen_0"): 0.42857142857142855,
-                    ("LF", "scen_2"): 0.5714285714285715,
+                    ("scen_data", "scen_0"): 0.42857142857142855,
+                    ("scen_data", "scen_2"): 0.5714285714285715,
                 },
                 "Probability": 0.7,
             },
             "bundle_3": {
                 "scenarios": {
-                    ("HF", "scen_1"): 0.6666666666666666,
-                    ("LF", "scen_3"): 0.3333333333333333,
+                    ("scen_data", "scen_1"): 0.6666666666666666,
+                    ("scen_data", "scen_3"): 0.3333333333333333,
                 },
                 "Probability": 0.30000000000000004,
             },
@@ -940,10 +921,10 @@ class TestBundleFunctions(object):
         assert kmeans_dissimilar(SF_data, bundle_args={"bun_size": 4}) == {
             "bundle_0": {
                 "scenarios": {
-                    ("HF", "scen_0"): 0.3,
-                    ("HF", "scen_1"): 0.2,
-                    ("LF", "scen_2"): 0.4,
-                    ("LF", "scen_3"): 0.1,
+                    ("scen_data", "scen_0"): 0.3,
+                    ("scen_data", "scen_1"): 0.2,
+                    ("scen_data", "scen_2"): 0.4,
+                    ("scen_data", "scen_3"): 0.1,
                 },
                 "Probability": 1.0,
             },
@@ -960,19 +941,19 @@ class TestBundleFunctions(object):
         ) == {
             "rand_0": {
                 "scenarios": {
-                    ("LF", "rand_2"): 1.0,
+                    ("SF", "rand_2"): 1.0,
                 },
                 "Probability": 0.2,
             },
             "rand_1": {
                 "scenarios": {
-                    ("HF", "rand_0"): 1.0,
+                    ("SF", "rand_0"): 1.0,
                 },
                 "Probability": 0.3,
             },
             "rand_2": {
                 "scenarios": {
-                    ("HF", "rand_1"): 1.0,
+                    ("SF", "rand_1"): 1.0,
                 },
                 "Probability": 0.5,
             },
