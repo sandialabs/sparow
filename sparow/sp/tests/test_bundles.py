@@ -1,5 +1,5 @@
-import random
 import pytest
+import warnings
 from sparow.sp.scentobund import (
     single_scenario,
     single_bundle,
@@ -74,6 +74,20 @@ def SF_missing_all_prob_data():
         "LF": {
             "scen_3": {"Demand": 4},
             "scen_2": {"Demand": 2},
+        },
+    }
+
+
+@pytest.fixture
+def SF_missing_all_demand_data():
+    return {
+        "HF": {
+            "scen_1": {"pr": 0.2},
+            "scen_0": {"pr": 0.4},
+        },
+        "LF": {
+            "scen_3": {"pr": 0.3},
+            "scen_2": {"pr": 0.1},
         },
     }
 
@@ -203,7 +217,7 @@ class TestBundleFunctions(object):
         return demand_diffs
 
     def test_check_data_dict_keys(
-        self, weird_key_names, probable_key_names, SF_missing_all_prob_data
+        self, weird_key_names, probable_key_names, SF_missing_all_prob_data, SF_missing_all_demand_data
     ):
         assert single_bundle(probable_key_names) == {
             "bundle": {
@@ -218,9 +232,21 @@ class TestBundleFunctions(object):
             },
         }
 
+        assert single_bundle(SF_missing_all_demand_data) == {
+            "bundle": {
+                "scenarios": {
+                    ("HF", "scen_1"): 0.2,
+                    ("HF", "scen_0"): 0.4,
+                    ("LF", "scen_2"): 0.1,
+                    ("LF", "scen_3"): 0.3,
+                },
+                "Probability": 1.0,
+            },
+        }
+
         assert single_bundle(
             weird_key_names,
-            bundle_args={"demand_key": "weird_key_d", "probability_key": "weird_key_p"},
+            bundle_args={"probability_key": "weird_key_p"},
         ) == {
             "bundle": {
                 "scenarios": {
@@ -235,8 +261,51 @@ class TestBundleFunctions(object):
         }
 
         with pytest.raises(RuntimeError) as excinfo:
-            single_bundle(weird_key_names)
+            mf_kmeans_similar(weird_key_names)
         assert excinfo.type is RuntimeError
+
+        assert mf_kmeans_similar(probable_key_names) == {
+            "bundle_3.0": {
+                "scenarios": {
+                    ("HF", "s_1"): pytest.approx(0.55555555),
+                    ("LF", "s_2"): pytest.approx(0.22222222), 
+                    ("LF", "s_4"): pytest.approx(0.22222222),
+                },
+            "Probability": 0.45,
+            },
+            "bundle_1.0": {
+                "scenarios": {
+                    ("HF", "s_0"): pytest.approx(0.45454545),
+                    ("LF", "s_3"): pytest.approx(0.54545454),
+                },
+            "Probability": 0.55,
+            }
+        }
+
+        assert mf_kmeans_similar(weird_key_names, bundle_args={"probability_key": "weird_key_p", "demand_key": "weird_key_d"}) == {
+            "bundle_3.0": {
+                "scenarios": {
+                    ("HF", "s_1"): pytest.approx(0.55555555),
+                    ("LF", "s_2"): pytest.approx(0.22222222), 
+                    ("LF", "s_4"): pytest.approx(0.22222222),
+                },
+            "Probability": 0.45,
+            },
+            "bundle_1.0": {
+                "scenarios": {
+                    ("HF", "s_0"): pytest.approx(0.45454545),
+                    ("LF", "s_3"): pytest.approx(0.54545454),
+                },
+            "Probability": 0.55,
+            }
+        }
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            with pytest.raises(RuntimeError) as excinfo: 
+                mf_kmeans_similar(weird_key_names, bundle_args={"demand_key": "weird_key_d"})
+            assert excinfo.type is RuntimeError
+            warnings.warn("No scenario probabilities are given; assuming uniform distribution.", UserWarning)
 
         with pytest.warns(
             UserWarning,
@@ -249,17 +318,21 @@ class TestBundleFunctions(object):
         )
         assert warninfo[0].category == UserWarning
 
-        assert single_bundle(SF_missing_all_prob_data) == {
-            "bundle": {
-                "scenarios": {
-                    ("HF", "scen_1"): 0.25,
-                    ("HF", "scen_0"): 0.25,
-                    ("LF", "scen_3"): 0.25,
-                    ("LF", "scen_2"): 0.25,
-                },
-                "Probability": 1.0,
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            assert single_bundle(SF_missing_all_prob_data) == {
+                "bundle": {
+                    "scenarios": {
+                        ("HF", "scen_1"): 0.25,
+                        ("HF", "scen_0"): 0.25,
+                        ("LF", "scen_3"): 0.25,
+                        ("LF", "scen_2"): 0.25,
+                    },
+                    "Probability": 1.0,
+                }
             }
-        }
+            warnings.warn("No scenario probabilities are given; assuming uniform distribution.", UserWarning)
+
 
     def test_sf_model_weight_warnings(self, rand_data):
         with pytest.warns(
