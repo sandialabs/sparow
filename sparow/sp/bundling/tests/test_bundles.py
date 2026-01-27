@@ -1,8 +1,24 @@
 import pytest
 import warnings
+from sparow.sp.bundling.MF_schemes import (
+    mf_paired,
+    mf_random_nested,
+    mf_random,
+    similar_partitions,
+    dissimilar_partitions,
+    mf_kmeans_similar,
+    mf_kmeans_dissimilar,
+    mf_bundle_from_list,
+)
 
-from sparow.sp.bundling.MF_schemes import *
-from sparow.sp.bundling.SF_schemes import *
+from sparow.sp.bundling.bundling_functions import (
+    single_scenario,
+    single_bundle,
+    sf_random,
+    kmeans_similar,
+    kmeans_dissimilar,
+    bundle_from_list,
+)
 
 @pytest.fixture
 def MF_data():
@@ -299,7 +315,7 @@ class TestBundleFunctions(object):
                 }
             }
             warnings.warn("No scenario probabilities are given; assuming uniform distribution.", UserWarning)
-
+            
 
     def test_mf_bundle_from_list(self, probable_key_names):
         with pytest.raises(RuntimeError) as excinfo:

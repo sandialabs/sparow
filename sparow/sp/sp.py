@@ -5,7 +5,7 @@ import copy
 import munch
 import logging
 
-from . import scentobund
+from .bundling import bundling_functions
 
 # import sparow.util
 import sparow.logs
@@ -46,13 +46,21 @@ def initialize_bundles(
             for model, mdata in model_data.items()
         }
 
-    return scentobund.BundleObj(
-        data=scenario_data,
-        models=models,
-        model_weight=model_weight,
-        scheme=scheme,
-        bundle_args=kwargs,
-    )
+    if model_weight:
+        return bundling_functions.BundleObj(
+            data=scenario_data,
+            models=models,
+            model_weight=model_weight,
+            scheme=scheme,
+            bundle_args=kwargs,
+        )
+    else:
+        return bundling_functions.BundleObj(
+            data=scenario_data,
+            models=models,
+            scheme=scheme,
+            bundle_args=kwargs,
+        )
 
 
 class StochasticProgram(object):
@@ -106,7 +114,7 @@ class StochasticProgram(object):
         self.bundles.dump(json_filename, indent=indent, sort_keys=sort_keys)
 
     def load_bundles(self, json_filename):
-        self.set_bundles(scentobund.load_bundles(json_filename))
+        self.set_bundles(bundling_functions.load_bundles(json_filename))
 
     def get_variables(self, b=None):
         if b is None:
