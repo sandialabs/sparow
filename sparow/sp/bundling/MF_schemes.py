@@ -12,6 +12,7 @@ logger = sparow.logs.logger
 ******************* MULTI-FIDELITY SCHEMES *******************
 """
 
+
 def mf_bundle_from_list(data, models=None, model_weight=None, bundle_args=None):
     """
     This scheme accepts a list of lists provided by the user, where each inner list is a bundle.
@@ -137,7 +138,10 @@ def mf_kmeans_similar(data, models=None, model_weight=None, bundle_args=None):
                     f"bundle_{centers[diffs[s]][0]}" in bundle
                 ):  # ensures empty bundles aren't created if centers have no mapped scenarios
                     bundle[f"bundle_{centers[diffs[s]][0]}"]["scenarios"].update(
-                        {bf.scen_key(model, s): model_weight[model] * data[model][s][pkey]}
+                        {
+                            bf.scen_key(model, s): model_weight[model]
+                            * data[model][s][pkey]
+                        }
                     )
                 else:
                     bundle[f"bundle_{centers[diffs[s]][0]}"] = dict(
@@ -268,7 +272,10 @@ def mf_kmeans_dissimilar(data, models=None, model_weight=None, bundle_args=None)
                     f"bundle_{centers[diffs[s]][0]}" in bundle
                 ):  # ensures empty bundles aren't created if centers have no mapped scenarios
                     bundle[f"bundle_{centers[diffs[s]][0]}"]["scenarios"].update(
-                        {bf.scen_key(model, s): model_weight[model] * data[model][s][pkey]}
+                        {
+                            bf.scen_key(model, s): model_weight[model]
+                            * data[model][s][pkey]
+                        }
                     )
                 else:
                     bundle[f"bundle_{centers[diffs[s]][0]}"] = dict(
@@ -376,7 +383,8 @@ def similar_partitions(data, models=None, model_weight=None, bundle_args=None):
         if model_weight:
             bundle[f"{model0}_{hs}"] = dict(
                 scenarios={
-                    bf.scen_key(model0, hs): model_weight[model0] * data[model0][hs][pkey]
+                    bf.scen_key(model0, hs): model_weight[model0]
+                    * data[model0][hs][pkey]
                 },
                 Probability=1
                 / len(
@@ -469,7 +477,8 @@ def dissimilar_partitions(data, models=None, model_weight=None, bundle_args=None
         if model_weight:
             bundle[f"{model0}_{hs}"] = dict(
                 scenarios={
-                    bf.scen_key(model0, hs): model_weight[model0] * data[model0][hs][pkey]
+                    bf.scen_key(model0, hs): model_weight[model0]
+                    * data[model0][hs][pkey]
                 },
                 Probability=1 / len(HFscenarios),
             )
@@ -677,4 +686,3 @@ def mf_random(data, models, model_weight=None, bundle_args=None):
         )
 
     return bundle
-

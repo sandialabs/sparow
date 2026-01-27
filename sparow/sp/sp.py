@@ -98,7 +98,7 @@ class StochasticProgram(object):
                 default_model=self.default_model,
                 model_data=self.model_data,
                 scenario_data=self.scenario_data,
-                **kwargs
+                **kwargs,
             )
         )
 

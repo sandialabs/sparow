@@ -273,10 +273,10 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
             self.set_bundles(
                 initialize_bundles(
-                models=[self.default_model], 
-                scheme="single_scenario",
-                model_data=self.model_data,
-                scenario_data=self.scenario_data
+                    models=[self.default_model],
+                    scheme="single_scenario",
+                    model_data=self.model_data,
+                    scenario_data=self.scenario_data,
                 )
             )
 
