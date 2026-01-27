@@ -13,6 +13,7 @@ logger = sparow.logs.logger
 ******************* SINGLE-FIDELITY SCHEMES *******************
 """
 
+
 def single_scenario(data, models=None, bundle_args=None, *args):
     """
     Each scenario is its own bundle (i.e., no bundling)
@@ -417,4 +418,3 @@ def sf_random(data, models=None, bundle_args=None):
         }
 
     return bundle
-

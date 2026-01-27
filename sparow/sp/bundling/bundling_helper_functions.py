@@ -95,10 +95,10 @@ def check_data_dict_keys(data, model0, bundle_args, dkey_required=False):
             for e_dkey in dkeys_to_check
             if e_dkey in data[model0][next(iter(data[model0]))].keys()
         ]
-        if (len(existing_dkey) > 1 or len(existing_dkey) == 0):
+        if len(existing_dkey) > 1 or len(existing_dkey) == 0:
             raise RuntimeError(f"Specify demand_key in bundle_args")
         dkey = existing_dkey[0]
-    
+
     if pkey is None:
         # search entire data dictionary for probability key(s)
         pkeys_to_check = [
@@ -122,7 +122,9 @@ def check_data_dict_keys(data, model0, bundle_args, dkey_required=False):
         flat_list = list(
             set([list_item for sublist in all_keys for list_item in sublist])
         )
-        existing_pkey = [list_item for list_item in flat_list if list_item in pkeys_to_check]
+        existing_pkey = [
+            list_item for list_item in flat_list if list_item in pkeys_to_check
+        ]
         if len(existing_pkey) > 1:
             raise RuntimeError(f"Specify probability_key in bundle_args")
         elif len(existing_pkey) == 0:
