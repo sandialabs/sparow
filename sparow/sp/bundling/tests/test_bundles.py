@@ -260,15 +260,15 @@ class TestBundleFunctions(object):
                     ("LF", "s_2"): pytest.approx(0.22222222),
                     ("LF", "s_4"): pytest.approx(0.22222222),
                 },
-            "Probability": pytest.approx(0.45),
+                "Probability": pytest.approx(0.45),
             },
             "bundle_1.0": {
                 "scenarios": {
                     ("HF", "s_0"): pytest.approx(0.45454545),
                     ("LF", "s_3"): pytest.approx(0.54545454),
                 },
-            "Probability": pytest.approx(0.55),
-            }
+                "Probability": pytest.approx(0.55),
+            },
         }
 
         assert mf_kmeans_similar(
@@ -281,15 +281,15 @@ class TestBundleFunctions(object):
                     ("LF", "s_2"): pytest.approx(0.22222222),
                     ("LF", "s_4"): pytest.approx(0.22222222),
                 },
-            "Probability": pytest.approx(0.45),
+                "Probability": pytest.approx(0.45),
             },
             "bundle_1.0": {
                 "scenarios": {
                     ("HF", "s_0"): pytest.approx(0.45454545),
                     ("LF", "s_3"): pytest.approx(0.54545454),
                 },
-            "Probability": pytest.approx(0.55),
-            }
+                "Probability": pytest.approx(0.55),
+            },
         }
 
         with warnings.catch_warnings():
@@ -425,19 +425,31 @@ class TestBundleFunctions(object):
     def test_mf_kmeans_similar(self, similar_scenarios):
         assert mf_kmeans_similar(similar_scenarios) == {
             "bundle_4.0": {
-                "scenarios": {("HF", "scen_0"): pytest.approx(0.5), ("LF", "scen_7"): pytest.approx(0.5)},
+                "scenarios": {
+                    ("HF", "scen_0"): pytest.approx(0.5),
+                    ("LF", "scen_7"): pytest.approx(0.5),
+                },
                 "Probability": pytest.approx(0.2),
             },
             "bundle_1.0": {
-                "scenarios": {("HF", "scen_1"): pytest.approx(0.4), ("LF", "scen_6"): pytest.approx(0.6)},
+                "scenarios": {
+                    ("HF", "scen_1"): pytest.approx(0.4),
+                    ("LF", "scen_6"): pytest.approx(0.6),
+                },
                 "Probability": pytest.approx(0.25),
             },
             "bundle_2.0": {
-                "scenarios": {("HF", "scen_2"): pytest.approx(0.5), ("LF", "scen_5"): pytest.approx(0.5)},
+                "scenarios": {
+                    ("HF", "scen_2"): pytest.approx(0.5),
+                    ("LF", "scen_5"): pytest.approx(0.5),
+                },
                 "Probability": pytest.approx(0.3),
             },
             "bundle_5.0": {
-                "scenarios": {("HF", "scen_3"): pytest.approx(0.6), ("LF", "scen_4"): pytest.approx(0.4)},
+                "scenarios": {
+                    ("HF", "scen_3"): pytest.approx(0.6),
+                    ("LF", "scen_4"): pytest.approx(0.4),
+                },
                 "Probability": pytest.approx(0.25),
             },
         }
@@ -485,7 +497,10 @@ class TestBundleFunctions(object):
                 },
                 "Probability": pytest.approx(0.30000000000000004),
             },
-            "bundle_2.0": {"scenarios": {("HF", "scen_2"): 1.0}, "Probability": pytest.approx(0.15)},
+            "bundle_2.0": {
+                "scenarios": {("HF", "scen_2"): 1.0},
+                "Probability": pytest.approx(0.15),
+            },
             "bundle_5.0": {
                 "scenarios": {
                     ("HF", "scen_3"): pytest.approx(0.3333333333333333),
@@ -499,7 +514,10 @@ class TestBundleFunctions(object):
         assert mf_kmeans_dissimilar(
             similar_scenarios, model_weight={"HF": 2, "LF": 1}
         ) == {
-            "bundle_4.0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": pytest.approx(0.2)},
+            "bundle_4.0": {
+                "scenarios": {("HF", "scen_0"): 1.0},
+                "Probability": pytest.approx(0.2),
+            },
             "bundle_1.0": {
                 "scenarios": {
                     ("HF", "scen_1"): pytest.approx(0.5),
@@ -508,7 +526,10 @@ class TestBundleFunctions(object):
                 },
                 "Probability": pytest.approx(0.2),
             },
-            "bundle_2.0": {"scenarios": {("HF", "scen_2"): 1.0}, "Probability": pytest.approx(0.3)},
+            "bundle_2.0": {
+                "scenarios": {("HF", "scen_2"): 1.0},
+                "Probability": pytest.approx(0.3),
+            },
             "bundle_5.0": {
                 "scenarios": {
                     ("HF", "scen_3"): pytest.approx(0.5),
@@ -570,19 +591,31 @@ class TestBundleFunctions(object):
             bundle_args={"distance_function": self.dist_map},
         ) == {
             "HF_scen_0": {
-                "scenarios": {("HF", "scen_0"): pytest.approx(0.4), ("LF", "scen_6"): pytest.approx(0.6)},
+                "scenarios": {
+                    ("HF", "scen_0"): pytest.approx(0.4),
+                    ("LF", "scen_6"): pytest.approx(0.6),
+                },
                 "Probability": pytest.approx(0.25),
             },
             "HF_scen_1": {
-                "scenarios": {("HF", "scen_1"): pytest.approx(0.5), ("LF", "scen_4"): pytest.approx(0.5)},
+                "scenarios": {
+                    ("HF", "scen_1"): pytest.approx(0.5),
+                    ("LF", "scen_4"): pytest.approx(0.5),
+                },
                 "Probability": pytest.approx(0.25),
             },
             "HF_scen_2": {
-                "scenarios": {("HF", "scen_2"): pytest.approx(0.6), ("LF", "scen_4"): pytest.approx(0.4)},
+                "scenarios": {
+                    ("HF", "scen_2"): pytest.approx(0.6),
+                    ("LF", "scen_4"): pytest.approx(0.4),
+                },
                 "Probability": pytest.approx(0.25),
             },
             "HF_scen_3": {
-                "scenarios": {("HF", "scen_3"): pytest.approx(0.5), ("LF", "scen_6"): pytest.approx(0.5)},
+                "scenarios": {
+                    ("HF", "scen_3"): pytest.approx(0.5),
+                    ("LF", "scen_6"): pytest.approx(0.5),
+                },
                 "Probability": pytest.approx(0.25),
             },
         }
@@ -615,7 +648,10 @@ class TestBundleFunctions(object):
                 "Probability": pytest.approx(0.25),
             },
             "HF_scen_3": {
-                "scenarios": {("HF", "scen_3"): pytest.approx(0.75), ("LF", "scen_6"): pytest.approx(0.25)},
+                "scenarios": {
+                    ("HF", "scen_3"): pytest.approx(0.75),
+                    ("LF", "scen_6"): pytest.approx(0.25),
+                },
                 "Probability": pytest.approx(0.25),
             },
         }
@@ -626,19 +662,31 @@ class TestBundleFunctions(object):
         ) == {
             "scen_0": {
                 "Probability": pytest.approx(0.25),
-                "scenarios": {("HF", "scen_0"): pytest.approx(0.5), ("LF", "scen_0"): pytest.approx(0.5)},
+                "scenarios": {
+                    ("HF", "scen_0"): pytest.approx(0.5),
+                    ("LF", "scen_0"): pytest.approx(0.5),
+                },
             },
             "scen_1": {
                 "Probability": pytest.approx(0.25),
-                "scenarios": {("HF", "scen_1"): pytest.approx(0.5), ("LF", "scen_1"): pytest.approx(0.5)},
+                "scenarios": {
+                    ("HF", "scen_1"): pytest.approx(0.5),
+                    ("LF", "scen_1"): pytest.approx(0.5),
+                },
             },
             "scen_2": {
                 "Probability": pytest.approx(0.25),
-                "scenarios": {("HF", "scen_2"): pytest.approx(0.5), ("LF", "scen_2"): pytest.approx(0.5)},
+                "scenarios": {
+                    ("HF", "scen_2"): pytest.approx(0.5),
+                    ("LF", "scen_2"): pytest.approx(0.5),
+                },
             },
             "scen_3": {
                 "Probability": pytest.approx(0.25),
-                "scenarios": {("HF", "scen_3"): pytest.approx(0.5), ("LF", "scen_3"): pytest.approx(0.5)},
+                "scenarios": {
+                    ("HF", "scen_3"): pytest.approx(0.5),
+                    ("LF", "scen_3"): pytest.approx(0.5),
+                },
             },
         }
 
@@ -651,19 +699,31 @@ class TestBundleFunctions(object):
         ) == {
             "HF_scen_0": {
                 "Probability": pytest.approx(0.25),
-                "scenarios": {("HF", "scen_0"): pytest.approx(0.5), ("LF", "scen_1"): pytest.approx(0.5)},
+                "scenarios": {
+                    ("HF", "scen_0"): pytest.approx(0.5),
+                    ("LF", "scen_1"): pytest.approx(0.5),
+                },
             },
             "HF_scen_1": {
                 "Probability": pytest.approx(0.25),
-                "scenarios": {("HF", "scen_1"): pytest.approx(0.5), ("LF", "scen_2"): pytest.approx(0.5)},
+                "scenarios": {
+                    ("HF", "scen_1"): pytest.approx(0.5),
+                    ("LF", "scen_2"): pytest.approx(0.5),
+                },
             },
             "HF_scen_2": {
                 "Probability": pytest.approx(0.25),
-                "scenarios": {("HF", "scen_2"): pytest.approx(0.5), ("LF", "scen_3"): pytest.approx(0.5)},
+                "scenarios": {
+                    ("HF", "scen_2"): pytest.approx(0.5),
+                    ("LF", "scen_3"): pytest.approx(0.5),
+                },
             },
             "HF_scen_3": {
                 "Probability": pytest.approx(0.25),
-                "scenarios": {("HF", "scen_3"): pytest.approx(0.5), ("LF", "scen_0"): pytest.approx(0.5)},
+                "scenarios": {
+                    ("HF", "scen_3"): pytest.approx(0.5),
+                    ("LF", "scen_0"): pytest.approx(0.5),
+                },
             },
         }
         assert mf_random_nested(
@@ -674,19 +734,31 @@ class TestBundleFunctions(object):
         ) == {
             "HF_scen_0": {
                 "Probability": pytest.approx(0.25),
-                "scenarios": {("HF", "scen_0"): pytest.approx(0.75), ("LF", "scen_1"): pytest.approx(0.25)},
+                "scenarios": {
+                    ("HF", "scen_0"): pytest.approx(0.75),
+                    ("LF", "scen_1"): pytest.approx(0.25),
+                },
             },
             "HF_scen_1": {
                 "Probability": pytest.approx(0.25),
-                "scenarios": {("HF", "scen_1"): pytest.approx(0.75), ("LF", "scen_2"): pytest.approx(0.25)},
+                "scenarios": {
+                    ("HF", "scen_1"): pytest.approx(0.75),
+                    ("LF", "scen_2"): pytest.approx(0.25),
+                },
             },
             "HF_scen_2": {
                 "Probability": pytest.approx(0.25),
-                "scenarios": {("HF", "scen_2"): pytest.approx(0.75), ("LF", "scen_3"): pytest.approx(0.25)},
+                "scenarios": {
+                    ("HF", "scen_2"): pytest.approx(0.75),
+                    ("LF", "scen_3"): pytest.approx(0.25),
+                },
             },
             "HF_scen_3": {
                 "Probability": pytest.approx(0.25),
-                "scenarios": {("HF", "scen_3"): pytest.approx(0.75), ("LF", "scen_0"): pytest.approx(0.25)},
+                "scenarios": {
+                    ("HF", "scen_3"): pytest.approx(0.75),
+                    ("LF", "scen_0"): pytest.approx(0.25),
+                },
             },
         }
         assert mf_random_nested(
@@ -738,11 +810,17 @@ class TestBundleFunctions(object):
         ) == {
             "HF_scen_0": {
                 "Probability": pytest.approx(0.5),
-                "scenarios": {("HF", "scen_0"): pytest.approx(0.5), ("LF", "scen_2"): pytest.approx(0.5)},
+                "scenarios": {
+                    ("HF", "scen_0"): pytest.approx(0.5),
+                    ("LF", "scen_2"): pytest.approx(0.5),
+                },
             },
             "HF_scen_1": {
                 "Probability": pytest.approx(0.5),
-                "scenarios": {("HF", "scen_1"): pytest.approx(0.5), ("LF", "scen_2"): pytest.approx(0.5)},
+                "scenarios": {
+                    ("HF", "scen_1"): pytest.approx(0.5),
+                    ("LF", "scen_2"): pytest.approx(0.5),
+                },
             },
         }
 
@@ -754,11 +832,17 @@ class TestBundleFunctions(object):
         ) == {
             "HF_scen_0": {
                 "Probability": pytest.approx(0.5),
-                "scenarios": {("HF", "scen_0"): pytest.approx(0.75), ("LF", "scen_2"): pytest.approx(0.25)},
+                "scenarios": {
+                    ("HF", "scen_0"): pytest.approx(0.75),
+                    ("LF", "scen_2"): pytest.approx(0.25),
+                },
             },
             "HF_scen_1": {
                 "Probability": pytest.approx(0.5),
-                "scenarios": {("HF", "scen_1"): pytest.approx(0.75), ("LF", "scen_2"): pytest.approx(0.25)},
+                "scenarios": {
+                    ("HF", "scen_1"): pytest.approx(0.75),
+                    ("LF", "scen_2"): pytest.approx(0.25),
+                },
             },
         }
 
@@ -789,16 +873,34 @@ class TestBundleFunctions(object):
     def test_single_scenario(self, SF_data, MF_data):
         # checking logic with no bundle_args
         assert single_scenario(SF_data) == {
-            "scen_data_scen_1": {"scenarios": {("scen_data", "scen_1"): 1.0}, "Probability": pytest.approx(0.2)},
-            "scen_data_scen_0": {"scenarios": {("scen_data", "scen_0"): 1.0}, "Probability": pytest.approx(0.3)},
-            "scen_data_scen_3": {"scenarios": {("scen_data", "scen_3"): 1.0}, "Probability": pytest.approx(0.1)},
-            "scen_data_scen_2": {"scenarios": {("scen_data", "scen_2"): 1.0}, "Probability": pytest.approx(0.4)},
+            "scen_data_scen_1": {
+                "scenarios": {("scen_data", "scen_1"): 1.0},
+                "Probability": pytest.approx(0.2),
+            },
+            "scen_data_scen_0": {
+                "scenarios": {("scen_data", "scen_0"): 1.0},
+                "Probability": pytest.approx(0.3),
+            },
+            "scen_data_scen_3": {
+                "scenarios": {("scen_data", "scen_3"): 1.0},
+                "Probability": pytest.approx(0.1),
+            },
+            "scen_data_scen_2": {
+                "scenarios": {("scen_data", "scen_2"): 1.0},
+                "Probability": pytest.approx(0.4),
+            },
         }
 
         # checking logic with "fidelity" in bundle_args
         assert single_scenario(MF_data, models=["HF"]) == {
-            "HF_scen_1": {"scenarios": {("HF", "scen_1"): 1.0}, "Probability": pytest.approx(0.4)},
-            "HF_scen_0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": pytest.approx(0.6)},
+            "HF_scen_1": {
+                "scenarios": {("HF", "scen_1"): 1.0},
+                "Probability": pytest.approx(0.4),
+            },
+            "HF_scen_0": {
+                "scenarios": {("HF", "scen_0"): 1.0},
+                "Probability": pytest.approx(0.6),
+            },
         }
 
         # checking logic with bundle_args that aren't "fidelity"
@@ -824,7 +926,10 @@ class TestBundleFunctions(object):
         # check logic with 'fidelity' in bundle args
         assert single_bundle(MF_data, models=["LF"]) == {
             "bundle": {
-                "scenarios": {("LF", "scen_3"): pytest.approx(0.2), ("LF", "scen_2"): pytest.approx(0.8)},
+                "scenarios": {
+                    ("LF", "scen_3"): pytest.approx(0.2),
+                    ("LF", "scen_2"): pytest.approx(0.8),
+                },
                 "Probability": 1.0,
             }
         }
