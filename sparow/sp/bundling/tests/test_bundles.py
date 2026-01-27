@@ -253,7 +253,9 @@ class TestBundleFunctions(object):
             mf_kmeans_similar(weird_key_names)
         assert excinfo.type is RuntimeError
 
-        assert mf_kmeans_similar(probable_key_names) == {
+        assert mf_kmeans_similar(
+            probable_key_names, bundle_args=dict(data_key="d")
+        ) == {
             "bundle_3.0": {
                 "scenarios": {
                     ("HF", "s_1"): pytest.approx(0.55555555),
@@ -273,7 +275,7 @@ class TestBundleFunctions(object):
 
         assert mf_kmeans_similar(
             weird_key_names,
-            bundle_args={"probability_key": "weird_key_p", "demand_key": "weird_key_d"},
+            bundle_args={"probability_key": "weird_key_p", "data_key": "weird_key_d"},
         ) == {
             "bundle_3.0": {
                 "scenarios": {
@@ -296,7 +298,7 @@ class TestBundleFunctions(object):
             warnings.filterwarnings("ignore", category=UserWarning)
             with pytest.raises(RuntimeError) as excinfo:
                 mf_kmeans_similar(
-                    weird_key_names, bundle_args={"demand_key": "weird_key_d"}
+                    weird_key_names, bundle_args={"data_key": "weird_key_d"}
                 )
             assert excinfo.type is RuntimeError
             warnings.warn(
@@ -423,7 +425,9 @@ class TestBundleFunctions(object):
         }
 
     def test_mf_kmeans_similar(self, similar_scenarios):
-        assert mf_kmeans_similar(similar_scenarios) == {
+        assert mf_kmeans_similar(
+            similar_scenarios, bundle_args=dict(data_key="Demand")
+        ) == {
             "bundle_4.0": {
                 "scenarios": {
                     ("HF", "scen_0"): pytest.approx(0.5),
@@ -454,7 +458,9 @@ class TestBundleFunctions(object):
             },
         }
         assert mf_kmeans_similar(
-            similar_scenarios, model_weight={"HF": 2, "LF": 1}
+            similar_scenarios,
+            model_weight={"HF": 2, "LF": 1},
+            bundle_args=dict(data_key="Demand"),
         ) == {
             "bundle_4.0": {
                 "scenarios": {
@@ -487,7 +493,9 @@ class TestBundleFunctions(object):
         }
 
     def test_mf_kmeans_dissimilar(self, similar_scenarios):
-        assert mf_kmeans_dissimilar(similar_scenarios) == {
+        assert mf_kmeans_dissimilar(
+            similar_scenarios, bundle_args=dict(data_key="Demand")
+        ) == {
             "bundle_4.0": {"scenarios": {("HF", "scen_0"): 1.0}, "Probability": 0.1},
             "bundle_1.0": {
                 "scenarios": {
@@ -512,7 +520,9 @@ class TestBundleFunctions(object):
         }
 
         assert mf_kmeans_dissimilar(
-            similar_scenarios, model_weight={"HF": 2, "LF": 1}
+            similar_scenarios,
+            model_weight={"HF": 2, "LF": 1},
+            bundle_args=dict(data_key="Demand"),
         ) == {
             "bundle_4.0": {
                 "scenarios": {("HF", "scen_0"): 1.0},
@@ -942,7 +952,7 @@ class TestBundleFunctions(object):
 
     def test_kmeans_similar(self, SF_data):
         # check logic with no bundle args
-        assert kmeans_similar(SF_data) == {
+        assert kmeans_similar(SF_data, bundle_args=dict(data_key="Demand")) == {
             "bundle_1": {
                 "scenarios": {
                     ("scen_data", "scen_0"): pytest.approx(0.42857142857142855),
@@ -960,7 +970,9 @@ class TestBundleFunctions(object):
         }
 
         # check logic with bun_size
-        assert kmeans_similar(SF_data, bundle_args={"bun_size": 1}) == {
+        assert kmeans_similar(
+            SF_data, bundle_args=dict(bun_size=1, data_key="Demand")
+        ) == {
             "bundle_3": {
                 "scenarios": {("scen_data", "scen_0"): 1.0},
                 "Probability": pytest.approx(0.3),
@@ -978,7 +990,9 @@ class TestBundleFunctions(object):
                 "Probability": pytest.approx(0.1),
             },
         }
-        assert kmeans_similar(SF_data, bundle_args={"bun_size": 4}) == {
+        assert kmeans_similar(
+            SF_data, bundle_args=dict(bun_size=4, data_key="Demand")
+        ) == {
             "bundle_0": {
                 "scenarios": {
                     ("scen_data", "scen_0"): pytest.approx(0.3),
@@ -992,11 +1006,11 @@ class TestBundleFunctions(object):
 
         # ensure bun_size > num of scenarios returns error
         with pytest.raises(ValueError) as excinfo:
-            kmeans_similar(SF_data, bundle_args={"bun_size": 5})
+            kmeans_similar(SF_data, bundle_args=dict(bun_size=5, data_key="Demand"))
         assert excinfo.type is ValueError
 
     def test_kmeans_dissimilar(self, SF_data):
-        assert kmeans_dissimilar(SF_data) == {
+        assert kmeans_dissimilar(SF_data, bundle_args=dict(data_key="Demand")) == {
             "bundle_0": {
                 "scenarios": {
                     ("scen_data", "scen_0"): pytest.approx(0.42857142857142855),
@@ -1014,7 +1028,9 @@ class TestBundleFunctions(object):
         }
 
         # check logic with bun_size
-        assert kmeans_dissimilar(SF_data, bundle_args={"bun_size": 1}) == {
+        assert kmeans_dissimilar(
+            SF_data, bundle_args=dict(bun_size=1, data_key="Demand")
+        ) == {
             "bundle_0": {
                 "scenarios": {
                     ("scen_data", "scen_0"): pytest.approx(0.42857142857142855),
@@ -1030,7 +1046,9 @@ class TestBundleFunctions(object):
                 "Probability": pytest.approx(0.30000000000000004),
             },
         }
-        assert kmeans_dissimilar(SF_data, bundle_args={"bun_size": 4}) == {
+        assert kmeans_dissimilar(
+            SF_data, bundle_args=dict(bun_size=4, data_key="Demand")
+        ) == {
             "bundle_0": {
                 "scenarios": {
                     ("scen_data", "scen_0"): pytest.approx(0.3),
@@ -1044,7 +1062,7 @@ class TestBundleFunctions(object):
 
         # ensure bun_size > num of scenarios returns error
         with pytest.raises(ValueError) as excinfo:
-            kmeans_dissimilar(SF_data, bundle_args={"bun_size": 5})
+            kmeans_dissimilar(SF_data, bundle_args=dict(bun_size=5, data_key="Demand"))
         assert excinfo.type is ValueError
 
     def test_sf_random(self, imbalanced_data):

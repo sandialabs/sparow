@@ -84,20 +84,11 @@ def check_data_dict_keys(data, model0, bundle_args, dkey_required=False):
     pkey = None
 
     if bundle_args:  # will populate dkey and pkey if they're provided
-        dkey = bundle_args.get("demand_key")
-        pkey = bundle_args.get("probability_key")
+        dkey = bundle_args.get("data_key", None)
+        pkey = bundle_args.get("probability_key", None)
 
     if dkey is None and dkey_required == True:
-        # search first item in HF data dictionary for demand key
-        dkeys_to_check = ["Demand", "demand", "DEMAND", "d", "D"]
-        existing_dkey = [
-            e_dkey
-            for e_dkey in dkeys_to_check
-            if e_dkey in data[model0][next(iter(data[model0]))].keys()
-        ]
-        if len(existing_dkey) > 1 or len(existing_dkey) == 0:
-            raise RuntimeError(f"Specify demand_key in bundle_args")
-        dkey = existing_dkey[0]
+        raise RuntimeError(f"Specify data_key in bundle_args")
 
     if pkey is None:
         # search entire data dictionary for probability key(s)
