@@ -9,7 +9,7 @@ from sparow.workflows import initialize_EF, create_and_initialize_EF
 import pyomo.opt
 from pyomo.common import unittest
 
-solvers = set(pyomo.opt.check_available_solvers("gurobi"))
+solvers = set(pyomo.opt.check_available_solvers("gurobi", "highs"))
 
 
 @unittest.pytest.mark.parametrize("mip_solver", solvers)
