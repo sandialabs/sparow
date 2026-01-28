@@ -12,7 +12,7 @@ from sparow.ef import ExtensiveFormSolver
 import pyomo.opt
 from pyomo.common import unittest
 
-solvers = set(pyomo.opt.check_available_solvers("glpk", "gurobi"))
+solvers = set(pyomo.opt.check_available_solvers("glpk", "gurobi", "highs"))
 
 
 @unittest.pytest.mark.parametrize("mip_solver", solvers)
