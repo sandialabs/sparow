@@ -12,8 +12,9 @@ import pyomo.opt
 import pyomo.environ as pyo
 from pyomo.common import unittest
 
-solvers = set(pyomo.opt.check_available_solvers("glpk", "gurobi"))
-solvers = ["glpk"] if "glpk" in solvers else ["gurobi"]
+solvers = set(pyomo.opt.check_available_solvers("glpk", "gurobi", "highs"))
+solvers = ["highs"] if "highs" in solvers else solvers
+solvers = ["glpk"] if "glpk" in solvers else solvers
 
 
 @unittest.pytest.mark.parametrize("mip_solver", solvers)

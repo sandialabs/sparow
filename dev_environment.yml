@@ -5,7 +5,6 @@ channels:
   - https://repo.anaconda.com/pkgs/r
 dependencies:
   - flake8
-  - glpk
   - munch
   - numpy
   - parameterized
@@ -17,4 +16,5 @@ dependencies:
   - scikit-learn
   - IPython
   - pip:
+    - highspy
     - mpi-sppy

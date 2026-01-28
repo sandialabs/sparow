@@ -11,7 +11,7 @@ from sparow.ph import ProgressiveHedgingSolver
 import pyomo.opt
 from pyomo.common import unittest
 
-solvers = set(pyomo.opt.check_available_solvers("gurobi_direct"))
+solvers = set(pyomo.opt.check_available_solvers("gurobi_direct", "highs"))
 # solvers = []  # Ignore these tests for now
 
 
