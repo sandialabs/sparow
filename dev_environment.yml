@@ -17,4 +17,5 @@ dependencies:
   - scikit-learn
   - IPython
   - pip:
+    - highspy
     - mpi-sppy
