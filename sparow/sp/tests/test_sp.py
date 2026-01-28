@@ -1,11 +1,6 @@
-# Test variable initialization logic for Pyomo models
-
 import pytest
 import pyomo.environ as pyo
 from sparow.sp import stochastic_program
-
-# TODO - Remove the extraneous 'd' data in the model_data after fixing
-#        bundling bugs associated with this.
 
 
 @pytest.fixture
@@ -19,7 +14,7 @@ def sp0():
 
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_model(model_builder=builder)
-    sp.initialize_model(model_data=dict(scenarios=[dict(ID=1, d=0)]))
+    sp.initialize_model(model_data=dict(scenarios=[dict(ID=1)]))
     return sp
 
 
@@ -34,7 +29,7 @@ def sp1():
 
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_model(model_builder=builder)
-    sp.initialize_model(model_data=dict(scenarios=[dict(ID=1, d=0), dict(ID=2, d=0)]))
+    sp.initialize_model(model_data=dict(scenarios=[dict(ID=1), dict(ID=2)]))
     return sp
 
 
@@ -49,7 +44,7 @@ def sp2():
 
     sp = stochastic_program(first_stage_variables=["y", "x"])
     sp.initialize_model(model_builder=builder)
-    sp.initialize_model(model_data=dict(scenarios=[dict(ID=1, d=0), dict(ID=2, d=0)]))
+    sp.initialize_model(model_data=dict(scenarios=[dict(ID=1), dict(ID=2)]))
     return sp
 
 
@@ -65,11 +60,14 @@ def sp3():
 
     sp = stochastic_program(first_stage_variables=["b.y", "x"])
     sp.initialize_model(model_builder=builder)
-    sp.initialize_model(model_data=dict(scenarios=[dict(ID=1, d=0), dict(ID=2, d=0)]))
+    sp.initialize_model(model_data=dict(scenarios=[dict(ID=1), dict(ID=2)]))
     return sp
 
 
 class TestSP(object):
+    """
+    Test variable initialization logic for Pyomo models
+    """
 
     def test_simple0(self, sp0):
         M = sp0.create_subproblem("1")

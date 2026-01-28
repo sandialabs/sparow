@@ -10,7 +10,7 @@ import pyomo.repn
 import pyomo.util.vars_from_expressions as vfe
 
 import sparow.logs
-from .sp import StochasticProgram
+from .sp import StochasticProgram, initialize_bundles
 from .replace_variables_transformation import ReplaceVariablesTransformation
 
 logger = sparow.logs.logger
@@ -228,7 +228,13 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         if model_builder is not None:
             self.model_builder[name] = model_builder
         if model_data is not None and default:
-            self.initialize_bundles(models=[name])
+            self.set_bundles(
+                initialize_bundles(
+                    models=[name],
+                    model_data=self.model_data,
+                    scenario_data=self.scenario_data,
+                )
+            )
 
     def _first_stage_variables(self, *, M):
         for varname in self.first_stage_variables:
@@ -265,8 +271,13 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             _bundles = self.bundles
             # stack.append(StochasticProgram.set_bundles(self, self.bundles))
 
-            self.initialize_bundles(
-                models=[self.default_model], scheme="single_scenario"
+            self.set_bundles(
+                initialize_bundles(
+                    models=[self.default_model],
+                    scheme="single_scenario",
+                    model_data=self.model_data,
+                    scenario_data=self.scenario_data,
+                )
             )
 
             obj_expr = {}
