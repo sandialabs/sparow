@@ -19,6 +19,7 @@ if True:
         PoolCounter,
         SolutionPool_KeepBest,
         PoolManager,
+        PoolPolicy,
     )
     from or_topas.solnpool.solution import Solution, PyomoSolution
     from or_topas.solnpool.solution import ObjectiveInfo, VariableInfo
@@ -81,7 +82,9 @@ class CustomCandidateGenerator(AbstractCandidateGenerator):
             # self.aos = SolutionPool_KeepBest(counter = PoolCounter(),
             #  max_pool_size = 10)
             self.pm = PoolManager()
-            self.pm.add_pool("pool_1", policy="keep_best", max_pool_size=10)
+            self.pm.add_pool(
+                name="pool_1", policy=PoolPolicy.keep_best, max_pool_size=10
+            )
             # self.pm.add_pool("pool_1", policy="keep_all")
 
         else:
