@@ -4,7 +4,6 @@ from or_topas.solnpool.solution import VariableInfo
 from or_topas.solnpool.solution import ObjectiveInfo
 from or_topas.solnpool.solnpool import PoolManager
 from or_topas.solnpool.solnpool import PoolPolicy
-from or_topas.solnpool.solnpool import _as_pyomo_solution
 
 def constrain_EF_model(
     *, sp, M, first_stage_variables, fraction_same, filter_zeros=True
