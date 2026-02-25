@@ -10,6 +10,7 @@ import logging
 from pyomo.common.timing import tic, toc, TicTocTimer
 import sparow.logs
 import or_topas.solnpool
+from sparow.sp.util import SparowPoolManager
 
 logger = sparow.logs.logger
 
@@ -35,7 +36,7 @@ def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
         if sol.feasible:
             solutions.add(
                 variables=soln.variables(),
-                objective=or_topas.solnpool.ObjectiveInfo(value=sol.objective),
+                objective=solutions.create_objective(value=sol.objective),
                 suffix=soln.suffix,
             )
     else:
@@ -56,7 +57,7 @@ def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
                     v.value = tmpx[v.index]
                 solutions.add(
                     variables=variables,
-                    objective=or_topas.solnpool.ObjectiveInfo(value=sol.objective),
+                    objective=solutions.create_objective(value=sol.objective),
                     suffix=soln.suffix,
                 )
 
@@ -157,7 +158,7 @@ class ProgressiveHedgingSolver(object):
         # we keep the solution for each iteration of PH.
         #
         if self.solutions is None:
-            self.solutions = or_topas.solnpool.PoolManager()
+            self.solutions = SparowPoolManager()
         if self.finalize_all_xbar:
             sp_metadata = self.solutions.add_pool(
                 name="PH Iterations", policy=or_topas.solnpool.PoolPolicy.keep_all
@@ -456,7 +457,7 @@ class ProgressiveHedgingSolver(object):
     def archive_solution(self, *, sp, xbar=None, w=None, **kwds):
         # b = next(iter(sp.bundles))
         variables = [
-            or_topas.solnpool.VariableInfo(
+            SparowPoolManager().create_variable(
                 value=val,
                 index=i,
                 name=sp.get_variable_name(i),
