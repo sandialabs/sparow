@@ -5,6 +5,7 @@ from or_topas.solnpool.solution import ObjectiveInfo
 from or_topas.solnpool.solnpool import PoolManager
 from or_topas.solnpool.solnpool import PoolPolicy
 
+
 def constrain_EF_model(
     *, sp, M, first_stage_variables, fraction_same, filter_zeros=True
 ):
@@ -59,10 +60,11 @@ def constrain_EF_model(
 def sparow_as_solution(*args, **kwargs):
     return SparowSolution(*args, **kwargs)
 
+
 class SparowSolution(Solution):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
     ## TODO: 2nd stage solution as dict mapping scenario name to Solution obj
 
 
@@ -72,7 +74,7 @@ class SparowPoolManager(PoolManager, VariableInfo, ObjectiveInfo):
 
     def create_variable(self, *args, **kwargs):
         return VariableInfo(*args, **kwargs)
-    
+
     def create_objective(self, *args, **kwargs):
         return ObjectiveInfo(*args, **kwargs)
 
