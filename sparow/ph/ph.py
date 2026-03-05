@@ -456,15 +456,15 @@ class ProgressiveHedgingSolver(object):
 
     def archive_solution(self, *, sp, xbar=None, w=None, **kwds):
         # b = next(iter(sp.bundles))
-        variables_list=[
-                self.solutions.create_variable(
-                    value=val,
-                    index=i,
-                    name=sp.get_variable_name(i),
-                    suffix=munch.Munch(w={k: v[i] for k, v in w.items()}),
-                )
-                for i, val in xbar.items()
-            ]
+        variables_list = [
+            self.solutions.create_variable(
+                value=val,
+                index=i,
+                name=sp.get_variable_name(i),
+                suffix=munch.Munch(w={k: v[i] for k, v in w.items()}),
+            )
+            for i, val in xbar.items()
+        ]
         return self.solutions.add(variables=variables_list, **kwds)
 
     def update_rho(self, sfs_variables, xbar, sp):

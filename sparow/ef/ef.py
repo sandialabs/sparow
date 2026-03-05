@@ -73,7 +73,7 @@ class ExtensiveFormSolver(object):
 
         if results.obj_value is not None:
             b = next(iter(sp.bundles))
-            variables=[
+            variables = [
                 pm.create_variable(
                     value=sp.get_variable_value(b, i),
                     index=i,
@@ -81,8 +81,8 @@ class ExtensiveFormSolver(object):
                 )
                 for i, _ in enumerate(sp.get_variables())
             ]
-            objective_list=[pm.create_objective(value=results.obj_value)]
-            
+            objective_list = [pm.create_objective(value=results.obj_value)]
+
             pm.add(variables=variables, objectives=objective_list)
 
         logger.info("")
