@@ -2,10 +2,8 @@ import pyomo.environ as pyo
 from or_topas.solnpool.solution import Solution
 from or_topas.solnpool.solution import VariableInfo
 from or_topas.solnpool.solution import ObjectiveInfo
-from or_topas.solnpool.solnpool import PoolCounter
 from or_topas.solnpool.solnpool import PoolManager
 from or_topas.solnpool.solnpool import PoolPolicy
-from or_topas.solnpool.solnpool import SolutionPoolBase
 
 
 def constrain_EF_model(
