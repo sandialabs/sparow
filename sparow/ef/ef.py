@@ -7,7 +7,6 @@ import datetime
 from pyomo.common.timing import tic, toc
 import sparow.logs
 from sparow.sp.util import SparowPoolManager
-from sparow.sp.util import SparowSolution
 
 logger = sparow.logs.logger
 
@@ -74,18 +73,17 @@ class ExtensiveFormSolver(object):
 
         if results.obj_value is not None:
             b = next(iter(sp.bundles))
-            soln = SparowSolution(
-                variables=[
-                    pm.create_variable(
-                        value=sp.get_variable_value(b, i),
-                        index=i,
-                        name=sp.get_variable_name(i),
-                    )
-                    for i, _ in enumerate(sp.get_variables())
-                ],
-                objectives=[pm.create_objective(value=results.obj_value)],
-            )
-            pm.add(variables=soln.variables(), objective=soln.objective())
+            variables=[
+                pm.create_variable(
+                    value=sp.get_variable_value(b, i),
+                    index=i,
+                    name=sp.get_variable_name(i),
+                )
+                for i, _ in enumerate(sp.get_variables())
+            ]
+            objective_list=[pm.create_objective(value=results.obj_value)]
+            
+            pm.add(variables=variables, objectives=objective_list)
 
         logger.info("")
         logger.info("-" * 70)

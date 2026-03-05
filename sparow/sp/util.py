@@ -70,9 +70,7 @@ class SparowSolution(Solution):
     ## TODO: 2nd stage solution as dict mapping scenario name to Solution obj
 
 
-class SparowPoolManager(
-    PoolManager, VariableInfo, ObjectiveInfo, PoolCounter, SolutionPoolBase
-):
+class SparowPoolManager(PoolManager, VariableInfo, ObjectiveInfo):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

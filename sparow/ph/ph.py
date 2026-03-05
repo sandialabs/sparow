@@ -11,7 +11,6 @@ from pyomo.common.timing import tic, toc, TicTocTimer
 import sparow.logs
 import or_topas.solnpool
 from sparow.sp.util import SparowPoolManager
-from sparow.sp.util import SparowSolution
 
 logger = sparow.logs.logger
 
@@ -35,15 +34,10 @@ def finalize_ph_results(ph_soln, *, sp, solutions, finalize_xbar_by_rounding=Tru
         #
         rounded_sol = sp.evaluate([xbar[x] for x in sp.shared_variables()])
         if rounded_sol.feasible:
-            soln = SparowSolution(
+            solutions.add(
                 variables=ph_soln.variables(),
                 objective=solutions.create_objective(value=rounded_sol.objective),
                 suffix=ph_soln.suffix,
-            )
-            solutions.add(
-                variables=soln.variables(),
-                objective=soln.objective(),
-                suffix=soln.suffix,
             )
     else:
         logger.info("Finalizing solution with binary or integer variables")
@@ -61,15 +55,10 @@ def finalize_ph_results(ph_soln, *, sp, solutions, finalize_xbar_by_rounding=Tru
                 variables = copy.copy(ph_soln.variables())
                 for v in variables:
                     v.value = tmpx[v.index]
-                soln = SparowSolution(
+                solutions.add(
                     variables=variables,
                     objective=solutions.create_objective(value=rounded_sol.objective),
                     suffix=ph_soln.suffix,
-                )
-                solutions.add(
-                    variables=soln.variables(),
-                    objective=soln.objective(),
-                    suffix=soln.suffix,
                 )
 
     return solutions
@@ -467,8 +456,7 @@ class ProgressiveHedgingSolver(object):
 
     def archive_solution(self, *, sp, xbar=None, w=None, **kwds):
         # b = next(iter(sp.bundles))
-        soln = SparowSolution(
-            variables=[
+        variables_list=[
                 self.solutions.create_variable(
                     value=val,
                     index=i,
@@ -477,8 +465,7 @@ class ProgressiveHedgingSolver(object):
                 )
                 for i, val in xbar.items()
             ]
-        )
-        return self.solutions.add(variables=soln.variables(), **kwds)
+        return self.solutions.add(variables=variables_list, **kwds)
 
     def update_rho(self, sfs_variables, xbar, sp):
         # this function is scenario-independent, but will need to be updated for integer x
