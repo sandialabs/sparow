@@ -13,13 +13,13 @@ def test_sparow_solutions():
             pm.create_variable(name=key, value=val)
             for key, val in app.solution_values.items()
         ],
-        objectives=[
-            pm.create_objective(value=app.objective_value)
-        ],
+        objectives=[pm.create_objective(value=app.objective_value)],
     )  # add sparow solution to pool manager:
-    retval = pm.add(variables=sparow_soln.variables(), objective=sparow_soln.objective())
-    
-    assert retval is not None # ensure add method is returning soln ID
+    retval = pm.add(
+        variables=sparow_soln.variables(), objective=sparow_soln.objective()
+    )
+
+    assert retval is not None  # ensure add method is returning soln ID
 
     assert pm.get_pool_dicts() == {  # ensure sparow solution and pool manager have expected structure/keys/values
         "pool_1": {
