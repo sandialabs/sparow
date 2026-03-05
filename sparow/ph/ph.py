@@ -11,6 +11,7 @@ from pyomo.common.timing import tic, toc, TicTocTimer
 import sparow.logs
 import or_topas.solnpool
 from sparow.sp.util import SparowPoolManager
+from sparow.sp.util import SparowSolution
 
 logger = sparow.logs.logger
 
@@ -19,8 +20,8 @@ def norm(values, p):
     return np.linalg.norm(np.array(values), ord=p)
 
 
-def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
-    xbar = [soln.variable(i).value for i in range(len(soln.variables()))]
+def finalize_ph_results(ph_soln, *, sp, solutions, finalize_xbar_by_rounding=True):
+    xbar = [ph_soln.variable(i).value for i in range(len(ph_soln.variables()))]
     assert len(xbar) == len(
         sp.shared_variables()
     ), "Mismatch between solution variables and SP model variables: {len(xbar)} != {len(sp.shared_variables())}"
@@ -32,11 +33,16 @@ def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
         #
         # Evaluate the final xbar, and keep if feasible.
         #
-        sol = sp.evaluate([xbar[x] for x in sp.shared_variables()])
-        if sol.feasible:
+        rounded_sol = sp.evaluate([xbar[x] for x in sp.shared_variables()])
+        if rounded_sol.feasible:
+            soln = SparowSolution(
+                variables=ph_soln.variables(),
+                objective=solutions.create_objective(value=rounded_sol.objective),
+                suffix=ph_soln.suffix,
+            )
             solutions.add(
                 variables=soln.variables(),
-                objective=solutions.create_objective(value=sol.objective),
+                objective=soln.objective(),
                 suffix=soln.suffix,
             )
     else:
@@ -50,14 +56,19 @@ def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
                 "\tRounding xbar values associated with binary and integer variables"
             )
             tmpx = [sp.round(x, xbar[x]) for x in sp.shared_variables()]
-            sol = sp.evaluate(tmpx)
-            if sol.feasible:
-                variables = copy.copy(soln.variables())
+            rounded_sol = sp.evaluate(tmpx)
+            if rounded_sol.feasible:
+                variables = copy.copy(ph_soln.variables())
                 for v in variables:
                     v.value = tmpx[v.index]
-                solutions.add(
+                soln = SparowSolution(
                     variables=variables,
-                    objective=solutions.create_objective(value=sol.objective),
+                    objective=solutions.create_objective(value=rounded_sol.objective),
+                    suffix=ph_soln.suffix,
+                )
+                solutions.add(
+                    variables=soln.variables(),
+                    objective=soln.objective(),
                     suffix=soln.suffix,
                 )
 
@@ -456,16 +467,18 @@ class ProgressiveHedgingSolver(object):
 
     def archive_solution(self, *, sp, xbar=None, w=None, **kwds):
         # b = next(iter(sp.bundles))
-        variables = [
-            SparowPoolManager().create_variable(
-                value=val,
-                index=i,
-                name=sp.get_variable_name(i),
-                suffix=munch.Munch(w={k: v[i] for k, v in w.items()}),
-            )
-            for i, val in xbar.items()
-        ]
-        return self.solutions.add(variables=variables, **kwds)
+        soln = SparowSolution(
+            variables=[
+                self.solutions.create_variable(
+                    value=val,
+                    index=i,
+                    name=sp.get_variable_name(i),
+                    suffix=munch.Munch(w={k: v[i] for k, v in w.items()}),
+                )
+                for i, val in xbar.items()
+            ]
+        )
+        return self.solutions.add(variables=soln.variables(), **kwds)
 
     def update_rho(self, sfs_variables, xbar, sp):
         # this function is scenario-independent, but will need to be updated for integer x

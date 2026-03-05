@@ -2,8 +2,10 @@ import pyomo.environ as pyo
 from or_topas.solnpool.solution import Solution
 from or_topas.solnpool.solution import VariableInfo
 from or_topas.solnpool.solution import ObjectiveInfo
+from or_topas.solnpool.solnpool import PoolCounter
 from or_topas.solnpool.solnpool import PoolManager
 from or_topas.solnpool.solnpool import PoolPolicy
+from or_topas.solnpool.solnpool import SolutionPoolBase
 
 
 def constrain_EF_model(
@@ -57,7 +59,7 @@ def constrain_EF_model(
     )
 
 
-def sparow_as_solution(*args, **kwargs):
+def _sparow_as_solution(*args, **kwargs):
     return SparowSolution(*args, **kwargs)
 
 
@@ -68,21 +70,23 @@ class SparowSolution(Solution):
     ## TODO: 2nd stage solution as dict mapping scenario name to Solution obj
 
 
-class SparowPoolManager(PoolManager, VariableInfo, ObjectiveInfo):
+class SparowPoolManager(PoolManager, VariableInfo, ObjectiveInfo, PoolCounter, SolutionPoolBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-    def create_variable(self, *args, **kwargs):
+        
+    @staticmethod
+    def create_variable(*args, **kwargs):
         return VariableInfo(*args, **kwargs)
 
-    def create_objective(self, *args, **kwargs):
+    @staticmethod
+    def create_objective(*args, **kwargs):
         return ObjectiveInfo(*args, **kwargs)
 
     def add_pool(
         self, *, name=None, policy=PoolPolicy.keep_best, as_solution=None, **kwds
     ):
         if as_solution is None:
-            as_solution = sparow_as_solution
+            as_solution = _sparow_as_solution
         return PoolManager.add_pool(
             self, name=name, policy=policy, as_solution=as_solution, **kwds
         )

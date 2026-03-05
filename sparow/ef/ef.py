@@ -7,6 +7,7 @@ import datetime
 from pyomo.common.timing import tic, toc
 import sparow.logs
 from sparow.sp.util import SparowPoolManager
+from sparow.sp.util import SparowSolution
 
 logger = sparow.logs.logger
 
@@ -63,8 +64,8 @@ class ExtensiveFormSolver(object):
         toc("Optimized extensive form", logger=logger, level=logging.VERBOSE)
         end_time = datetime.datetime.now()
 
-        solutions = SparowPoolManager()
-        metadata = solutions.metadata
+        pm = SparowPoolManager()
+        metadata = pm.metadata
         metadata.termination_condition = str(results.termination_condition)
         metadata.status = str(results.status)
         metadata.start_time = str(start_time)
@@ -73,22 +74,24 @@ class ExtensiveFormSolver(object):
 
         if results.obj_value is not None:
             b = next(iter(sp.bundles))
-            variables = [
-                solutions.create_variable(
-                    value=sp.get_variable_value(b, i),
-                    index=i,
-                    name=sp.get_variable_name(i),
-                )
-                for i, _ in enumerate(sp.get_variables())
-            ]
-            objective = solutions.create_objective(value=results.obj_value)
-            solutions.add(variables=variables, objective=objective)
+            soln = SparowSolution(
+                variables=[
+                    pm.create_variable(
+                        value=sp.get_variable_value(b, i),
+                        index=i,
+                        name=sp.get_variable_name(i),
+                    )
+                    for i, _ in enumerate(sp.get_variables())
+                ],
+                objectives=[pm.create_objective(value=results.obj_value)],
+            )
+            pm.add(variables=soln.variables(), objective=soln.objective())
 
         logger.info("")
         logger.info("-" * 70)
         logger.info("ExtensiveFormSolver - STOP")
 
-        return munch.Munch(solutions=solutions, model=M)
+        return munch.Munch(solutions=pm, model=M)
 
     def solve(self, sp, **options):
         return self.solve_and_return_EF(sp, **options).solutions
