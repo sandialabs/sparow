@@ -11,7 +11,6 @@ from pyomo.common.timing import tic, toc, TicTocTimer
 import sparow.logs
 from sparow import solnpool
 
-
 logger = sparow.logs.logger
 
 

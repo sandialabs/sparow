@@ -1,5 +1,6 @@
 import pyomo.environ as pyo
 
+
 def constrain_EF_model(
     *, sp, M, first_stage_variables, fraction_same, filter_zeros=True
 ):
