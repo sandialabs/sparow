@@ -9,8 +9,8 @@ import logging
 
 from pyomo.common.timing import tic, toc, TicTocTimer
 import sparow.logs
-import or_topas.solnpool
-from sparow.sp.util import SparowPoolManager
+from sparow import solnpool
+
 
 logger = sparow.logs.logger
 
@@ -36,7 +36,7 @@ def finalize_ph_results(ph_soln, *, sp, solutions, finalize_xbar_by_rounding=Tru
         if rounded_sol.feasible:
             solutions.add(
                 variables=ph_soln.variables(),
-                objective=solutions.create_objective(value=rounded_sol.objective),
+                objective=solnpool.create_objective(value=rounded_sol.objective),
                 suffix=ph_soln.suffix,
             )
     else:
@@ -57,7 +57,7 @@ def finalize_ph_results(ph_soln, *, sp, solutions, finalize_xbar_by_rounding=Tru
                     v.value = tmpx[v.index]
                 solutions.add(
                     variables=variables,
-                    objective=solutions.create_objective(value=rounded_sol.objective),
+                    objective=solnpool.create_objective(value=rounded_sol.objective),
                     suffix=ph_soln.suffix,
                 )
 
@@ -158,14 +158,14 @@ class ProgressiveHedgingSolver(object):
         # we keep the solution for each iteration of PH.
         #
         if self.solutions is None:
-            self.solutions = SparowPoolManager()
+            self.solutions = solnpool.SparowPoolManager()
         if self.finalize_all_xbar:
             sp_metadata = self.solutions.add_pool(
-                name="PH Iterations", policy=or_topas.solnpool.PoolPolicy.keep_all
+                name="PH Iterations", policy=solnpool.PoolPolicy.keep_all
             )
         else:
             sp_metadata = self.solutions.add_pool(
-                name="PH Iterations", policy=or_topas.solnpool.PoolPolicy.keep_latest
+                name="PH Iterations", policy=solnpool.PoolPolicy.keep_latest
             )
         sp_metadata.solver = "PH Iteration Results"
         sp_metadata.solver_options = dict(
@@ -383,7 +383,7 @@ class ProgressiveHedgingSolver(object):
             all_iterations = list(self.solutions)
             self.solutions.add_pool(
                 name="Finalized All PH Iterations",
-                policy=or_topas.solnpool.PoolPolicy.keep_all,
+                policy=solnpool.PoolPolicy.keep_all,
             )
             for soln in all_iterations:
                 finalize_ph_results(soln, sp=sp, solutions=self.solutions)
@@ -391,7 +391,7 @@ class ProgressiveHedgingSolver(object):
             soln = self.solutions[latest_soln]
             self.solutions.add_pool(
                 name="Finalized Last PH Solution",
-                policy=or_topas.solnpool.PoolPolicy.keep_best,
+                policy=solnpool.PoolPolicy.keep_best,
             )
             finalize_ph_results(soln, sp=sp, solutions=self.solutions)
 
@@ -456,8 +456,8 @@ class ProgressiveHedgingSolver(object):
 
     def archive_solution(self, *, sp, xbar=None, w=None, **kwds):
         # b = next(iter(sp.bundles))
-        variables_list = [
-            self.solutions.create_variable(
+        variables = [
+            solnpool.create_variable(
                 value=val,
                 index=i,
                 name=sp.get_variable_name(i),
@@ -465,7 +465,7 @@ class ProgressiveHedgingSolver(object):
             )
             for i, val in xbar.items()
         ]
-        return self.solutions.add(variables=variables_list, **kwds)
+        return self.solutions.add(variables=variables, **kwds)
 
     def update_rho(self, sfs_variables, xbar, sp):
         # this function is scenario-independent, but will need to be updated for integer x

@@ -6,7 +6,7 @@ import datetime
 
 from pyomo.common.timing import tic, toc
 import sparow.logs
-from sparow.sp.util import SparowPoolManager
+from sparow import solnpool
 
 logger = sparow.logs.logger
 
@@ -63,8 +63,8 @@ class ExtensiveFormSolver(object):
         toc("Optimized extensive form", logger=logger, level=logging.VERBOSE)
         end_time = datetime.datetime.now()
 
-        pm = SparowPoolManager()
-        metadata = pm.metadata
+        solutions = solnpool.SparowPoolManager()
+        metadata = solutions.metadata
         metadata.termination_condition = str(results.termination_condition)
         metadata.status = str(results.status)
         metadata.start_time = str(start_time)
@@ -74,22 +74,22 @@ class ExtensiveFormSolver(object):
         if results.obj_value is not None:
             b = next(iter(sp.bundles))
             variables = [
-                pm.create_variable(
+                solnpool.create_variable(
                     value=sp.get_variable_value(b, i),
                     index=i,
                     name=sp.get_variable_name(i),
                 )
                 for i, _ in enumerate(sp.get_variables())
             ]
-            objective_list = [pm.create_objective(value=results.obj_value)]
+            objectives = [solnpool.create_objective(value=results.obj_value)]
 
-            pm.add(variables=variables, objectives=objective_list)
+            solutions.add(variables=variables, objectives=objectives)
 
         logger.info("")
         logger.info("-" * 70)
         logger.info("ExtensiveFormSolver - STOP")
 
-        return munch.Munch(solutions=pm, model=M)
+        return munch.Munch(solutions=solutions, model=M)
 
     def solve(self, sp, **options):
         return self.solve_and_return_EF(sp, **options).solutions
