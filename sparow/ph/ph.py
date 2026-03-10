@@ -18,8 +18,12 @@ def norm(values, p):
     return np.linalg.norm(np.array(values), ord=p)
 
 
-def finalize_ph_results(sparow_soln_ph, *, sp, solutions, finalize_xbar_by_rounding=True):
-    xbar = [sparow_soln_ph.variable(i).value for i in range(len(sparow_soln_ph.variables()))]
+def finalize_ph_results(
+    sparow_soln_ph, *, sp, solutions, finalize_xbar_by_rounding=True
+):
+    xbar = [
+        sparow_soln_ph.variable(i).value for i in range(len(sparow_soln_ph.variables()))
+    ]
     assert len(xbar) == len(
         sp.shared_variables()
     ), "Mismatch between solution variables and SP model variables: {len(xbar)} != {len(sp.shared_variables())}"
