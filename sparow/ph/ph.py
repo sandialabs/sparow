@@ -9,7 +9,7 @@ import logging
 
 from pyomo.common.timing import tic, toc, TicTocTimer
 import sparow.logs
-import or_topas.solnpool
+from sparow import solnpool
 
 logger = sparow.logs.logger
 
@@ -18,8 +18,12 @@ def norm(values, p):
     return np.linalg.norm(np.array(values), ord=p)
 
 
-def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
-    xbar = [soln.variable(i).value for i in range(len(soln.variables()))]
+def finalize_ph_results(
+    sparow_soln_ph, *, sp, solutions, finalize_xbar_by_rounding=True
+):
+    xbar = [
+        sparow_soln_ph.variable(i).value for i in range(len(sparow_soln_ph.variables()))
+    ]
     assert len(xbar) == len(
         sp.shared_variables()
     ), "Mismatch between solution variables and SP model variables: {len(xbar)} != {len(sp.shared_variables())}"
@@ -31,12 +35,12 @@ def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
         #
         # Evaluate the final xbar, and keep if feasible.
         #
-        sol = sp.evaluate([xbar[x] for x in sp.shared_variables()])
-        if sol.feasible:
+        rounded_sol = sp.evaluate([xbar[x] for x in sp.shared_variables()])
+        if rounded_sol.feasible:
             solutions.add(
-                variables=soln.variables(),
-                objective=or_topas.solnpool.ObjectiveInfo(value=sol.objective),
-                suffix=soln.suffix,
+                variables=sparow_soln_ph.variables(),
+                objective=solnpool.create_objective(value=rounded_sol.objective),
+                suffix=sparow_soln_ph.suffix,
             )
     else:
         logger.info("Finalizing solution with binary or integer variables")
@@ -49,15 +53,15 @@ def finalize_ph_results(soln, *, sp, solutions, finalize_xbar_by_rounding=True):
                 "\tRounding xbar values associated with binary and integer variables"
             )
             tmpx = [sp.round(x, xbar[x]) for x in sp.shared_variables()]
-            sol = sp.evaluate(tmpx)
-            if sol.feasible:
-                variables = copy.copy(soln.variables())
+            rounded_sol = sp.evaluate(tmpx)
+            if rounded_sol.feasible:
+                variables = copy.copy(sparow_soln_ph.variables())
                 for v in variables:
                     v.value = tmpx[v.index]
                 solutions.add(
                     variables=variables,
-                    objective=or_topas.solnpool.ObjectiveInfo(value=sol.objective),
-                    suffix=soln.suffix,
+                    objective=solnpool.create_objective(value=rounded_sol.objective),
+                    suffix=sparow_soln_ph.suffix,
                 )
 
     return solutions
@@ -157,14 +161,14 @@ class ProgressiveHedgingSolver(object):
         # we keep the solution for each iteration of PH.
         #
         if self.solutions is None:
-            self.solutions = or_topas.solnpool.PoolManager()
+            self.solutions = solnpool.SparowPoolManager()
         if self.finalize_all_xbar:
             sp_metadata = self.solutions.add_pool(
-                name="PH Iterations", policy=or_topas.solnpool.PoolPolicy.keep_all
+                name="PH Iterations", policy=solnpool.PoolPolicy.keep_all
             )
         else:
             sp_metadata = self.solutions.add_pool(
-                name="PH Iterations", policy=or_topas.solnpool.PoolPolicy.keep_latest
+                name="PH Iterations", policy=solnpool.PoolPolicy.keep_latest
             )
         sp_metadata.solver = "PH Iteration Results"
         sp_metadata.solver_options = dict(
@@ -382,7 +386,7 @@ class ProgressiveHedgingSolver(object):
             all_iterations = list(self.solutions)
             self.solutions.add_pool(
                 name="Finalized All PH Iterations",
-                policy=or_topas.solnpool.PoolPolicy.keep_all,
+                policy=solnpool.PoolPolicy.keep_all,
             )
             for soln in all_iterations:
                 finalize_ph_results(soln, sp=sp, solutions=self.solutions)
@@ -390,7 +394,7 @@ class ProgressiveHedgingSolver(object):
             soln = self.solutions[latest_soln]
             self.solutions.add_pool(
                 name="Finalized Last PH Solution",
-                policy=or_topas.solnpool.PoolPolicy.keep_best,
+                policy=solnpool.PoolPolicy.keep_best,
             )
             finalize_ph_results(soln, sp=sp, solutions=self.solutions)
 
@@ -456,7 +460,7 @@ class ProgressiveHedgingSolver(object):
     def archive_solution(self, *, sp, xbar=None, w=None, **kwds):
         # b = next(iter(sp.bundles))
         variables = [
-            or_topas.solnpool.VariableInfo(
+            solnpool.create_variable(
                 value=val,
                 index=i,
                 name=sp.get_variable_name(i),
