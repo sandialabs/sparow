@@ -314,7 +314,6 @@ HF_data = HFScen_object.scenario_generator(GlobalData.num_plots, GlobalData.num_
 
 app_data = {"num_plots": GlobalData.num_plots}
 model_data = {"LF": LF_scendata, "HF": HF_data}
-# print(HF_data)
 
 
 #

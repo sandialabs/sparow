@@ -18,8 +18,8 @@ def norm(values, p):
     return np.linalg.norm(np.array(values), ord=p)
 
 
-def finalize_ph_results(ph_soln, *, sp, solutions, finalize_xbar_by_rounding=True):
-    xbar = [ph_soln.variable(i).value for i in range(len(ph_soln.variables()))]
+def finalize_ph_results(sparow_soln_ph, *, sp, solutions, finalize_xbar_by_rounding=True):
+    xbar = [sparow_soln_ph.variable(i).value for i in range(len(sparow_soln_ph.variables()))]
     assert len(xbar) == len(
         sp.shared_variables()
     ), "Mismatch between solution variables and SP model variables: {len(xbar)} != {len(sp.shared_variables())}"
@@ -34,9 +34,9 @@ def finalize_ph_results(ph_soln, *, sp, solutions, finalize_xbar_by_rounding=Tru
         rounded_sol = sp.evaluate([xbar[x] for x in sp.shared_variables()])
         if rounded_sol.feasible:
             solutions.add(
-                variables=ph_soln.variables(),
+                variables=sparow_soln_ph.variables(),
                 objective=solnpool.create_objective(value=rounded_sol.objective),
-                suffix=ph_soln.suffix,
+                suffix=sparow_soln_ph.suffix,
             )
     else:
         logger.info("Finalizing solution with binary or integer variables")
@@ -51,13 +51,13 @@ def finalize_ph_results(ph_soln, *, sp, solutions, finalize_xbar_by_rounding=Tru
             tmpx = [sp.round(x, xbar[x]) for x in sp.shared_variables()]
             rounded_sol = sp.evaluate(tmpx)
             if rounded_sol.feasible:
-                variables = copy.copy(ph_soln.variables())
+                variables = copy.copy(sparow_soln_ph.variables())
                 for v in variables:
                     v.value = tmpx[v.index]
                 solutions.add(
                     variables=variables,
                     objective=solnpool.create_objective(value=rounded_sol.objective),
-                    suffix=ph_soln.suffix,
+                    suffix=sparow_soln_ph.suffix,
                 )
 
     return solutions

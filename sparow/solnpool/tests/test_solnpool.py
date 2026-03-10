@@ -17,7 +17,48 @@ def test_sparow_solutions():
     # add sparow solution to pool manager:
     sparow_soln_ID = solutions.add(variables=variables, objectives=objectives)
 
-    assert sparow_soln_ID is not None  # ensure add method is returning soln ID
+    assert sparow_soln_ID is not None  # ensure add method is returning soln ID 
+
+    # ensure solution associated w/ sparow_soln_ID has expected structure/keys/values:
+    soln_dict = solutions[sparow_soln_ID].to_dict()
+    assert soln_dict == {
+        "id": 0,
+        "objectives": [
+            {
+                "index": None,
+                "name": None,
+                "suffix": {},
+                "value": 76.5
+            }
+        ],
+        "suffix": {},
+        "variables": [
+            {
+                "discrete": False,
+                "fixed": False,
+                "index": None,
+                "name": "x",
+                "suffix": {},
+                "value": 60.0
+            },
+            {
+                "discrete": False,
+                "fixed": False,
+                "index": None,
+                "name": "s[None,1].x",
+                "suffix": {},
+                "value": 15.0
+            },
+            {
+                "discrete": False,
+                "fixed": False,
+                "index": None,
+                "name": "s[None,2].x",
+                "suffix": {},
+                "value": 60.0
+            }
+        ]
+    }
 
     assert solutions.get_pool_dicts() == {  # ensure sparow solution and pool manager have expected structure/keys/values
         "pool_1": {
@@ -27,6 +68,6 @@ def test_sparow_solutions():
                 "policy": "keep_all",
             },
             "pool_config": {},
-            "solutions": {0: solutions[sparow_soln_ID].to_dict()},
+            "solutions": {0: soln_dict},
         }
     }
