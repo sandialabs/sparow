@@ -629,11 +629,9 @@ def mf_random(data, models, model_weight=None, bundle_args=None):
         - Each scenario is in exactly 1 bundle
         - Can have different numbers of HF and LF scenarios
     """
-    print("here", models)
     if models is None:
         models = list(data.keys())
     assert len(models) > 1, "Expecting multiple models for mf_random"
-    print(models)
     model0 = models[0]  # the first model in models is assumed to be the HF model
     bundleIDs = sorted(data[model0].keys())
 
