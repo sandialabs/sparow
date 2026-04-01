@@ -4,7 +4,7 @@ import json
 import copy
 import munch
 import logging
-
+import functools
 from .bundling import bundling_functions
 
 # import sparow.util
@@ -152,12 +152,19 @@ class StochasticProgram(object):
     def create_EF(self, model_fidelities=None, cache_bundles=False):
         pass
 
+    def add_transformation(self, func, *args, **kwargs):
+        self.transform_subproblem = functools.partial(func, *args, **kwargs)
+        
     def create_subproblem(
         self, b, *, w=None, x_bar=None, rho=None, cached=False, compact_repn=True
     ):
-        return self.create_bundle_EF(
+        model = self.create_bundle_EF(
             b=b, w=w, x_bar=x_bar, rho=rho, cached=cached, compact_repn=compact_repn
         )
+        if hasattr(self,'transform_subproblem'):
+            model = self.transform_subproblem(self,model)
+        
+        return model
 
     def create_bundle_EF(
         self, *, b, w=None, x_bar=None, rho=None, cached=False, compact_repn=True

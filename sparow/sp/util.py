@@ -1,6 +1,63 @@
 import pyomo.environ as pyo
+import pyomo
 
+def relax_second_stage(sp,M,*,relax_dict):
 
+    for b in M.s.index_set():
+        key = b[-1] if isinstance(b, tuple) else b  # get last element if tuple, else b itself
+        if relax_dict[key]:
+            print('------------------YES----------------------')
+            block = M.s[b]
+            var_data_obj = {v.name:v for name, v in sp._first_stage_variables(M=block)}
+            print(sp._first_stage_variables)
+            for v in block.component_objects(pyo.Var, active=True):
+                #if len(v.index_set()) == 1:
+                if not isinstance(v, pyomo.core.base.var.IndexedVar):
+                    if v.name in var_data_obj:
+                        pass
+                    else:
+                        #if len(v.index_set()) == 1:
+                        if not isinstance(v, pyomo.core.base.var.IndexedVar):
+                            #v.pprint()
+                            #print(v.name)
+                            #print(v.index_set())
+                            #print('Type------------')
+                            #print(v.domain)
+                            #print(type(v))
+                            
+                            if v.domain is pyo.Binary:
+                                v.domain = pyo.Reals
+                                v.bounds = (0,1)
+                            elif v.domain is pyo.Integers:
+                                v.domain = pyo.Reals
+                            elif v.domain is pyo.Boolean:
+                                v.domain = pyo.Reals
+                                v.bounds = (0,1)
+                            elif v.domain is pyo.NonNegativeIntegers:
+                                v.domain = pyo.NonNegativeReals
+                            elif v.domain is pyo.NegativeIntegers:
+                                v.domain = pyo.NegativeReals
+                            elif v.domain is pyo.NonPositiveIntegers:
+                                v.domain = pyo.NonPositiveReals
+
+                else:
+                    for _v in v.index_set():
+                        if (v[_v].domain is pyo.Binary) and v[_v].name not in var_data_obj:
+                            v[_v].domain = pyo.Reals
+                            v[_v].bounds = (0,1)
+                        elif (v[_v].domain is pyo.Integers) and v[_v].name not in var_data_obj:
+                            v[_v].domain = pyo.Reals
+                        elif (v[_v].domain is pyo.Boolean) and v[_v].name not in var_data_obj:
+                            v[_v].domain = pyo.Reals
+                            v[_v].bounds = (0,1)
+                        elif (v[_v].domain is pyo.NonNegativeIntegers) and v[_v].name not in var_data_obj:
+                            v[_v].domain = pyo.NonNegativeReals
+                        elif (v[_v].domain is pyo.NegativeIntegers) and v[_v].name not in var_data_obj:
+                            v[_v].domain = pyo.NegativeReals
+                        elif (v[_v].domain is pyo.NonPositiveIntegers) and v[_v].name not in var_data_obj:
+                            v[_v].domain = pyo.NonPositiveReals
+
+    return M
 def constrain_EF_model(
     *, sp, M, first_stage_variables, fraction_same, filter_zeros=True
 ):
@@ -10,7 +67,7 @@ def constrain_EF_model(
     #
     assert (
         fraction_same >= 0 and fraction_same <= 1.0
-    ), f"Unexpected value: {fraction_same=}"
+    ), f"Unexpected value: {fraction_same}"
     if fraction_same <= 1e-3:
         return M
 
