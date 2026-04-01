@@ -381,11 +381,12 @@ class ProgressiveHedgingSolver_MPISPPY(object):
                 self.solutions = or_topas.solnpool.PoolManager()
             if self.finalize_all_xbar:
                 sp_metadata = self.solutions.add_pool(
-                    "PH Iterations", policy="keep_all"
+                    name="PH Iterations", policy=or_topas.solnpool.PoolPolicy.keep_all
                 )
             else:
                 sp_metadata = self.solutions.add_pool(
-                    "PH Iterations", policy="keep_latest"
+                    name="PH Iterations",
+                    policy=or_topas.solnpool.PoolPolicy.keep_latest,
                 )
             sp_metadata.solver = "PH Iteration Results"
             sp_metadata.solver_options = dict(
