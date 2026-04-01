@@ -160,7 +160,7 @@ class StochasticProgram(object):
 
     def add_transformation(self, func, *args, **kwargs):
         self.transform_subproblem = functools.partial(func, *args, **kwargs)
-        
+
     def create_subproblem(
         self, b, *, w=None, x_bar=None, rho=None, cached=False, compact_repn=True
     ):
@@ -171,12 +171,14 @@ class StochasticProgram(object):
         construction_time = toc(None)
 
         tic(None)
-        if hasattr(self,'transform_subproblem'):
-            model = self.transform_subproblem(self,model)
+        if hasattr(self, "transform_subproblem"):
+            model = self.transform_subproblem(self, model)
         transformation_times = toc(None)
 
-        self._timing[id(model)] = dict(transformations=transformation_times, construction=construction_time)
-        
+        self._timing[id(model)] = dict(
+            transformations=transformation_times, construction=construction_time
+        )
+
         return model
 
     def create_bundle_EF(
