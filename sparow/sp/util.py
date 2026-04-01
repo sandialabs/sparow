@@ -4,27 +4,18 @@ import pyomo
 def relax_second_stage(sp,M,*,relax_dict):
 
     for b in M.s.index_set():
-        key = b[-1] if isinstance(b, tuple) else b  # get last element if tuple, else b itself
+        key = b[-1] if isinstance(b, tuple) else b  
         if relax_dict[key]:
-            print('------------------YES----------------------')
+            print('------------------Relaxing Noncontinuous Variables----------------------')
             block = M.s[b]
             var_data_obj = {v.name:v for name, v in sp._first_stage_variables(M=block)}
-            print(sp._first_stage_variables)
+
             for v in block.component_objects(pyo.Var, active=True):
-                #if len(v.index_set()) == 1:
                 if not isinstance(v, pyomo.core.base.var.IndexedVar):
                     if v.name in var_data_obj:
                         pass
                     else:
-                        #if len(v.index_set()) == 1:
                         if not isinstance(v, pyomo.core.base.var.IndexedVar):
-                            #v.pprint()
-                            #print(v.name)
-                            #print(v.index_set())
-                            #print('Type------------')
-                            #print(v.domain)
-                            #print(type(v))
-                            
                             if v.domain is pyo.Binary:
                                 v.domain = pyo.Reals
                                 v.bounds = (0,1)
