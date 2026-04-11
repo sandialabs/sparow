@@ -51,6 +51,9 @@ class BendersSolver(object):
         rho_updates=False,
         default_rho=None,
     ):
+        # TODO: adapt settings to Benders
+        # Likely a subset of these settings for now
+
         #
         # Misc configuration
         #
@@ -154,6 +157,120 @@ class BendersSolver(object):
         logger.info("Temp Benders as ExtensiveFormSolver - STOP")
 
         return solutions
+    
+    def _transform_to_subproblem_model(sp,b):
+        """
+        This method takes a sp object and one of its child single scenario models (or bundle), b, 
+        and converts them to the corresponding Benders subproblem.
+        The modification is done to the model inplace. 
+        N.B. x are first-stage variables and y are second-stage variables.
+        
+        Scenario specific data is indexed with s and probability p_s
+        It assumes problems of the following form:
+        min_{x,y} <c,x> + <d,y>
+        s.t.    Ax + By <= h,
+                Ex      <= g,
+                x in Z^{n_1} cross R^{n_2},
+                y_s in R^{m}
+
+        It converts to a problem of the form:
+        min_{x,y} p_s[<c,x> + <d,y>]
+            s.t.    Ax + By <= h,
+                    Ex      <= g,
+                    x       == bar{x},
+                    x in R^{n}, n = n_1 + n_2
+                    y_s in R^{m}
+
+        This is done by achieving several steps:
+        1. relaxing discrete first-stage variables to continuous,
+        2. weighting the objective by probability
+
+        There are two optional steps that may be added later:
+        3. removal of the first-stage only constraints (i.e. Ex <= g)
+        4. relaxing second-stage variables as well
+
+        N.B. that this method on its own does not convert into a value function.
+        That is done later with OR-TOPAS, where the problem will be modified to make:
+        Q_s(bar{x}) := min_{x,y} p_s[<c,x> + <d,y>]
+                     s.t.    Ax + By <= h,
+                             Ex      <= g,
+                             x       == bar{x},
+                             x in R^{n}, n = n_1 + n_2
+                             y_s in R^{m}        
+        """
+
+        # step 1: probability weight the objective
+
+        # step 2: relax first_stage variable domains
+        pass
+
+    def _transform_to_master_model(sp, b, n_scenarios=None, eta_bounds_dict=None, remove_other_bundles=False):
+        """
+        This method takes a sp object and one of its child single scenario models, b,
+        and converts it to the format of a Benders master problem.
+        The modification is done to the model inplace. 
+        N.B. x are first-stage variables and y are second-stage variables.
+        Scenarios are assumed to be numbered 1 to n.
+
+        It assumes problems of the following form:
+        min_{x,y} <c,x> + <d,y>
+        s.t.    Ax + By <= h,
+                Ex      <= g,
+                x in Z^{n_1} cross R^{n_2},
+                y_s in R^{m}
+
+        It converts to a problem of the form:
+        min_{x,eta} <c,x> + sum_{i=1...n} eta_i 
+            s.t.    Ex      <= g,
+                    x in Z^{n_1} cross R^{n_2},
+                    eta_i in [LB_i, UB_i]
+
+        This is done by taking several steps:
+        1. Deletion of all constraints that contain second-stage variables (more generally non-first-stage variables).
+        2. Removal of second-stage terms from objective
+        3. Creating subproblem tracking variables, eta, for each scenario with domain bounds
+        4. Adding sum of tracking variables, eta, to the objective
+
+        !!!!!!!!!!!!!!!!!!!!!
+        Note: this model is expected to function as the master problem
+        It assumes that Ex <= g are the general first-stage constraints (i.e. E and g are not scenario specific)
+        And that c is the first-stage linear objective (i.e. c is not scenario specific).
+
+        If this is not the case generally, the user must guarantee the given scenario/bundle has this property.
+        !!!!!!!!!!!!!!!!!!!!!
+        """
+
+        #step 1: delete all constraints involving second-stage variables
+        #this removes all the recourse/scenario specific feasibility constraints
+
+        #step 2: delete all the second-stage terms from objective expression
+        #name the resulting expression the first_stage_cost
+
+        #step 3: create eta tracking variables for the scenario set (either 1...N or a pyomo set)
+        #enforce that there are upper and lower bound entries in the eta_bounds dict for each scenario
+        #none corresponds to no bound on that side
+        #feasibility only problems can be set to have eta_i = 0 by LB_i = UB_i = 0
+
+        #step 4: add eta.sum to the objective expression
+        pass
+
+
+    def _setup_topas_subproblem(sp_lower, b, sp_upper, m_upper):
+        """
+        This is a wrapper method that takes a model (or bundle), b,
+        that has been converted into Benders subproblem format (e.g. made by _transform_to_subproblem_model),
+        and returns data for use as an OR-TOPAS Benders subproblem.
+
+        At present, it builds the needed map from the first-stage variables in m_upper to those in b.
+        It then returns the subproblem model, b, and that complicating variable map.
+        """
+
+        #create the complicating variable map
+        #use the sp objects both having first stage variable lists to build the mapping
+
+        #return the subproblem model, b, and the complicating variable map.
+        pass
+
     def _clean_root_model(m,probabilities, eta_bounds = -1_000_000):   
         #TODO: Warning on generic eta bounds
 
