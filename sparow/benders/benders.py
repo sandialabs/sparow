@@ -14,6 +14,48 @@ logger = sparow.logs.logger
 
 
 class BendersSolver(object):
+    """
+    This class provides an way to solve Stochastic Programs (or other SP formatted problems)
+    using Benders Decomposition. It relies on the OR-TOPAS Benders solver for its funcitonality.
+
+    The following structure is assumed for what the extensive form (or deterministic equivalent) problem
+    looks like:
+    min_{x,y_s} <c,x> + sum_{s \in S} p_s<d_s,y_s>
+        s.t.    x in X subseteq Z^{n_1} cross R^{n_2}
+                y_s in Y_s(x) subseteq R^{m_s}, forall s in S    
+    
+    N.B. x are first-stage variables and y are second-stage variables.
+    S is the scenaro set and p in R_+^{|S|}.
+                
+    The assumed formats for X and Y_s are as follows:
+    X = {x in Z^{n_1} cross R^{n_2} | Ux <= v}
+    Y_s = {y_s in R^{m_s} | A_s x  + B_s y_s <= h_s, E_s x<= g_s}
+
+    The Benders Master problem then takes the form:
+    min_{x,eta} <c,x> + sum_{s \in S} eta_s
+        s.t.    x in X subseteq Z^{n_1} cross R^{n_2}
+                eta_s >= f_{c,s}(x), forall c in OptCuts_s, s in S
+                0 >= f_{c,s}(x), forall c in FeasCuts_s, s in S
+
+    The Benders Subproblem Value Functions then take the form (s index dropped for convience):
+    Q_s(bar{x}) := min_{x,y} p_s[<c,x> + <d,y>]
+                     s.t.    Ax + By <= h,
+                             Ex      <= g,
+                             x       == bar{x},
+                             x in R^{n}, n = n_1 + n_2
+                             y_s in R^{m}  
+    
+    Caveats: 
+    1. The probabiilty weights are pushed to the subproblem value functions.
+    This allows the master problem to not need to know the probability vector.
+
+    2. Multiple SP objects are created for this process: sp_lower and sp_upper.
+    sp_lower has the full scenario information the user inputted.
+    sp_upper is created with a single scenario from the information given by the user.
+    The bundles in sp_lower will be converted in place into Benders subproblem format.
+    The single bundle in sp_upper will be converted in place into the Benders master problem.
+    This separates the handling of the |S|+1 models into conceptually separated objects.
+    """
 
     #
     # Init and set_options adapted from ph.py
@@ -158,7 +200,7 @@ class BendersSolver(object):
 
         return solutions
     
-    def _transform_to_subproblem_model(sp,b):
+    def _transform_to_subproblem_model(sp_lower,b, default_domain= pyo.Reals):
         """
         This method takes a sp object and one of its child single scenario models (or bundle), b, 
         and converts them to the corresponding Benders subproblem.
@@ -184,10 +226,11 @@ class BendersSolver(object):
         This is done by achieving several steps:
         1. relaxing discrete first-stage variables to continuous,
         2. weighting the objective by probability
+        3. remove any exteraneous PH style attributes
 
-        There are two optional steps that may be added later:
-        3. removal of the first-stage only constraints (i.e. Ex <= g)
+        There are optional steps that may be added later:
         4. relaxing second-stage variables as well
+        5. ability to set custom domains as a function of which first stage variable it is
 
         N.B. that this method on its own does not convert into a value function.
         That is done later with OR-TOPAS, where the problem will be modified to make:
@@ -198,13 +241,38 @@ class BendersSolver(object):
                              x in R^{n}, n = n_1 + n_2
                              y_s in R^{m}        
         """
+        assert len(sp_lower.bundles[b].scenarios) == 1, "There should be only one scenario in each bundle"
+
+        #TODO: ask Rachael what the right way to do this construction is
+        #might be easier to do with ._create_scenario
+        #may need to have W/Rho as None
+        #N.B. create_subproblem is a wrapper for create_bundle_ef
+        subproblem_model = sp_lower.create_bundle_EF(b, cached=False, w=None, x_bar=None, rho=None, cached=False, compact_repn=True,)
+        #we now assume subproblem_model is constructed
 
         # step 1: probability weight the objective
+        #TODO: validate that this objective is not already probability weighted
+        #_create_sceanrio does not appear to probability weight
+        #all _create_X_bundle_EF_repn does prob weight do on line 455/569/631
+        # probability attribute is: self.bundles[b].scenario_probability[s] for s in self.bundles[b].scenarios
+
 
         # step 2: relax first_stage variable domains
+        for i, x in sp_lower.int_to_FirstStageVar[b].items():
+            x.domain = default_domain
+
+        # step 3: remove any unneeded PH style varaible fluff
+        # this may be all handled by setting w, x_bar, rho, and cached to false
+        return subproblem_model
+    
+    def _create_sp_upper(sp_lower,b):
+        """
+        This method takes an sp object and a bundle and uses that to make a separate sp object with data
+        for just that one bundle b.
+        """
         pass
 
-    def _transform_to_master_model(sp, b, n_scenarios=None, eta_bounds_dict=None, remove_other_bundles=False):
+    def _transform_to_master_model(*, sp, b, eta_bounds_map, remove_other_bundles=False):
         """
         This method takes a sp object and one of its child single scenario models, b,
         and converts it to the format of a Benders master problem.
@@ -232,27 +300,105 @@ class BendersSolver(object):
         4. Adding sum of tracking variables, eta, to the objective
 
         !!!!!!!!!!!!!!!!!!!!!
-        Note: this model is expected to function as the master problem
-        It assumes that Ex <= g are the general first-stage constraints (i.e. E and g are not scenario specific)
+        Note: this model is expected to function as the master problem.
+        It assumes that the general first-stage constraints X subseteq G_s := {x in Z^{n_1} cross R^{n_2} | E_s x <= g_s},
+            Hence using x in G_s is effectively pulling feasibility cut information from subproblem s to the master. 
         And that c is the first-stage linear objective (i.e. c is not scenario specific).
 
         If this is not the case generally, the user must guarantee the given scenario/bundle has this property.
+        This code is run after _create_sp_upper constructs an appropriate sp_upper.
         !!!!!!!!!!!!!!!!!!!!!
+
+        Parameters
+        ----------
+        sp : StochasticProgram
+            The StochasticProgram object containing the model to convert to the Benders Master problem
+        b : BundleObj
+            The BundleObj object (custom to this library).
+        eta_bounds_map : dictionary
+            A dicitonary mapping scenario keys to bound tuples.
+            The tuples are in (LowerBound, UpperBound) format.
+            The keys are assumed to be ids for Benders subproblems.
+            Constant scenarios should use (0,0) as bound format.
         """
+        assert len(eta_bound_rule) > 0, "Need there to be at least some scenarios to map to"
+        for k,v in eta_bound_rule.items():
+            assert isinstance(v, tuple) and len(v) == 2, f"Tried to use {v=} as a bound tuple"
+            assert v[0] is not None, f"Subproblem {k=} must have a lower bound"
 
-        #step 1: delete all constraints involving second-stage variables
-        #this removes all the recourse/scenario specific feasibility constraints
+        #step 0: create master problem model
+        #see discussion in _transform_to_subproblem_model about best method to use here
+        upper_model = sp.create_bundle_EF(b, cached=False, w=None, x_bar=None, rho=None, cached=False, compact_repn=True,)
 
-        #step 2: delete all the second-stage terms from objective expression
+        #step 1: delete all constraints involving second-stage variables and second-stage variables
+        #this removes all the recourse/scenario specific feasibility constraints/variables
+
+        #gather cons to remove to process later
+        #TODO: consider caching the CUIDs for second-stage vars
+        cons_to_delete = []
+        for cons in upper_model.component_data_objects(pyo.Constraint, descend_into=True):
+            #variable listing method adapted from
+            #https://stackoverflow.com/questions/48538945/access-all-variables-occurring-in-a-pyomo-constraint
+            vars = list(pyo.visitor.identify_variables(cons.body))
+            for var in vars:
+                #this amounts to a var not in first_stage_vars check
+                # sp.varcuid_to_int only holds varcuid's for first_stage_variables
+                if pyo.ComponentUID(var, context=upper_model) not in sp.varcuid_to_int:
+                    cons_to_delete.append(cons)
+                    break
+
+        #gather vars to remove to process later
+        vars_to_delete = []
+        for var in upper_model.component_data_objects(pyo.Var, descend_into=True):
+            #this amounts to a var not in first_stage_vars check
+            # sp.varcuid_to_int only holds varcuid's for first_stage_variables
+            if pyo.ComponentUID(var, context=upper_model) not in sp.varcuid_to_int:
+                #TODO: handle edgecases for bound definitions
+                vars_to_delete.append(var)
+                #needs to be set to 0, var.lb, var.ub
+                #0 if var.lb and var.ub are infinite
+                # var.fix(0)
+
+        #unneed cons handling point
+        for cons in cons_to_delete:
+            #we can either deactivate or delete
+            #deactivating for now
+            cons.deactivate()
+
+        #unneeded vars handling point
+        for var in vars_to_delete:
+            #we can either fix or delete
+            #fixing for now
+            if var.lb is None:
+                if var.up is None:
+                    #bounds = (None, None), so 0 always feasible
+                    fix_point = 0
+                else:
+                    #bounds = (None, ub), ub is a number
+                    fix_point = var.ub
+            else:
+                #bound = (lb, ?), lb is a number though
+                fix_point = var.lb
+            var.fix(fix_point)
+
+        #step 2: compute the objective with just the first stage terms 
         #name the resulting expression the first_stage_cost
+        #may need to set sp.bundles[b].probability = 1 to avoid scaling in get_objective_coef
+        first_stage_cost = sum(sp.get_objective_coef(i) * x for i, x in sp.int_to_FirstStageVar[b].items())
 
         #step 3: create eta tracking variables for the scenario set (either 1...N or a pyomo set)
         #enforce that there are upper and lower bound entries in the eta_bounds dict for each scenario
         #none corresponds to no bound on that side
         #feasibility only problems can be set to have eta_i = 0 by LB_i = UB_i = 0
+        upper_model.scenarios = pyo.Set(eta_bounds_map.keys(), ordered=True)
+        def eta_bound_rule(m, s):
+            return eta_bounds_map[s]
+        upper_model.etas = pyo.Var(upper_model.scenarios, rule = eta_bound_rule)
 
         #step 4: add eta.sum to the objective expression
-        pass
+        upper_model.obj = pyo.Objective(expr=first_stage_cost + upper_model.etas.sum())
+        
+        return upper_model
 
 
     def _setup_topas_subproblem(sp_lower, b, sp_upper, m_upper):
@@ -270,6 +416,16 @@ class BendersSolver(object):
 
         #return the subproblem model, b, and the complicating variable map.
         pass
+
+    #steps for general solve
+    #take overall sp model with full scenario data, this will be sp_lower
+    #create sp model with single scenario for sp_upper
+    #for each bundle in sp_lower, transform to subproblem
+    #transform sp_upper model to master format
+    #setup or-topas benders model
+        # extract subproblem solver information from sp_lower
+    #iterate while adding benders cuts
+    #report results to user
 
     def _clean_root_model(m,probabilities, eta_bounds = -1_000_000):   
         #TODO: Warning on generic eta bounds
