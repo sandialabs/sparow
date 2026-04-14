@@ -22,7 +22,7 @@ from sparow import solnpool
 logger = sparow.logs.logger
 
 
-class Forestlib_client:
+class Sparow_client:
 
     def __init__(self, sp):
         self._sp = sp
@@ -248,7 +248,7 @@ def mpisppy_main(sp, options, argv):
     # Clear sys.argv to force mpisppy to ignore it
     sys.argv = [sys.argv[0]] + argv
 
-    guest = Forestlib_client(sp)
+    guest = Sparow_client(sp)
     results = mpisppy_generic_cylinders_main(guest, options)
     if guest.minimizing:
         results = dict(
@@ -382,11 +382,11 @@ class ProgressiveHedgingSolver_MPISPPY(object):
                 self.solutions = solnpool.SparowPoolManager()
             if self.finalize_all_xbar:
                 sp_metadata = self.solutions.add_pool(
-                    name="PH Iterations", policy=or_topas.solnpool.PoolPolicy.keep_all
+                    name="PH Iterations", policy=solnpool.PoolPolicy.keep_all
                 )
             else:
                 sp_metadata = self.solutions.add_pool(
-                    name="PH Iterations", policy=or_topas.solnpool.PoolPolicy.keep_latest
+                    name="PH Iterations", policy=solnpool.PoolPolicy.keep_latest
                 )
             sp_metadata.solver = "PH Iteration Results"
             sp_metadata.solver_options = dict(
