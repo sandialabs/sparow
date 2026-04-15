@@ -17,11 +17,12 @@ with or_topas.util.try_import() as mpisppy_available:
 
 from sparow.sp.sp_pyomo import find_objective
 import sparow.logs
+from sparow import solnpool
 
 logger = sparow.logs.logger
 
 
-class Forestlib_client:
+class Sparow_client:
 
     def __init__(self, sp):
         self._sp = sp
@@ -247,7 +248,7 @@ def mpisppy_main(sp, options, argv):
     # Clear sys.argv to force mpisppy to ignore it
     sys.argv = [sys.argv[0]] + argv
 
-    guest = Forestlib_client(sp)
+    guest = Sparow_client(sp)
     results = mpisppy_generic_cylinders_main(guest, options)
     if guest.minimizing:
         results = dict(
@@ -378,14 +379,14 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         #
         if self.mpi_rank == 0:
             if self.solutions is None:
-                self.solutions = or_topas.solnpool.PoolManager()
+                self.solutions = solnpool.SparowPoolManager()
             if self.finalize_all_xbar:
                 sp_metadata = self.solutions.add_pool(
-                    "PH Iterations", policy="keep_all"
+                    name="PH Iterations", policy=solnpool.PoolPolicy.keep_all
                 )
             else:
                 sp_metadata = self.solutions.add_pool(
-                    "PH Iterations", policy="keep_latest"
+                    name="PH Iterations", policy=solnpool.PoolPolicy.keep_latest
                 )
             sp_metadata.solver = "PH Iteration Results"
             sp_metadata.solver_options = dict(
@@ -439,7 +440,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             for soln in results["first_stage_solutions"]:
                 args = dict(sp=sp, xbar=soln)
                 if results["best_value"]:
-                    args["objective"] = or_topas.solnpool.ObjectiveInfo(
+                    args["objective"] = solnpool.create_objective(
                         value=float(results["best_value"])
                     )
                 self.archive_solution(**args)
@@ -463,7 +464,7 @@ class ProgressiveHedgingSolver_MPISPPY(object):
     def archive_solution(self, *, sp, xbar, w=None, **kwds):
         w = {} if w is None else w
         variables = [
-            or_topas.solnpool.VariableInfo(
+            solnpool.create_variable(
                 value=float(val),
                 index=i,
                 name=sp.get_variable_name(i),
