@@ -40,7 +40,9 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         self.varcuid_to_int = {}
         self.int_to_FirstStageVar = {}  # indexed by bundle id
         self.int_to_FirstStageVarName = {}
-        self.int_to_ObjectiveCoef = {} #MPV: I think this mapping implies that all objectives are linear?
+        self.int_to_ObjectiveCoef = (
+            {}
+        )  # MPV: I think this mapping implies that all objectives are linear?
         self.solver_options = {}
         self.pyo_solver = None
         self._model_cache = {}  # indexed by bundle id
@@ -462,7 +464,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                     for i, x in self.int_to_FirstStageVar[b].items()
                 )
             )
-        #TODO: this assumes default sense for pyo.objective without checking obj[s] senses
+        # TODO: this assumes default sense for pyo.objective without checking obj[s] senses
         EF_model.obj = pyo.Objective(expr=obj)
 
         EF_model.scenario_varmap = {}
@@ -565,7 +567,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 )
             )
 
-        #TODO: this assumes default sense for pyo.objective without checking obj[s] senses
+        # TODO: this assumes default sense for pyo.objective without checking obj[s] senses
         EF_model.obj = pyo.Objective(expr=obj)
 
         return EF_model
@@ -640,7 +642,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                     for i, x in self.int_to_FirstStageVar[b].items()
                 )
             )
-        #TODO: this assumes default sense for pyo.objective without checking obj[s] senses
+        # TODO: this assumes default sense for pyo.objective without checking obj[s] senses
         EF_model.obj = pyo.Objective(expr=obj)
 
         # 4) Constrain First Stage Variable values to be equal under all scenarios
