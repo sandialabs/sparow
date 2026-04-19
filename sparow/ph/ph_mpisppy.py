@@ -22,6 +22,55 @@ from sparow import solnpool
 logger = sparow.logs.logger
 
 
+def finalize_mf_ph_results(
+    sparow_soln_ph, *, sp, solutions, finalize_xbar_by_rounding=True
+):
+    xbar = [
+        sparow_soln_ph.variable(i).value for i in range(len(sparow_soln_ph.variables()))
+    ]
+    assert len(xbar) == len(
+        sp.shared_variables()
+    ), "Mismatch between solution variables and SP model variables: {len(xbar)} != {len(sp.shared_variables())}"
+    #
+    # We use xbar to identify a point that is feasible for all scenarios.
+    #
+    if sp.continuous_fsv():
+        logger.info("Finalizing continuous solution")
+        #
+        # Evaluate the final xbar, and keep if feasible.
+        #
+        rounded_sol = sp.evaluate([xbar[x] for x in sp.shared_variables()])
+        if rounded_sol.feasible:
+            solutions.add(
+                variables=sparow_soln_ph.variables(),
+                objective=solnpool.create_objective(value=rounded_sol.objective),
+                suffix=sparow_soln_ph.suffix,
+            )
+    else:
+        logger.info("Finalizing solution with binary or integer variables")
+
+        if finalize_xbar_by_rounding:
+            #
+            # Round the final xbar, and keep if feasible.
+            #
+            logger.info(
+                "\tRounding xbar values associated with binary and integer variables"
+            )
+            tmpx = [sp.round(x, xbar[x]) for x in sp.shared_variables()]
+            rounded_sol = sp.evaluate(tmpx)
+            if rounded_sol.feasible:
+                variables = copy.copy(sparow_soln_ph.variables())
+                for v in variables:
+                    v.value = tmpx[v.index]
+                solutions.add(
+                    variables=variables,
+                    objective=solnpool.create_objective(value=rounded_sol.objective),
+                    suffix=sparow_soln_ph.suffix,
+                )
+
+    return solutions
+
+
 class Sparow_client:
 
     def __init__(self, sp):
@@ -443,7 +492,15 @@ class ProgressiveHedgingSolver_MPISPPY(object):
                     args["objective"] = solnpool.create_objective(
                         value=float(results["best_value"])
                     )
-                self.archive_solution(**args)
+                latest_soln = self.archive_solution(**args)
+
+            if sp.is_multifidelity == True:
+                soln = self.solutions[latest_soln]
+                self.solutions.add_pool(
+                    name="Finalized Last PH Solution",
+                    policy=solnpool.PoolPolicy.keep_best,
+                )
+                finalize_mf_ph_results(soln, sp=sp, solutions=self.solutions)
 
             sp_metadata.end_time = str(end_time)
             sp_metadata.time_elapsed = str(end_time - start_time)
