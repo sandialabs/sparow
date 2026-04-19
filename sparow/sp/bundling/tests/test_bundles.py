@@ -4,8 +4,8 @@ from sparow.sp.bundling.MF_schemes import (
     mf_paired,
     mf_random_nested,
     mf_random,
-    similar_partitions,
-    dissimilar_partitions,
+    mf_similar_partitions,
+    mf_dissimilar_partitions,
     mf_kmeans_similar,
     mf_kmeans_dissimilar,
     mf_bundle_from_list,
@@ -550,8 +550,8 @@ class TestBundleFunctions(object):
             },
         }
 
-    def test_similar_partitions(self, MF_data):
-        assert similar_partitions(
+    def test_mf_similar_partitions(self, MF_data):
+        assert mf_similar_partitions(
             MF_data,
             models=["HF", "LF"],
             bundle_args={"distance_function": self.dist_map},
@@ -572,7 +572,7 @@ class TestBundleFunctions(object):
             },
         }
 
-        assert similar_partitions(
+        assert mf_similar_partitions(
             MF_data,
             model_weight={"HF": 3, "LF": 1},
             models=["HF", "LF"],
@@ -594,8 +594,8 @@ class TestBundleFunctions(object):
             },
         }
 
-    def test_dissimilar_partitions(self, similar_scenarios):
-        assert dissimilar_partitions(
+    def test_mf_dissimilar_partitions(self, similar_scenarios):
+        assert mf_dissimilar_partitions(
             similar_scenarios,
             models=["HF", "LF"],
             bundle_args={"distance_function": self.dist_map},
@@ -630,7 +630,7 @@ class TestBundleFunctions(object):
             },
         }
 
-        assert dissimilar_partitions(
+        assert mf_dissimilar_partitions(
             similar_scenarios,
             model_weight={"HF": 3, "LF": 1},
             models=["HF", "LF"],
