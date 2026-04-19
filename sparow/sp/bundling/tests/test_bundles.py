@@ -10,7 +10,7 @@ from sparow.sp.bundling.MF_schemes import (
     mf_kmeans_dissimilar,
     mf_bundle_from_list,
 )
-
+# i think this imports from bundling_functions instead of SF_schemes to avoid breaking importing logic (TODO: verify this is true -RMA)
 from sparow.sp.bundling.bundling_functions import (
     single_scenario,
     single_bundle,
@@ -18,6 +18,7 @@ from sparow.sp.bundling.bundling_functions import (
     kmeans_similar,
     kmeans_dissimilar,
     bundle_from_list,
+    _is_multifidelity,
 )
 
 
@@ -200,6 +201,10 @@ class TestBundleFunctions(object):
                 demand_diffs[(i, j)] = abs(HFdemands[i] - LFdemands[j])
 
         return demand_diffs
+    
+    def test_is_multifidelity(self):
+        assert _is_multifidelity("mf_random") == True
+        assert _is_multifidelity("single_bundle") == False
 
     def test_check_data_dict_keys(
         self,
