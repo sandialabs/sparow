@@ -22,6 +22,11 @@ model_data = {
 # including a single second stage
 #
 def builder(data, args):
+    # This function creates a polyhedral objective with 2 sections,
+    #   which is formed by: greater and less.
+    # Since there are two line segments, there can be up to one vertex.
+    # This is the same model creation logic as LF_newsvendor in sp/examples/mf_newsvendor.py.
+    # Scenario data between files may be different.
     b = data["b"]
     c = data["c"]
     h = data["h"]
