@@ -15,12 +15,15 @@ import pyomo.repn
 # sparow imports
 from sparow import solnpool
 import sparow.logs
-from sparow.sp import initialize_bundles
-import sparow.bundling.bundling_functions as bundling_functions
+from sparow.sp.bundling import bundling_functions
+
+# these work
+import sparow.logs
+from sparow import solnpool
 
 # or-topas imports
 import or_topas.benders
-from or_topas.benders.benders_serial import BendersGenerator_Serial 
+from or_topas.benders.benders_serial import BendersGenerator_Serial
 
 # logger settup
 logger = sparow.logs.logger
@@ -106,8 +109,7 @@ class BendersSolver(object):
         support_feasibility_cuts=None,
         solutions=None,
         loglevel=None,
-        BendersCutGenerator = None,
-
+        BendersCutGenerator=None,
     ):
         # TODO: adapt settings to Benders
         # Likely a subset of these settings for now
@@ -144,8 +146,7 @@ class BendersSolver(object):
     #
     # This is the same as the ExtensiveForm Solver to test that the logic
     # to access this solver works, separately from the Benders logic
-    #
-    def solve(self, sp, **options):
+    def solve_and_return_EF(self, sp, **options):
         start_time = datetime.datetime.now()
         if len(options) > 0:
             self.set_options(**options)
@@ -156,7 +157,7 @@ class BendersSolver(object):
 
         logger.info("")
         logger.info("-" * 70)
-        logger.info("Temp Benders As ExtensiveFormSolver - START")
+        logger.info("ExtensiveFormSolver - START")
         if logger.isEnabledFor(logging.VERBOSE):
             print(f"  Solver: {self.solver_name}")
             print(f"  Solver Options")
@@ -164,16 +165,10 @@ class BendersSolver(object):
                 print(f"    {k}= {v}")
         tic(None)
 
-        sp.initialize_bundles(scheme="single_bundle")
-        assert (
-            len(sp.bundles) == 1
-        ), f"The extensive form should only have one bundle: {len(sp.bundles)}"
-
-        b = next(iter(sp.bundles))
-        M = sp.create_subproblem(b)
+        M = sp.create_EF(compact_repn=True)
         if logger.isEnabledFor(logging.DEBUG):
+            # Print extensive form model
             M.pprint()
-            M.display()
             sys.stdout.flush()
 
         toc("Created extensive form", logger=logger, level=logging.VERBOSE)
@@ -183,7 +178,7 @@ class BendersSolver(object):
         toc("Optimized extensive form", logger=logger, level=logging.VERBOSE)
         end_time = datetime.datetime.now()
 
-        solutions = or_topas.solnpool.PoolManager()
+        solutions = solnpool.SparowPoolManager()
         metadata = solutions.metadata
         metadata.termination_condition = str(results.termination_condition)
         metadata.status = str(results.status)
@@ -194,21 +189,25 @@ class BendersSolver(object):
         if results.obj_value is not None:
             b = next(iter(sp.bundles))
             variables = [
-                or_topas.VariableInfo(
+                solnpool.create_variable(
                     value=sp.get_variable_value(b, i),
                     index=i,
                     name=sp.get_variable_name(i),
                 )
                 for i, _ in enumerate(sp.get_variables())
             ]
-            objective = or_topas.ObjectiveInfo(value=results.obj_value)
-            solutions.add(variables=variables, objective=objective)
+            objectives = [solnpool.create_objective(value=results.obj_value)]
+
+            solutions.add(variables=variables, objectives=objectives)
 
         logger.info("")
         logger.info("-" * 70)
-        logger.info("Temp Benders as ExtensiveFormSolver - STOP")
+        logger.info("ExtensiveFormSolver - STOP")
 
-        return solutions
+        return munch.Munch(solutions=solutions, model=M)
+
+    def solve(self, sp, **options):
+        return self.solve_and_return_EF(sp, **options).solutions
 
     @staticmethod
     def _transform_to_subproblem_model(
@@ -267,7 +266,7 @@ class BendersSolver(object):
         # TODO: ask Rachael what the right way to do this construction is
         # N.B. create_subproblem is a wrapper for create_bundle_ef and _create_single_scenario_EF_repn for single scenario in bundle models
         subproblem_model = sp_lower.create_bundle_EF(
-            b,
+            b=b,
             w=None,
             x_bar=None,
             rho=None,
@@ -327,12 +326,24 @@ class BendersSolver(object):
         return subproblem_model
 
     @staticmethod
-    def _create_sp_upper(sp_lower, b):
+    def _create_sp_upper(sp_lower):
         """
         This method takes an sp object and a bundle and uses that to make a separate sp object with data
         for just that one bundle b.
         """
-        return BendersSolver._create_sp_upper_grok_attempt(sp_lower, b)
+        # return BendersSolver._create_sp_upper_grok_attempt(sp_lower, b)
+        return BendersSolver._create_sp_upper_large_copy(sp_lower)
+
+    @staticmethod
+    def _create_sp_upper_large_copy(sp_lower):
+        sp_upper = copy.deepcopy(sp_lower)
+        return sp_upper
+        placeholder_bundle = bundling_functions.BundleObj(
+            data=scenario_data,
+            models=sp_upper.bundles.bundle_models,
+            scheme=sp_upper.bundles.bundle_scheme_str,
+            bundle_args=sp_upper.bundles.bundle_args,
+        )
 
     @staticmethod
     def _create_sp_upper_grok_attempt(sp_lower, b=None):
@@ -443,7 +454,7 @@ class BendersSolver(object):
         # ------------------------------------------------------------------
         # 3. Create a fresh StochasticProgram of the exact same concrete class
         # ------------------------------------------------------------------
-        sp_upper = type(sp_lower)()
+        sp_upper = type(sp_lower)(sp_lower.first_stage_variables)
 
         # Copy essential configuration
         sp_upper.solver = sp_lower.solver
@@ -579,7 +590,7 @@ class BendersSolver(object):
         # step 0: create master problem model
         # see discussion in _transform_to_subproblem_model about best method to use here
         upper_model = sp.create_bundle_EF(
-            b,
+            b=b,
             cached=False,
             w=None,
             x_bar=None,
@@ -656,7 +667,7 @@ class BendersSolver(object):
         def eta_bound_rule(m, s):
             return eta_bounds_map[s]
 
-        upper_model.etas = pyo.Var(upper_model.scenarios, rule=eta_bound_rule)
+        upper_model.etas = pyo.Var(upper_model.scenarios, bounds=eta_bound_rule)
 
         # step 4: add eta.sum to the objective expression
         if (
@@ -666,13 +677,20 @@ class BendersSolver(object):
         ):
             upper_model.obj.deactivate()
         upper_model.obj = pyo.Objective(
-            expr=first_stage_cost + upper_model.etas.sum(), sense=objective_sense
+            expr=first_stage_cost
+            + sum(upper_model.etas[s] for s in upper_model.scenarios),
+            sense=objective_sense,
         )
 
         return upper_model
 
     @staticmethod
-    def _setup_topas_subproblem(sp_lower, b_lower, sp_upper, b_upper,):
+    def _setup_topas_subproblem(
+        sp_lower,
+        b_lower,
+        sp_upper,
+        b_upper,
+    ):
         """
         This is a wrapper method that takes a stochastic program and bundle, sp_lower and b_lower,
         and returns data for use as an OR-TOPAS Benders subproblem.
@@ -715,6 +733,8 @@ class BendersSolver(object):
 
     def solve_in_dev(self, sp_lower, eta_bounds_map, **options):
         start_time = datetime.datetime.now()
+        assert eta_bounds_map is not None, "Must give a valid bounds map"
+
         if len(options) > 0:
             self.set_options(**options)
         if logger.isEnabledFor(logging.DEBUG):
@@ -739,10 +759,10 @@ class BendersSolver(object):
         sp_metadata.solver = "Benders Iteration Results"
         # TODO: update info cached here
         sp_metadata.solver_options = dict(
-            cached_model_generation=self.cached_model_generation,
+            cached_model_generation=False,
             max_iterations=self.max_iterations,
             convergence_tolerance=self.convergence_tolerance,
-            normalize_convergence_norm=self.normalize_convergence_norm,
+            # normalize_convergence_norm=self.normalize_convergence_norm,
             solver_name=self.solver_name,
             solver_options=self.solver_options,
         )
@@ -756,15 +776,15 @@ class BendersSolver(object):
 
         # create master problem
         tic("Creating Benders Master Problem", logger=logger, level=logging.VERBOSE)
-        sp_upper = BendersSolver._create_sp_upper(
-            sp_lower=sp_lower, b=self.master_problem_bundle
-        )
-        b_upper = self.master_problem_bundle #this may need to be the version copied to sp_upper, and come from _create_sp_upper
+        sp_upper = BendersSolver._create_sp_upper(sp_lower=sp_lower)
+
+        b_upper = next(iter(sp_upper.bundles))
+        # self.master_problem_bundle #this may need to be the version copied to sp_upper, and come from _create_sp_upper
 
         # TODO: update all of these to be parameters for the solver later
         upper_model = BendersSolver._transform_to_master_model(
             sp=sp_upper,
-            b=b_upper, 
+            b=b_upper,
             eta_bounds_map=eta_bounds_map,
             lower_bounding_otherwise_enforced=False,
             fix_second_stage_vars=False,
@@ -776,8 +796,10 @@ class BendersSolver(object):
         root_vars = list(sp_upper.int_to_FirstStageVar[b_upper].values())
         upper_model.benders = self.BendersCutGenerator()
         # TODO: add the allow feasibility cut flags here
-        upper_model.benders.set_input(root_vars=root_vars, tol=1e-8, transform=self.BendersTransform)
-        #create master solver object
+        upper_model.benders.set_input(
+            root_vars=root_vars, tol=1e-8, transform=self.BendersTransform
+        )
+        # create master solver object
         opt = pyo.SolverFactory(self.solver_name)
         # TODO: handle persistent solver setup
         # opt.set_instance(m)
@@ -787,14 +809,14 @@ class BendersSolver(object):
         for b_lower in sp_lower.bundles:
             subproblem_fn_kwargs = dict()
             subproblem_fn_kwargs["sp_lower"] = sp_lower
-            subproblem_fn_kwargs["b_lower"]  = b_lower
+            subproblem_fn_kwargs["b_lower"] = b_lower
             subproblem_fn_kwargs["sp_upper"] = sp_upper
-            subproblem_fn_kwargs["b_upper"]  = b_upper
+            subproblem_fn_kwargs["b_upper"] = b_upper
             upper_model.benders.add_subproblem(
                 subproblem_fn=BendersSolver._setup_topas_subproblem,
                 subproblem_fn_kwargs=subproblem_fn_kwargs,
-                root_eta=upper_model.eta[b_lower], #this may be finicky
-                subproblem_solver=self.subproblem_solver_name, #make sure this is initialized above
+                root_eta=upper_model.etas[b_lower],  # this may be finicky
+                subproblem_solver=self.subproblem_solver_name,  # make sure this is initialized above
             )
         termination_condition = "Termination: unknown"
 
@@ -803,16 +825,15 @@ class BendersSolver(object):
             iteration_timer.tic(None)
             iteration += 1
 
-            #possibly add a toc for this iteration start
+            # possibly add a toc for this iteration start
             # time_last_iter = iteration_timer.toc(None)
 
-            #possibly add a log iteration here.
+            # possibly add a log iteration here.
             # self.log_iteration(
             #     iteration=iteration,
             # )
 
             # add Benders iteration here
-
 
             # handle non-persistent case
             res = opt.solve(tee=False, save_results=False)
@@ -826,14 +847,14 @@ class BendersSolver(object):
                 break
                 # add no cuts added break here
 
-            #iteration break
+            # iteration break
             if iteration >= self.max_iterations:
                 termination_condition = f"Termination: max_iterations ({iteration} == {self.max_iterations})"
                 logger.info(termination_condition)
                 break
 
-            #consider adding an iterates haven't moved by more than tolerance
-            #note that is a finicky termination condition for Benders
+            # consider adding an iterates haven't moved by more than tolerance
+            # note that is a finicky termination condition for Benders
 
         end_time = datetime.datetime.now()
 
