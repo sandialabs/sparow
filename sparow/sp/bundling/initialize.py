@@ -1,5 +1,6 @@
 from . import bundling_functions
 
+
 def initialize_bundles(
     *,
     scheme=None,
@@ -48,4 +49,3 @@ def initialize_bundles(
             scheme=scheme,
             bundle_args=kwargs,
         )
-
