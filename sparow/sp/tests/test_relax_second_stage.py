@@ -127,8 +127,8 @@ class TestRSS(object):
     def test_solve_model_no_relax(self, sp3):
         sp3.initialize_bundles(scheme="single_bundle")
         b = next(iter(sp3.bundles))
-        M = sp3.create_subproblem(b,compact_repn=False)
-        results = sp3.solve(M, solver='highs',tee=True)
+        M = sp3.create_subproblem(b, compact_repn=False)
+        results = sp3.solve(M, solver="highs", tee=True)
 
         for b in M.s.index_set():
             key = b[-1] if isinstance(b, tuple) else b
@@ -145,8 +145,8 @@ class TestRSS(object):
         sp3.add_transformation(relax_second_stage, relax_dict=rd)
         sp3.initialize_bundles(scheme="single_bundle")
         b = next(iter(sp3.bundles))
-        M = sp3.create_subproblem(b,compact_repn=False)
-        results = sp3.solve(M, solver='highs',tee=True)
+        M = sp3.create_subproblem(b, compact_repn=False)
+        results = sp3.solve(M, solver="highs", tee=True)
 
         for b in M.s.index_set():
             key = b[-1] if isinstance(b, tuple) else b
@@ -157,4 +157,3 @@ class TestRSS(object):
             if key == 2:
                 assert pyo.value(M.s[b].x) == 1.0
                 assert pyo.value(M.s[b].y) == 0.5
-
