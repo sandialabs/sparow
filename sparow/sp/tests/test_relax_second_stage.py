@@ -127,8 +127,8 @@ class TestRSS(object):
     def test_solve_model_no_relax(self, sp3):
         sp3.initialize_bundles(scheme="single_bundle")
         b = next(iter(sp3.bundles))
-        M = sp3.create_subproblem(b, compact_repn=False)
-        results = sp3.solve(M, solver="gurobi", tee=True)
+        M = sp3.create_subproblem(b,compact_repn=False)
+        results = sp3.solve(M, solver='highs',tee=True)
 
         for b in M.s.index_set():
             key = b[-1] if isinstance(b, tuple) else b
@@ -145,8 +145,8 @@ class TestRSS(object):
         sp3.add_transformation(relax_second_stage, relax_dict=rd)
         sp3.initialize_bundles(scheme="single_bundle")
         b = next(iter(sp3.bundles))
-        M = sp3.create_subproblem(b, compact_repn=False)
-        results = sp3.solve(M, solver="gurobi", tee=True)
+        M = sp3.create_subproblem(b,compact_repn=False)
+        results = sp3.solve(M, solver='highs',tee=True)
 
         for b in M.s.index_set():
             key = b[-1] if isinstance(b, tuple) else b
@@ -158,21 +158,3 @@ class TestRSS(object):
                 assert pyo.value(M.s[b].x) == 1.0
                 assert pyo.value(M.s[b].y) == 0.5
 
-
-rd = {"low_alpha": True, "high_alpha": True}
-# sp = create_sp()
-# sp.add_transformation(relax_second_stage,relax_dict=rd)
-# solver = ExtensiveFormSolver()
-# solver.set_options(solver="gurobi", loglevel="INFO")
-# results = solver.solve(sp)
-# results_dict = results.to_dict()
-
-# soln = next(iter(results_dict["solutions"].values()))
-
-# obj_val = soln["objectives"][0]["value"]
-# print(obj_val)
-# sp.initialize_bundles(scheme="single_bundle")
-# assert (len(sp.bundles) == 1), f"The extensive form should only have one bundle: {len(sp.bundles)}"
-
-# b = next(iter(sp.bundles))
-# M = sp.create_subproblem(b)
