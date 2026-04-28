@@ -1,15 +1,11 @@
 import pyomo.environ as pyo
 import pyomo
 
-
-def relax_second_stage(sp, M, *, relax_dict):
-
+def relax_second_stage(sp,M,*,relax_dict=None):
     for b in M.s.index_set():
-        key = b[-1] if isinstance(b, tuple) else b
-        if relax_dict[key]:
-            print(
-                "------------------Relaxing Noncontinuous Variables----------------------"
-            )
+        key = b[-1] if isinstance(b, tuple) else b  
+        if relax_dict is None or relax_dict[key]:
+            print('------------------Relaxing Noncontinuous Variables----------------------')
             block = M.s[b]
             var_data_obj = {v.name: v for name, v in sp._first_stage_variables(M=block)}
 
