@@ -226,6 +226,7 @@ class Sparow_client:
         cfg : object
             Configuration object.
         """
+
         def writer(client, file_name, scenario, bundling):
             root = scenario._mpisppy_node_list[0]
             assert root.name == "ROOT", f"Unexpected root name {root.name=}"
