@@ -4,6 +4,7 @@ import json
 import copy
 import munch
 import logging
+from typing import Any, List
 
 from .bundling import bundling_functions
 
@@ -15,13 +16,13 @@ logger = sparow.logs.logger
 
 def initialize_bundles(
     *,
-    scheme=None,
-    models=None,
-    default_model=None,
-    model_data=None,
-    scenario_data=None,
-    **kwargs,
-):
+    scheme: str | None = None,
+    models: list[str] | None = None,
+    default_model: str | None = None,
+    model_data: dict[str, Any] | None = None,
+    scenario_data: dict[str, Any] | None = None,
+    **kwargs: Any,
+) -> Any:
     """
     Initialize bundles for stochastic programming.
 
@@ -50,9 +51,9 @@ def initialize_bundles(
     if model_data is None:
         model_data = {}
 
-    if scheme == None:
+    if scheme is None:
         scheme = "single_scenario"
-    if models == None:
+    if models is None:
         models = [default_model] + list(
             sorted(model for model in scenario_data.keys() if model != default_model)
         )
@@ -108,24 +109,30 @@ class StochasticProgram(object):
         The name of the default model used to evaluate solutions.
     """
 
-    def __init__(self):
-        self.solver = "gurobi"
-        self._binary_or_integer_fsv = set()
+    def __init__(self) -> None:
+        self.solver: str = "gurobi"
+        self._binary_or_integer_fsv: set = set()
 
         # Bundles (must be initialized later)
-        self.bundles = None
+        self.bundles: Any | None = None
         # Dictionary of application data
-        self.app_data = {}
+        self.app_data: dict[str, Any] = {}
         # model_data[model_name] -> data
-        self.model_data = {}
+        self.model_data: dict[str, Any] = {}
         # scenario_data[model_name][scenario_name] -> data
-        self.scenario_data = {}
+        self.scenario_data: dict[str, dict[str, Any]] = {}
 
         # The name of the default model used to evaluate
         # solutions
-        self.default_model = None
+        self.default_model: str | None = None
 
-    def initialize_application(self, *, filename=None, app_data=None, **kwargs):
+    def initialize_application(
+        self,
+        *,
+        filename: str | None = None,
+        app_data: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize the application with data.
 
@@ -140,12 +147,18 @@ class StochasticProgram(object):
         """
         if filename is not None:
             with open(f"{filename}", "r") as file:
-                self.app_data = json.load(filename)
+                self.app_data = json.load(file)
         elif app_data is not None:
             self.app_data = app_data
 
     # DEPRECATED METHOD(?)
-    def initialize_bundles(self, *, scheme=None, models=None, **kwargs):
+    def initialize_bundles(
+        self,
+        *,
+        scheme: str | None = None,
+        models: list[str] | None = None,
+        **kwargs: Any,
+    ) -> None:
         """
         Initialize bundles for the stochastic program.
 
@@ -169,7 +182,7 @@ class StochasticProgram(object):
             )
         )
 
-    def set_bundles(self, bundles):
+    def set_bundles(self, bundles: Any) -> None:
         """
         Set the bundles for the stochastic program.
 
@@ -180,7 +193,7 @@ class StochasticProgram(object):
         """
         self.bundles = bundles
 
-    def get_bundles(self):
+    def get_bundles(self) -> dict[str, Any] | None:
         """
         Get the bundles for the stochastic program.
 
@@ -193,7 +206,9 @@ class StochasticProgram(object):
             return None
         return munch.unmunchify(self.bundles._bundles)
 
-    def save_bundles(self, json_filename, indent=None, sort_keys=False):
+    def save_bundles(
+        self, json_filename: str, indent: int | None = None, sort_keys: bool = False
+    ) -> None:
         """
         Save the bundles to a JSON file.
 
@@ -208,7 +223,7 @@ class StochasticProgram(object):
         """
         self.bundles.dump(json_filename, indent=indent, sort_keys=sort_keys)
 
-    def load_bundles(self, json_filename):
+    def load_bundles(self, json_filename: str) -> None:
         """
         Load bundles from a JSON file.
 
@@ -219,7 +234,7 @@ class StochasticProgram(object):
         """
         self.set_bundles(bundling_functions.load_bundles(json_filename))
 
-    def get_variables(self, b=None):
+    def get_variables(self, b: str | None = None) -> dict[str, Any]:
         """
         Get variables for a specific bundle.
 
@@ -244,7 +259,7 @@ class StochasticProgram(object):
             for v in self.shared_variables()
         }
 
-    def get_variable_value(self, b, v):
+    def get_variable_value(self, b: str, v: Any) -> Any:
         """
         Get the value of a variable.
 
@@ -262,7 +277,7 @@ class StochasticProgram(object):
         """
         pass
 
-    def get_variable_name(self, v):
+    def get_variable_name(self, v: Any) -> str:
         """
         Get the name of a variable.
 
@@ -278,7 +293,7 @@ class StochasticProgram(object):
         """
         pass
 
-    def fix_variable(self, b, v, value):
+    def fix_variable(self, b: str, v: Any, value: Any) -> None:
         """
         Fix a variable to a specific value.
 
@@ -293,7 +308,7 @@ class StochasticProgram(object):
         """
         pass
 
-    def shared_variables(self):
+    def shared_variables(self) -> List[Any]:
         """
         Get the list of shared variables.
 
@@ -304,7 +319,7 @@ class StochasticProgram(object):
         """
         pass
 
-    def get_objective_coef(self, v):
+    def get_objective_coef(self, v: Any) -> float:
         """
         Get the objective coefficient for a variable.
 
@@ -320,7 +335,7 @@ class StochasticProgram(object):
         """
         pass
 
-    def set_solver(self, name):
+    def set_solver(self, name: str) -> None:
         """
         Set the solver for the stochastic program.
 
@@ -331,7 +346,7 @@ class StochasticProgram(object):
         """
         self.solver = name
 
-    def solve(self, M, *, solver_options=None):
+    def solve(self, M: Any, *, solver_options: dict[str, Any] | None = None) -> Any:
         """
         Solve the stochastic program.
 
@@ -349,7 +364,11 @@ class StochasticProgram(object):
         """
         pass
 
-    def create_EF(self, model_fidelities=None, cache_bundles=False):
+    def create_EF(
+        self,
+        model_fidelities: dict[str, Any] | None = None,
+        cache_bundles: bool = False,
+    ) -> Any:
         """
         Create the extensive form of the stochastic program.
 
@@ -368,8 +387,15 @@ class StochasticProgram(object):
         pass
 
     def create_subproblem(
-        self, b, *, w=None, x_bar=None, rho=None, cached=False, compact_repn=True
-    ):
+        self,
+        b: str,
+        *,
+        w: Any | None = None,
+        x_bar: Any | None = None,
+        rho: Any | None = None,
+        cached: bool = False,
+        compact_repn: bool = True,
+    ) -> Any:
         """
         Create a subproblem for a specific bundle.
 
@@ -398,8 +424,15 @@ class StochasticProgram(object):
         )
 
     def create_bundle_EF(
-        self, *, b, w=None, x_bar=None, rho=None, cached=False, compact_repn=True
-    ):
+        self,
+        *,
+        b: str,
+        w: Any | None = None,
+        x_bar: Any | None = None,
+        rho: Any | None = None,
+        cached: bool = False,
+        compact_repn: bool = True,
+    ) -> Any:
         """
         Create the extensive form for a specific bundle.
 
@@ -425,7 +458,12 @@ class StochasticProgram(object):
         """
         pass
 
-    def evaluate(self, x, solver_options=None, cached=False):
+    def evaluate(
+        self,
+        x: list[Any],
+        solver_options: dict[str, Any] | None = None,
+        cached: bool = False,
+    ) -> Any:
         """
         Evaluate a solution for the stochastic program.
 

@@ -1,8 +1,9 @@
 from or_topas.solnpool.solution import Solution, VariableInfo, ObjectiveInfo
 from or_topas.solnpool.solnpool import PoolManager, PoolPolicy
+from typing import Any, Callable
 
 
-def _sparow_as_solution(*args, **kwargs):
+def _sparow_as_solution(*args: Any, **kwargs: Any) -> "SparowSolution":
     """
     Create a SparowSolution instance.
 
@@ -21,7 +22,7 @@ def _sparow_as_solution(*args, **kwargs):
     return SparowSolution(*args, **kwargs)
 
 
-def create_variable(*args, **kwargs):
+def create_variable(*args: Any, **kwargs: Any) -> VariableInfo:
     """
     Create a VariableInfo instance.
 
@@ -40,7 +41,7 @@ def create_variable(*args, **kwargs):
     return VariableInfo(*args, **kwargs)
 
 
-def create_objective(*args, **kwargs):
+def create_objective(*args: Any, **kwargs: Any) -> ObjectiveInfo:
     """
     Create an ObjectiveInfo instance.
 
@@ -68,7 +69,7 @@ class SparowSolution(Solution):
     Attributes inherited from Solution class.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
     ## TODO: 2nd stage solution as dict mapping scenario name to Solution obj
@@ -83,12 +84,17 @@ class SparowPoolManager(PoolManager, VariableInfo, ObjectiveInfo):
     Attributes inherited from PoolManager, VariableInfo, and ObjectiveInfo classes.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
     def add_pool(
-        self, *, name=None, policy=PoolPolicy.keep_best, as_solution=None, **kwds
-    ):
+        self,
+        *,
+        name: str | None = None,
+        policy: PoolPolicy = PoolPolicy.keep_best,
+        as_solution: Callable[..., Any] | None = None,
+        **kwds: Any
+    ) -> Any:
         """
         Add a pool to the manager.
 
