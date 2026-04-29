@@ -5,7 +5,9 @@ import copy
 import munch
 import logging
 
-from .bundling import initialize_bundles
+from .bundling import initialize_bundles, bundling_functions
+import functools
+from pyomo.common.timing import tic, toc
 
 # import sparow.util
 import sparow.logs
@@ -32,12 +34,17 @@ class StochasticProgram(object):
         # solutions
         self.default_model = None
 
+        self._timing = {}
+
     def initialize_application(self, *, filename=None, app_data=None, **kwargs):
         if filename is not None:
             with open(f"{filename}", "r") as file:
                 self.app_data = json.load(filename)
         elif app_data is not None:
             self.app_data = app_data
+
+    def get_timing(self, model):
+        return self._timing.get(id(model), dict())
 
     # DEPRECATED METHOD(?)
     def initialize_bundles(self, *, scheme=None, models=None, **kwargs):
@@ -102,12 +109,28 @@ class StochasticProgram(object):
     def create_EF(self, model_fidelities=None, cache_bundles=False):
         pass
 
+    def add_transformation(self, func, *args, **kwargs):
+        self.transform_subproblem = functools.partial(func, *args, **kwargs)
+
     def create_subproblem(
         self, b, *, w=None, x_bar=None, rho=None, cached=False, compact_repn=True
     ):
-        return self.create_bundle_EF(
+        tic(None)
+        model = self.create_bundle_EF(
             b=b, w=w, x_bar=x_bar, rho=rho, cached=cached, compact_repn=compact_repn
         )
+        construction_time = toc(None)
+
+        tic(None)
+        if hasattr(self, "transform_subproblem"):
+            model = self.transform_subproblem(self, model)
+        transformation_times = toc(None)
+
+        self._timing[id(model)] = dict(
+            transformations=transformation_times, construction=construction_time
+        )
+
+        return model
 
     def create_bundle_EF(
         self, *, b, w=None, x_bar=None, rho=None, cached=False, compact_repn=True
