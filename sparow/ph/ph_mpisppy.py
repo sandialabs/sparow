@@ -455,8 +455,12 @@ class ProgressiveHedgingSolver_MPISPPY(object):
                 name="Finalized Last PH Solution",
                 policy=solnpool.PoolPolicy.keep_best,
             )
-            
-            if results["best_value"] and sp.is_multifidelity == False and sp.continuous_fsv():
+
+            if (
+                results["best_value"]
+                and sp.is_multifidelity == False
+                and sp.continuous_fsv()
+            ):
                 for soln in results["first_stage_solutions"]:
                     args = dict(sp=sp, xbar=soln)
                     args["objective"] = solnpool.create_objective(
