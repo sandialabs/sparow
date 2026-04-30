@@ -330,7 +330,7 @@ def mf_kmeans_dissimilar(data, models=None, model_weight=None, bundle_args=None)
 
 
 ## TODO: remove(???) -R
-def similar_partitions(data, models=None, model_weight=None, bundle_args=None):
+def mf_similar_partitions(data, models=None, model_weight=None, bundle_args=None):
     """
     Each HF scenario bundled with closest LF scenario (all LF scenarios not necessarily used)
         - Each bundle contains exactly 1 HF and 1 LF scenario
@@ -340,7 +340,7 @@ def similar_partitions(data, models=None, model_weight=None, bundle_args=None):
     """
     if models is None:
         models = list(data.keys())
-    assert len(models) > 1, "Expecting multiple models for similar_partitions"
+    assert len(models) > 1, "Expecting multiple models for mf_similar_partitions"
 
     """
     Distance metric is user-defined/application-specific
@@ -424,7 +424,7 @@ def similar_partitions(data, models=None, model_weight=None, bundle_args=None):
 
 
 ## TODO: remove(???) -R
-def dissimilar_partitions(data, models=None, model_weight=None, bundle_args=None):
+def mf_dissimilar_partitions(data, models=None, model_weight=None, bundle_args=None):
     """
     Each HF scenario bundled with furthest LF scenario (all LF scenarios not necessarily used)
         - Each bundle contains exactly 1 HF and 1 LF scenario
@@ -435,7 +435,7 @@ def dissimilar_partitions(data, models=None, model_weight=None, bundle_args=None
     """
     if models is None:
         models = list(data.keys())
-    assert len(models) > 1, "Expecting multiple models for similar_partitions"
+    assert len(models) > 1, "Expecting multiple models for mf_dissimilar_partitions"
 
     # TODO: return error if bundle_args['distance_function'] is None
 

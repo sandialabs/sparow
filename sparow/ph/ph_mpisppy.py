@@ -18,6 +18,8 @@ with or_topas.util.try_import() as mpisppy_available:
 from sparow.sp.sp_pyomo import find_objective
 import sparow.logs
 from sparow import solnpool
+from sparow.ph.ph import finalize_ph_results
+from sparow.sp.util import constrain_EF_model
 
 logger = sparow.logs.logger
 
@@ -439,11 +441,34 @@ class ProgressiveHedgingSolver_MPISPPY(object):
 
             for soln in results["first_stage_solutions"]:
                 args = dict(sp=sp, xbar=soln)
-                if results["best_value"]:
+                if results["best_value"] and sp.is_multifidelity == False:
+                    # MF objective is NOT archived
                     args["objective"] = solnpool.create_objective(
                         value=float(results["best_value"])
                     )
-                self.archive_solution(**args)
+                # adding soln to the current pool
+                latest_soln = self.archive_solution(**args)
+
+            # creating a new pool
+            soln = self.solutions[latest_soln]
+            self.solutions.add_pool(
+                name="Finalized Last PH Solution",
+                policy=solnpool.PoolPolicy.keep_best,
+            )
+
+            if (
+                results["best_value"]
+                and sp.is_multifidelity == False
+                and sp.continuous_fsv()
+            ):
+                for soln in results["first_stage_solutions"]:
+                    args = dict(sp=sp, xbar=soln)
+                    args["objective"] = solnpool.create_objective(
+                        value=float(results["best_value"])
+                    )
+                    self.archive_solution(**args)
+            else:
+                finalize_ph_results(soln, sp=sp, solutions=self.solutions)
 
             sp_metadata.end_time = str(end_time)
             sp_metadata.time_elapsed = str(end_time - start_time)

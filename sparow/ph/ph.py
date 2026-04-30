@@ -35,11 +35,11 @@ def finalize_ph_results(
         #
         # Evaluate the final xbar, and keep if feasible.
         #
-        rounded_sol = sp.evaluate([xbar[x] for x in sp.shared_variables()])
-        if rounded_sol.feasible:
+        cont_sol = sp.evaluate([xbar[x] for x in sp.shared_variables()])
+        if cont_sol.feasible:
             solutions.add(
                 variables=sparow_soln_ph.variables(),
-                objective=solnpool.create_objective(value=rounded_sol.objective),
+                objective=solnpool.create_objective(value=cont_sol.objective),
                 suffix=sparow_soln_ph.suffix,
             )
     else:

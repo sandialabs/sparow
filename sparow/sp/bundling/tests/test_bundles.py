@@ -4,13 +4,14 @@ from sparow.sp.bundling.MF_schemes import (
     mf_paired,
     mf_random_nested,
     mf_random,
-    similar_partitions,
-    dissimilar_partitions,
+    mf_similar_partitions,
+    mf_dissimilar_partitions,
     mf_kmeans_similar,
     mf_kmeans_dissimilar,
     mf_bundle_from_list,
 )
 
+# i think this imports from bundling_functions instead of SF_schemes to avoid breaking importing logic (TODO: verify this is true -RMA)
 from sparow.sp.bundling.bundling_functions import (
     single_scenario,
     single_bundle,
@@ -18,6 +19,7 @@ from sparow.sp.bundling.bundling_functions import (
     kmeans_similar,
     kmeans_dissimilar,
     bundle_from_list,
+    _is_multifidelity,
 )
 
 
@@ -200,6 +202,10 @@ class TestBundleFunctions(object):
                 demand_diffs[(i, j)] = abs(HFdemands[i] - LFdemands[j])
 
         return demand_diffs
+
+    def test_is_multifidelity(self):
+        assert _is_multifidelity("mf_random") == True
+        assert _is_multifidelity("single_bundle") == False
 
     def test_check_data_dict_keys(
         self,
@@ -550,8 +556,8 @@ class TestBundleFunctions(object):
             },
         }
 
-    def test_similar_partitions(self, MF_data):
-        assert similar_partitions(
+    def test_mf_similar_partitions(self, MF_data):
+        assert mf_similar_partitions(
             MF_data,
             models=["HF", "LF"],
             bundle_args={"distance_function": self.dist_map},
@@ -572,7 +578,7 @@ class TestBundleFunctions(object):
             },
         }
 
-        assert similar_partitions(
+        assert mf_similar_partitions(
             MF_data,
             model_weight={"HF": 3, "LF": 1},
             models=["HF", "LF"],
@@ -594,8 +600,8 @@ class TestBundleFunctions(object):
             },
         }
 
-    def test_dissimilar_partitions(self, similar_scenarios):
-        assert dissimilar_partitions(
+    def test_mf_dissimilar_partitions(self, similar_scenarios):
+        assert mf_dissimilar_partitions(
             similar_scenarios,
             models=["HF", "LF"],
             bundle_args={"distance_function": self.dist_map},
@@ -630,7 +636,7 @@ class TestBundleFunctions(object):
             },
         }
 
-        assert dissimilar_partitions(
+        assert mf_dissimilar_partitions(
             similar_scenarios,
             model_weight={"HF": 3, "LF": 1},
             models=["HF", "LF"],

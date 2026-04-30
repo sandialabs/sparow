@@ -82,6 +82,8 @@ class StochasticProgram(object):
         # The name of the default model used to evaluate
         # solutions
         self.default_model = None
+        # Indicates if there are multifidelity bundles:
+        self.is_multifidelity = False
 
         self._timing = {}
 
@@ -107,6 +109,7 @@ class StochasticProgram(object):
                 **kwargs,
             )
         )
+        self.is_multifidelity = bundling_functions._is_multifidelity(scheme)
 
     def set_bundles(self, bundles):
         self.bundles = bundles

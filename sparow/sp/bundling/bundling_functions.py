@@ -6,9 +6,6 @@ import types
 from .SF_schemes import *
 from .MF_schemes import *
 
-# import MF_schemes
-# import SF_schemes
-
 
 def JSdecoded(item: dict, dict_key=False):
     if isinstance(item, list):
@@ -42,8 +39,8 @@ scheme = {
     "mf_paired": mf_paired,
     "mf_random_nested": mf_random_nested,
     "mf_random": mf_random,
-    "similar_partitions": similar_partitions,
-    "dissimilar_partitions": dissimilar_partitions,
+    "mf_similar_partitions": mf_similar_partitions,
+    "mf_dissimilar_partitions": mf_dissimilar_partitions,
     "kmeans_similar": kmeans_similar,
     "kmeans_dissimilar": kmeans_dissimilar,
     "mf_kmeans_dissimilar": mf_kmeans_dissimilar,
@@ -53,13 +50,21 @@ scheme = {
 }
 
 
+def _is_multifidelity(scheme_str):
+    if scheme_str == None:
+        scheme_str = "single_scenario"
+    if scheme_str[:3] == "mf_":
+        return True
+    else:
+        return False
+
+
 def bundle_scheme(data, scheme_str, models, model_weight=None, bundle_args=None):
     if model_weight:
         bundle = scheme[scheme_str](data, model_weight, models, bundle_args)
     else:
         bundle = scheme[scheme_str](data, models, bundle_args)
 
-    # model0 = models[0]
     pkey = "Probability"
 
     # Return error if bundle probabilities do not sum to 1
@@ -102,8 +107,7 @@ class BundleObj(object):
             bundles = bundle_scheme(data, scheme, model_weight, models, bundle_args)
         else:
             bundles = bundle_scheme(data, scheme, models, bundle_args)
-        # model0 = models[0]
-        # pkey = check_data_dict_keys(data, model0, bundle_args)[1]
+
         self._bundles = {
             key: munch.Munch(
                 probability=bundles[key]["Probability"],
