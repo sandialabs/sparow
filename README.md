@@ -45,11 +45,3 @@ Additionally, the following syntax generates a summary that includes code covera
 ```bash
 pytest --cov-report term-missing --cov=sparow .
 ```
-
-## Getting started
-
-TODO
-
-## License
-
-TBD (probably BSD)
