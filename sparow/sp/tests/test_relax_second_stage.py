@@ -4,6 +4,10 @@ from sparow.sp import stochastic_program
 from sparow.sp.util import relax_second_stage
 from sparow.ef import ExtensiveFormSolver
 
+from pyomo.opt import check_available_solvers
+
+highs_available = len(check_available_solvers("highs")) == 1
+
 
 @pytest.fixture
 def sp0():
@@ -124,6 +128,7 @@ class TestRSS(object):
                 assert M.s[b].x.domain == pyo.Binary
                 assert M.s[b].y.domain == pyo.Binary
 
+    @pytest.mark.skipif(not highs_available, reason="highs not installed")
     def test_solve_model_no_relax(self, sp3):
         sp3.initialize_bundles(scheme="single_bundle")
         b = next(iter(sp3.bundles))
@@ -140,6 +145,7 @@ class TestRSS(object):
                 assert pyo.value(M.s[b].x) == 0.0
                 assert pyo.value(M.s[b].y) == 1.0
 
+    @pytest.mark.skipif(not highs_available, reason="highs not installed")
     def test_solve_model_relax(self, sp3):
         rd = {1: True, 2: True}
         sp3.add_transformation(relax_second_stage, relax_dict=rd)
