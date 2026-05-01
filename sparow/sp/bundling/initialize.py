@@ -1,15 +1,39 @@
+from typing import Any, List
 from . import bundling_functions
 
 
 def initialize_bundles(
     *,
-    scheme=None,
-    models=None,
-    default_model=None,
-    model_data=None,
-    scenario_data=None,
-    **kwargs,
-):
+    scheme: str | None = None,
+    models: list[str] | None = None,
+    default_model: str | None = None,
+    model_data: dict[str, Any] | None = None,
+    scenario_data: dict[str, Any] | None = None,
+    **kwargs: Any,
+) -> Any:
+    """
+    Initialize bundles for stochastic programming.
+
+    Parameters
+    ----------
+    scheme : str, optional
+        The bundling scheme to use. Defaults to "single_scenario".
+    models : list, optional
+        List of model names to include in the bundles.
+    default_model : str, optional
+        The default model name.
+    model_data : dict, optional
+        Dictionary containing model data.
+    scenario_data : dict, optional
+        Dictionary containing scenario data.
+    **kwargs : dict
+        Additional keyword arguments for bundling.
+
+    Returns
+    -------
+    BundleObj
+        An initialized BundleObj instance.
+    """
     if scenario_data is None:
         scenario_data = {}
     if model_data is None:

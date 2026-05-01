@@ -15,12 +15,46 @@ logger = sparow.logs.logger
 
 
 def norm(values, p):
+    """
+    Compute the p-norm of a list of values.
+
+    Parameters
+    ----------
+    values : list
+        List of numerical values.
+    p : int or float
+        The order of the norm.
+
+    Returns
+    -------
+    float
+        The p-norm of the values.
+    """
     return np.linalg.norm(np.array(values), ord=p)
 
 
 def finalize_ph_results(
     sparow_soln_ph, *, sp, solutions, finalize_xbar_by_rounding=True
 ):
+    """
+    Finalize the results of the progressive hedging algorithm.
+
+    Parameters
+    ----------
+    sparow_soln_ph : object
+        The solution object from the progressive hedging algorithm.
+    sp : StochasticProgram
+        The stochastic program instance.
+    solutions : object
+        The solution pool manager.
+    finalize_xbar_by_rounding : bool, optional
+        Whether to round xbar values for binary/integer variables (default is True).
+
+    Returns
+    -------
+    object
+        The updated solution pool manager.
+    """
     xbar = [
         sparow_soln_ph.variable(i).value for i in range(len(sparow_soln_ph.variables()))
     ]
@@ -68,6 +102,38 @@ def finalize_ph_results(
 
 
 class ProgressiveHedgingSolver(object):
+    """
+    A solver for stochastic programs using the progressive hedging algorithm.
+
+    Attributes
+    ----------
+    rho : dict
+        Dictionary of penalty parameters for variables.
+    cached_model_generation : bool
+        Whether to cache model generation (default is True).
+    max_iterations : int
+        Maximum number of iterations (default is 100).
+    convergence_tolerance : float
+        Tolerance for convergence (default is 1e-3).
+    normalize_convergence_norm : bool
+        Whether to normalize the convergence norm (default is True).
+    convergence_norm : int
+        The norm used for convergence checking (default is 1).
+    solver_name : str or None
+        Name of the solver to use.
+    solver_options : dict
+        Dictionary of solver options.
+    finalize_xbar_by_rounding : bool
+        Whether to round xbar values for binary/integer variables (default is True).
+    finalize_all_xbar : bool
+        Whether to finalize all xbar values (default is False).
+    solutions : object or None
+        The solution pool manager.
+    rho_updates : bool
+        Whether to update rho values (default is False).
+    default_rho : float or None
+        Default value for rho.
+    """
 
     def __init__(self):
         self.rho = {}
@@ -102,6 +168,40 @@ class ProgressiveHedgingSolver(object):
         rho_updates=False,
         default_rho=None,
     ):
+        """
+        Set the options for the progressive hedging solver.
+
+        Parameters
+        ----------
+        rho : dict, optional
+            Dictionary of penalty parameters for variables.
+        cached_model_generation : bool, optional
+            Whether to cache model generation.
+        max_iterations : int, optional
+            Maximum number of iterations.
+        convergence_tolerance : float, optional
+            Tolerance for convergence.
+        normalize_convergence_norm : bool, optional
+            Whether to normalize the convergence norm.
+        convergence_norm : int, optional
+            The norm used for convergence checking.
+        solver : str, optional
+            Name of the solver to use.
+        solver_options : dict, optional
+            Dictionary of solver options.
+        loglevel : str, optional
+            Logging level.
+        finalize_xbar_by_rounding : bool, optional
+            Whether to round xbar values for binary/integer variables.
+        finalize_all_xbar : bool, optional
+            Whether to finalize all xbar values.
+        solution_manager : object, optional
+            The solution pool manager.
+        rho_updates : bool, optional
+            Whether to update rho values.
+        default_rho : float, optional
+            Default value for rho.
+        """
         #
         # Misc configuration
         #
@@ -138,6 +238,21 @@ class ProgressiveHedgingSolver(object):
             logger.setLevel(loglevel)
 
     def solve(self, sp, **options):
+        """
+        Solve a stochastic program using the progressive hedging algorithm.
+
+        Parameters
+        ----------
+        sp : StochasticProgram
+            The stochastic program to solve.
+        **options : dict
+            Additional options for the solver.
+
+        Returns
+        -------
+        object
+            The solution pool manager containing the results.
+        """
         start_time = datetime.datetime.now()
         if len(options) > 0:
             self.set_options(**options)
@@ -415,6 +530,14 @@ class ProgressiveHedgingSolver(object):
         return self.solutions
 
     def log_iteration(self, **kwds):
+        """
+        Log information about the current iteration.
+
+        Parameters
+        ----------
+        **kwds : dict
+            Keyword arguments containing iteration information.
+        """
         logger.info("")
         logger.info("-" * 70)
         logger.info(f"Iteration:        {kwds['iteration']}")
@@ -458,6 +581,25 @@ class ProgressiveHedgingSolver(object):
         logger.info("")
 
     def archive_solution(self, *, sp, xbar=None, w=None, **kwds):
+        """
+        Archive the current solution.
+
+        Parameters
+        ----------
+        sp : StochasticProgram
+            The stochastic program instance.
+        xbar : dict, optional
+            Dictionary of variable values.
+        w : dict, optional
+            Dictionary of weights.
+        **kwds : dict
+            Additional keyword arguments.
+
+        Returns
+        -------
+        int
+            The index of the archived solution.
+        """
         # b = next(iter(sp.bundles))
         variables = [
             solnpool.create_variable(
@@ -471,6 +613,18 @@ class ProgressiveHedgingSolver(object):
         return self.solutions.add(variables=variables, **kwds)
 
     def update_rho(self, sfs_variables, xbar, sp):
+        """
+        Update the penalty parameters (rho) for variables.
+
+        Parameters
+        ----------
+        sfs_variables : list
+            List of shared first-stage variables.
+        xbar : dict
+            Dictionary of variable values.
+        sp : StochasticProgram
+            The stochastic program instance.
+        """
         # this function is scenario-independent, but will need to be updated for integer x
         if self.rho_updates:
             for x in sfs_variables:

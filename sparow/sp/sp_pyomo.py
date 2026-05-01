@@ -3,6 +3,7 @@ import json
 import copy
 import munch
 import logging
+from typing import Any
 
 import pyomo.core.base.indexed_component
 import pyomo.environ as pyo
@@ -16,7 +17,25 @@ from .replace_variables_transformation import ReplaceVariablesTransformation
 logger = sparow.logs.logger
 
 
-def find_objective(model):
+def find_objective(model: Any) -> Any:
+    """
+    Find the active objective in a Pyomo model.
+
+    Parameters
+    ----------
+    model : pyomo.ConcreteModel
+        The Pyomo model to search for objectives.
+
+    Returns
+    -------
+    pyomo.Objective
+        The active objective found in the model.
+
+    Raises
+    ------
+    AssertionError
+        If multiple objectives are found in the model.
+    """
     obj = None
     for comp in model.component_data_objects(pyo.Objective, active=True):
         assert obj is None, "Cannot handle multiple objectives"
@@ -24,7 +43,20 @@ def find_objective(model):
     return obj
 
 
-def find_variables(model):
+def find_variables(model: Any) -> Any:
+    """
+    Generator function to find all active variables in a Pyomo model.
+
+    Parameters
+    ----------
+    model : pyomo.ConcreteModel
+        The Pyomo model to search for variables.
+
+    Yields
+    ------
+    pyomo.Var
+        Active variables in the model.
+    """
     for comp in model.component_data_objects(pyo.Var, active=True):
         if comp.is_indexed():
             for var in comp.values():
@@ -34,22 +66,65 @@ def find_variables(model):
 
 
 class StochasticProgram_Pyomo_Base(StochasticProgram):
+    """
+    Base class for Pyomo-based stochastic programs.
 
-    def __init__(self):
+    Attributes
+    ----------
+    varcuid_to_int : dict
+        Dictionary mapping variable component UIDs to integers.
+    int_to_FirstStageVar : dict
+        Dictionary mapping integers to first-stage variables, indexed by bundle ID.
+    int_to_FirstStageVarName : dict
+        Dictionary mapping integers to first-stage variable names.
+    int_to_ObjectiveCoef : dict
+        Dictionary mapping integers to objective coefficients.
+    solver_options : dict
+        Dictionary of solver options.
+    pyo_solver : pyomo.SolverFactory or None
+        The Pyomo solver instance.
+    _model_cache : dict
+        Dictionary caching models, indexed by bundle ID.
+    """
+
+    def __init__(self) -> None:
         super().__init__()
-        self.varcuid_to_int = {}
-        self.int_to_FirstStageVar = {}  # indexed by bundle id
-        self.int_to_FirstStageVarName = {}
-        self.int_to_ObjectiveCoef = {}
-        self.solver_options = {}
-        self.pyo_solver = None
-        self._model_cache = {}  # indexed by bundle id
+        self.varcuid_to_int: dict = {}
+        self.int_to_FirstStageVar: dict = {}  # indexed by bundle id
+        self.int_to_FirstStageVarName: dict = {}
+        self.int_to_ObjectiveCoef: dict = {}
+        self.solver_options: dict = {}
+        self.pyo_solver: Any | None = None
+        self._model_cache: dict = {}  # indexed by bundle id
 
-    def _first_stage_variables(self, *, M):
+    def _first_stage_variables(self, *, M: Any) -> Any:
+        """
+        Generator function to yield first-stage variables.
+
+        Parameters
+        ----------
+        M : pyomo.ConcreteModel
+            The Pyomo model to extract first-stage variables from.
+
+        Yields
+        ------
+        tuple
+            Tuples of (variable_name, variable_component).
+        """
         # A generator that yields (name,component) tuples
         pass
 
-    def _initialize_cuid_map(self, *, M, b):
+    def _initialize_cuid_map(self, *, M: Any, b: str) -> None:
+        """
+        Initialize the mapping between variable component UIDs and integers.
+
+        Parameters
+        ----------
+        M : pyomo.ConcreteModel
+            The Pyomo model containing the variables.
+        b : str
+            Bundle identifier.
+        """
         fsv = list(self._first_stage_variables(M=M))
         if len(self.varcuid_to_int) == 0:
             #
@@ -69,39 +144,157 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
             self.varcuid_to_int[pyo.ComponentUID(var, context=M)]: var for _, var in fsv
         }
 
-    def set_bundles(self, bundles):
+    def set_bundles(self, bundles: Any) -> None:
+        """
+        Set the bundles for the stochastic program and reset related mappings.
+
+        Parameters
+        ----------
+        bundles : BundleObj
+            The bundles to set.
+        """
         self.int_to_FirstStageVar = {}
         # self.int_to_FirstStageVarName = {}
         self._model_cache = {}
         StochasticProgram.set_bundles(self, bundles)
 
-    def continuous_fsv(self):
+    def continuous_fsv(self) -> bool:
+        """
+        Check if all first-stage variables are continuous.
+
+        Returns
+        -------
+        bool
+            True if all first-stage variables are continuous, False otherwise.
+
+        Raises
+        ------
+        AssertionError
+            If called before a model has been constructed.
+        """
         assert (
             self._binary_or_integer_fsv is not None
         ), "ERROR: cannot call continuous_fsv() until a model has been constructed"
         return len(self._binary_or_integer_fsv) == 0
 
-    def round(self, v, value):
+    def round(self, v: int, value: float) -> float | int:
+        """
+        Round a value if the variable is binary or integer.
+
+        Parameters
+        ----------
+        v : int
+            Variable identifier.
+        value : float
+            Value to round.
+
+        Returns
+        -------
+        float or int
+            Rounded value if variable is binary/integer, otherwise original value.
+        """
         if v in self._binary_or_integer_fsv:
             return round(value)
         return value
 
-    def fix_variable(self, b, v, value):
+    def fix_variable(self, b: str, v: int, value: float) -> None:
+        """
+        Fix a variable to a specific value.
+
+        Parameters
+        ----------
+        b : str
+            Bundle identifier.
+        v : int
+            Variable identifier.
+        value : float
+            Value to fix the variable to.
+        """
         self.int_to_FirstStageVar[b][v].fix(value)
 
-    def get_variable_value(self, b, v):
+    def get_variable_value(self, b: str, v: int) -> float:
+        """
+        Get the value of a variable.
+
+        Parameters
+        ----------
+        b : str
+            Bundle identifier.
+        v : int
+            Variable identifier.
+
+        Returns
+        -------
+        float
+            The value of the variable.
+        """
         return pyo.value(self.int_to_FirstStageVar[b][v])
 
-    def get_variable_name(self, v):
+    def get_variable_name(self, v: int) -> str:
+        """
+        Get the name of a variable.
+
+        Parameters
+        ----------
+        v : int
+            Variable identifier.
+
+        Returns
+        -------
+        str
+            The name of the variable.
+
+        Raises
+        ------
+        AssertionError
+            If the variable identifier is not found.
+        """
         assert (
             v in self.int_to_FirstStageVarName
         ), f"Missing keys: {v} not in {self.int_to_FirstStageVarName}"
         return self.int_to_FirstStageVarName[v]
 
-    def shared_variables(self):
+    def shared_variables(self) -> list:
+        """
+        Get the list of shared variable identifiers.
+
+        Returns
+        -------
+        list
+            List of variable identifiers.
+        """
         return list(range(len(self.varcuid_to_int)))
 
-    def solve(self, M, *, solver_options=None, tee=False, solver=None):
+    def solve(
+        self,
+        M: Any,
+        *,
+        solver_options: dict | None = None,
+        tee: bool = False,
+        solver: str | None = None,
+    ) -> Any:
+        """
+        Solve a Pyomo model using the specified solver.
+
+        Parameters
+        ----------
+        M : pyomo.ConcreteModel
+            The Pyomo model to solve.
+        solver_options : dict, optional
+            Dictionary of solver options.
+        tee : bool, optional
+            Whether to display solver output (default is False).
+        solver : str, optional
+            Name of the solver to use.
+
+        Returns
+        -------
+        Munch
+            A Munch object containing solver results with keys:
+            - obj_value (float): The objective value.
+            - termination_condition: The solver termination condition.
+            - status: The solver status.
+        """
         options = copy.copy(self.solver_options)
         if solver_options:
             options.update(solver_options)
@@ -157,7 +350,29 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
                     status=results.solver.status,
                 )
 
-    def create_EF(self, model_fidelities=None, cache_bundles=False, compact_repn=True):
+    def create_EF(
+        self,
+        model_fidelities: dict | None = None,
+        cache_bundles: bool = False,
+        compact_repn: bool = True,
+    ) -> Any:
+        """
+        Create the extensive form of the stochastic program.
+
+        Parameters
+        ----------
+        model_fidelities : dict, optional
+            Dictionary specifying model fidelities.
+        cache_bundles : bool, optional
+            Whether to cache bundles (default is False).
+        compact_repn : bool, optional
+            Whether to use compact representation (default is True).
+
+        Returns
+        -------
+        pyomo.ConcreteModel
+            The extensive form model.
+        """
         if cache_bundles:
             _int_toFirstStageVar = self.int_to_FirstStageVar
             _model_cache = self._model_cache
@@ -182,8 +397,20 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
 
 
 class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
+    """
+    Pyomo-based stochastic program builder using named variables.
 
-    def __init__(self, *, first_stage_variables):
+    Attributes
+    ----------
+    first_stage_variables : list
+        List of string names of first-stage variables.
+    objective : str or None
+        Name of the objective function.
+    model_builder : dict
+        Dictionary mapping model names to their builder functions.
+    """
+
+    def __init__(self, *, first_stage_variables: list) -> None:
         super().__init__()
         #
         # A list of string names of variables, such as:
@@ -191,25 +418,43 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         #
         self.first_stage_variables = first_stage_variables
         # WEH - We may have different objectives for different model_builders?
-        self.objective = None
-        self.model_builder = {}
+        self.objective: str | None = None
+        self.model_builder: dict = {}
 
     def initialize_model(
         self,
         *,
-        name=None,
-        filename=None,
-        model_data=None,
-        model_builder=None,
-        default=True,
-        **kwargs,
-    ):
+        name: str | None = None,
+        filename: str | None = None,
+        model_data: dict | None = None,
+        model_builder: Any | None = None,
+        default: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        """
+        Initialize a model with data and builder function.
+
+        Parameters
+        ----------
+        name : str, optional
+            Name of the model.
+        filename : str, optional
+            Path to a JSON file containing model data.
+        model_data : dict, optional
+            Dictionary containing model data.
+        model_builder : function, optional
+            Function to build the model.
+        default : bool, optional
+            Whether this is the default model (default is True).
+        **kwargs : dict
+            Additional keyword arguments.
+        """
         if default:
             self.default_model = name
 
         if filename is not None:
             with open(f"{filename}", "r") as file:
-                model_data = json.load(filename)
+                model_data = json.load(file)
 
         if name in self.model_data:
             if name is not None:
@@ -236,7 +481,25 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 )
             )
 
-    def _first_stage_variables(self, *, M):
+    def _first_stage_variables(self, *, M: Any) -> Any:
+        """
+        Generator function to yield first-stage variables based on their names.
+
+        Parameters
+        ----------
+        M : pyomo.ConcreteModel
+            The Pyomo model to extract first-stage variables from.
+
+        Yields
+        ------
+        tuple
+            Tuples of (variable_name, variable_component).
+
+        Raises
+        ------
+        AssertionError
+            If a variable name is not found in the model.
+        """
         for varname in self.first_stage_variables:
             cuid = pyo.ComponentUID(varname)
             comp = cuid.find_component_on(M)
@@ -247,7 +510,25 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             else:
                 yield varname, comp
 
-    def _create_scenario(self, scenario_tuple):
+    def _create_scenario(self, scenario_tuple: tuple) -> Any:
+        """
+        Create a scenario model using the model builder.
+
+        Parameters
+        ----------
+        scenario_tuple : tuple
+            Tuple containing model name and scenario identifier.
+
+        Returns
+        -------
+        pyomo.ConcreteModel
+            The constructed scenario model.
+
+        Raises
+        ------
+        AssertionError
+            If data keys are already specified.
+        """
         model_name, scenario = scenario_tuple
         data = copy.copy(self.app_data)
         for k, v in self.model_data.get(model_name, {}).items():
@@ -258,7 +539,22 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
             data[k] = v
         return self.model_builder[model_name](data, {})
 
-    def get_objective_coef(self, v, cached=False):
+    def get_objective_coef(self, v: int, cached: bool = False) -> float:
+        """
+        Get the objective coefficient for a variable.
+
+        Parameters
+        ----------
+        v : int
+            Variable identifier.
+        cached : bool, optional
+            Whether to use cached values (default is False).
+
+        Returns
+        -------
+        float
+            The objective coefficient for the variable.
+        """
         if len(self.int_to_ObjectiveCoef) == 0:
             #
             # Here we build the extensive form for the 'default' model and keep its objective expression.
@@ -312,13 +608,13 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
     def create_bundle_EF(
         self,
         *,
-        b,
-        w=None,
-        x_bar=None,
-        rho=None,
-        cached=False,
-        compact_repn=True,
-    ):
+        b: str,
+        w: list | None = None,
+        x_bar: list | None = None,
+        rho: list | None = None,
+        cached: bool = False,
+        compact_repn: bool = True,
+    ) -> Any:
         """
         Create an integer programming representation for the bundle extensive form.
 
@@ -327,6 +623,26 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         Instead, the mutable parameters will be set with the values of rho, w and x_bar.
 
         If the cached flag is False, then the model is constructed with fixed values for rho, w and x_bar.
+
+        Parameters
+        ----------
+        b : str
+            Bundle identifier.
+        w : list, optional
+            List of weights.
+        x_bar : list, optional
+            List of fixed variable values.
+        rho : list, optional
+            List of penalty parameters.
+        cached : bool, optional
+            Whether to cache the model (default is False).
+        compact_repn : bool, optional
+            Whether to use compact representation (default is True).
+
+        Returns
+        -------
+        pyomo.ConcreteModel
+            The extensive form model for the bundle.
         """
         if cached and b in self._model_cache:
             M = self._model_cache[b]
@@ -376,8 +692,38 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         return EF_model
 
     def create_bundle_EF_repn(
-        self, *, b, w=None, x_bar=None, rho=None, cached=False, compact_repn=True
-    ):
+        self,
+        *,
+        b: str,
+        w: list | None = None,
+        x_bar: list | None = None,
+        rho: list | None = None,
+        cached: bool = False,
+        compact_repn: bool = True,
+    ) -> Any:
+        """
+        Create the extensive form representation for a bundle.
+
+        Parameters
+        ----------
+        b : str
+            Bundle identifier.
+        w : list, optional
+            List of weights.
+        x_bar : list, optional
+            List of fixed variable values.
+        rho : list, optional
+            List of penalty parameters.
+        cached : bool, optional
+            Whether to cache the model (default is False).
+        compact_repn : bool, optional
+            Whether to use compact representation (default is True).
+
+        Returns
+        -------
+        pyomo.ConcreteModel
+            The extensive form model for the bundle.
+        """
         if len(self.bundles[b].scenarios) == 1:
             EF_model = self._create_single_scenario_EF_repn(
                 b=b, w=w, x_bar=x_bar, rho=rho, cached=cached
@@ -399,13 +745,37 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         return EF_model
 
     def _create_single_scenario_EF_repn(
-        self, *, b, w=None, x_bar=None, rho=None, cached=False
-    ):
+        self,
+        *,
+        b: str,
+        w: list | None = None,
+        x_bar: list | None = None,
+        rho: list | None = None,
+        cached: bool = False,
+    ) -> Any:
         """
         Create a pyomo model for EF with a single scenario.
 
         Even though there's a single scenario, we use an indexed Block to
         ensure consistency of model structure.
+
+        Parameters
+        ----------
+        b : str
+            Bundle identifier.
+        w : list, optional
+            List of weights.
+        x_bar : list, optional
+            List of fixed variable values.
+        rho : list, optional
+            List of penalty parameters.
+        cached : bool, optional
+            Whether to cache the model (default is False).
+
+        Returns
+        -------
+        pyomo.ConcreteModel
+            The extensive form model for a single scenario.
         """
         scenarios = self.bundles[b].scenarios
 
@@ -469,8 +839,14 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         return EF_model
 
     def _create_compact_bundle_EF_repn(
-        self, *, b, w=None, x_bar=None, rho=None, cached=False
-    ):
+        self,
+        *,
+        b: str,
+        w: list | None = None,
+        x_bar: list | None = None,
+        rho: list | None = None,
+        cached: bool = False,
+    ) -> Any:
         """
         Create a pyomo model for EF that does not include separate copies of first stage variables along
         with non-anticipativity constraints.  Each scenario model, after the first, is processed to
@@ -478,6 +854,24 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
 
         This involves more up-front processing of the scenario models, but it results in a more compact EF
         representation.
+
+        Parameters
+        ----------
+        b : str
+            Bundle identifier.
+        w : list, optional
+            List of weights.
+        x_bar : list, optional
+            List of fixed variable values.
+        rho : list, optional
+            List of penalty parameters.
+        cached : bool, optional
+            Whether to cache the model (default is False).
+
+        Returns
+        -------
+        pyomo.ConcreteModel
+            The extensive form model with compact representation.
         """
         scenarios = self.bundles[b].scenarios
 
@@ -568,11 +962,35 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         return EF_model
 
     def _create_noncompact_bundle_EF_repn(
-        self, *, b, w=None, x_bar=None, rho=None, cached=False
-    ):
+        self,
+        *,
+        b: str,
+        w: list | None = None,
+        x_bar: list | None = None,
+        rho: list | None = None,
+        cached: bool = False,
+    ) -> Any:
         """
         Create a pyomo model for EF that includes separate copies of first stage variables along
         with non-anticipativity constraints that ensure that all scenario solutions are the same.
+
+        Parameters
+        ----------
+        b : str
+            Bundle identifier.
+        w : list, optional
+            List of weights.
+        x_bar : list, optional
+            List of fixed variable values.
+        rho : list, optional
+            List of penalty parameters.
+        cached : bool, optional
+            Whether to cache the model (default is False).
+
+        Returns
+        -------
+        pyomo.ConcreteModel
+            The extensive form model with non-compact representation.
         """
         scenarios = self.bundles[b].scenarios
 

@@ -68,6 +68,32 @@ def relax_second_stage(sp, M, *, relax_dict=None):
 def constrain_EF_model(
     *, sp, M, first_stage_variables, fraction_same, filter_zeros=True
 ):
+    """
+    Add constraints to ensure a fraction of first-stage variables match specified values.
+
+    Parameters
+    ----------
+    sp : StochasticProgram
+        The stochastic program instance.
+    M : pyomo.ConcreteModel
+        The Pyomo model to constrain.
+    first_stage_variables : dict
+        Dictionary of first-stage variable names and their values.
+    fraction_same : float
+        Fraction of variables that must match the specified values (0 <= fraction_same <= 1).
+    filter_zeros : bool, optional
+        Whether to filter out zero values from first_stage_variables (default is True).
+
+    Returns
+    -------
+    pyomo.ConcreteModel
+        The constrained model.
+
+    Raises
+    ------
+    AssertionError
+        If fraction_same is outside [0, 1], or if no variables are specified.
+    """
     #
     # Add a constraint that at least `fraction_same` of the specified first-stage-variables
     # match the given values.

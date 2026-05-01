@@ -12,12 +12,34 @@ logger = sparow.logs.logger
 
 
 class ExtensiveFormSolver(object):
+    """
+    A solver for stochastic programs using the extensive form.
+
+    Attributes
+    ----------
+    solver_name : str or None
+        Name of the solver to use.
+    solver_options : dict
+        Dictionary of solver options.
+    """
 
     def __init__(self):
         self.solver_name = None
         self.solver_options = {}
 
     def set_options(self, *, solver=None, solver_options=None, loglevel=None):
+        """
+        Set the options for the extensive form solver.
+
+        Parameters
+        ----------
+        solver : str, optional
+            Name of the solver to use.
+        solver_options : dict, optional
+            Dictionary of solver options.
+        loglevel : str, optional
+            Logging level.
+        """
         #
         # Misc configuration
         #
@@ -32,6 +54,21 @@ class ExtensiveFormSolver(object):
             logger.setLevel(loglevel)
 
     def solve_and_return_EF(self, sp, **options):
+        """
+        Solve the stochastic program using the extensive form and return the model.
+
+        Parameters
+        ----------
+        sp : StochasticProgram
+            The stochastic program to solve.
+        **options : dict
+            Additional options for the solver.
+
+        Returns
+        -------
+        Munch
+            A Munch object containing the solutions and the extensive form model.
+        """
         start_time = datetime.datetime.now()
         if len(options) > 0:
             self.set_options(**options)
@@ -92,4 +129,19 @@ class ExtensiveFormSolver(object):
         return munch.Munch(solutions=solutions, model=M)
 
     def solve(self, sp, **options):
+        """
+        Solve the stochastic program using the extensive form.
+
+        Parameters
+        ----------
+        sp : StochasticProgram
+            The stochastic program to solve.
+        **options : dict
+            Additional options for the solver.
+
+        Returns
+        -------
+        object
+            The solution pool manager containing the results.
+        """
         return self.solve_and_return_EF(sp, **options).solutions

@@ -1,4 +1,23 @@
 def initialize_EF(sp, model, solution, resolve=True):
+    """
+    Initialize the extensive form model with a given solution.
+
+    Parameters
+    ----------
+    sp : StochasticProgram
+        The stochastic program instance.
+    model : pyomo.ConcreteModel
+        The extensive form model to initialize.
+    solution : object
+        The solution to use for initialization.
+    resolve : bool, optional
+        Whether to resolve the model after initialization (default is True).
+
+    Returns
+    -------
+    pyomo.ConcreteModel
+        The initialized extensive form model.
+    """
     # NOTE - we could solve each subproblem separately, but that
     #           wouldn't compute the objective
     if resolve:
@@ -29,6 +48,25 @@ def initialize_EF(sp, model, solution, resolve=True):
 
 
 def create_and_initialize_EF(sp, solution, model_fidelities=None, resolve=True):
+    """
+    Create and initialize the extensive form model with a given solution.
+
+    Parameters
+    ----------
+    sp : StochasticProgram
+        The stochastic program instance.
+    solution : object
+        The solution to use for initialization.
+    model_fidelities : dict, optional
+        Dictionary specifying model fidelities.
+    resolve : bool, optional
+        Whether to resolve the model after initialization (default is True).
+
+    Returns
+    -------
+    pyomo.ConcreteModel
+        The created and initialized extensive form model.
+    """
     M = sp.create_EF(
         cache_bundles=False, model_fidelities=model_fidelities, compact_repn=True
     )
