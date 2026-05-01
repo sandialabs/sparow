@@ -88,6 +88,7 @@ def _is_multifidelity(scheme_str):
     else:
         return False
 
+
 def _bundle_scheme(data, scheme_str, models, model_weight=None, bundle_args=None):
     """
     Create bundles using a specified bundling scheme.
