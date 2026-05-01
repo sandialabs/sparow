@@ -5,6 +5,7 @@ from sparow.sp.util import relax_second_stage
 from sparow.ef import ExtensiveFormSolver
 
 from pyomo.opt import check_available_solvers
+
 highs_available = len(check_available_solvers("highs")) == 1
 
 
