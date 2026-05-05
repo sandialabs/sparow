@@ -24,6 +24,7 @@ from sparow import solnpool
 # or-topas imports
 import or_topas.benders
 from or_topas.benders.benders_serial import BendersGenerator_Serial
+from or_topas.util.pyomo_utils import split_expr
 
 # logger settup
 logger = sparow.logs.logger
@@ -113,6 +114,14 @@ class BendersSolver(object):
     ):
         # TODO: adapt settings to Benders
         # Likely a subset of these settings for now
+        #
+        # Required settings
+        #
+
+        assert solver is not None, "Need to declare an upper level solver"
+        assert subproblem_solver is not None, "Need to declare a subproblem solver"
+        self.solver_name = solver
+        self.subproblem_solver_name = subproblem_solver
 
         #
         # Misc configuration
@@ -121,10 +130,6 @@ class BendersSolver(object):
             self.max_iterations = max_iterations
         if convergence_tolerance is not None:
             self.convergence_tolerance = convergence_tolerance
-        if solver is not None:
-            self.solver_name = solver
-        if subproblem_solver is not None:
-            self.subproblem_solver_name = subproblem_solver
         if solver_options is not None:
             self.solver_options = solver_options
         if solutions is not None:
@@ -216,6 +221,7 @@ class BendersSolver(object):
         default_domain=pyo.Reals,
         remove_first_stage_only_cons=False,
         weight_obj_by_prob=True,
+        remove_first_stage_objective_terms=False,
     ):
         """
         This method takes a sp object and one of its child single scenario models (or bundle), b,
@@ -239,15 +245,22 @@ class BendersSolver(object):
                     x in R^{n}, n = n_1 + n_2
                     y_s in R^{m}
 
+        N.B. If remove_first_stage_objective_terms == True, the <c,x> term in the objective is removed.
+        It will not remove something like a tracking variable \theta from an objective of <c,x> + <d,y> + \theta, where \theta >= <p,x>.
+
         This is done by achieving several steps:
-        1. relaxing discrete first-stage variables to continuous,
-        2. weighting the objective by probability
+        
+        1. updating the objective
+            1a. if remove_first_stage_objective_terms == True, remove c^Tx terms.
+            1b. Weight the objective by probability p_s.
+        2. relaxing discrete first-stage variables to continuous,
         3. optionally remove the first-stage only constraints (these may be scenario specific feasbility constraints)
         4. remove any exteraneous PH style attributes
 
         There are optional steps that may be added later:
         5. relaxing second-stage variables as well
         6. ability to set custom domains as a function of which first stage variable it is
+
 
         N.B. that this method on its own does not convert into a value function.
         That is done later with OR-TOPAS, where the problem will be modified to make:
@@ -274,25 +287,44 @@ class BendersSolver(object):
             compact_repn=True,
         )
         # we now assume subproblem_model is constructed
+        # TODO: may need to check if cuid map initialized
 
-        # step 1: probability weight the objective
-        # Get the scenario probability
-        if weight_obj_by_prob:
-            p_s = sp_lower.bundles[b].scenario_probability[
-                sp_lower.bundles[b].scenarios[0]
-            ]
-            if hasattr(subproblem_model, "obj") and subproblem_model.obj.active:
-                original_expr = subproblem_model.obj.expr
-                original_sense = subproblem_model.obj.sense
-                subproblem_model.obj.deactivate()
+        # step 1: updating the objective
+        # Note: we assume the objective is called obj
+        if hasattr(subproblem_model, "obj") and subproblem_model.obj.active:
+            original_expr = subproblem_model.obj.expr
+            original_sense = subproblem_model.obj.sense
+            subproblem_model.obj.deactivate()
+            expr_holder = original_expr
+            
+            # Handle the removal of <c,x> terms if desired. 
+            if remove_first_stage_objective_terms:
+                #This implicitly enforces a linearity assumption on the objective.
+                #The linearity check is buried in how or_topas.util.pyomo_utils.split_expr
+                #   will handle parsing using Pyomo's get_standard_repn.
 
-                subproblem_model.obj = pyo.Objective(
-                    expr=p_s * original_expr, sense=original_sense
+                #N.B. this subproblem_first_stage_vars is a set coming from a dict .values() method
+                subproblem_first_stage_vars = sp_lower.int_to_FirstStageVar[b].values()
+                fsv_names = [s.name for s in subproblem_first_stage_vars]
+                obj_split = split_expr(
+                    expr_holder, subproblem_first_stage_vars, allow_iterables=True
                 )
-            else:
-                raise ValueError(
-                    f"No active objective found on subproblem for bundle {b}"
-                )
+                expr_holder = obj_split.not_in_set + obj_split.constant
+            # Handle probablity weighting
+            if weight_obj_by_prob:
+                p_s = sp_lower.bundles[b].scenario_probability[
+                    sp_lower.bundles[b].scenarios[0]
+                ]
+                expr_holder = p_s * expr_holder
+
+            #need to update the objective in place
+            subproblem_model.obj = pyo.Objective(
+                expr=expr_holder, sense=original_sense
+            )
+        else:
+            raise ValueError(
+                f"No active objective found on subproblem for bundle {b}"
+            )
 
         # step 2: relax first_stage variable domains
         for i, x in sp_lower.int_to_FirstStageVar[b].items():
@@ -320,7 +352,6 @@ class BendersSolver(object):
                 # we can either deactivate or delete
                 # deactivating for now
                 cons.deactivate()
-
         # step 4: remove any unneeded PH style varaible fluff
         # this may be all handled by setting w, x_bar, rho, and cached to false
         return subproblem_model
@@ -734,6 +765,9 @@ class BendersSolver(object):
     def solve_in_dev(self, sp_lower, eta_bounds_map, **options):
         start_time = datetime.datetime.now()
         assert eta_bounds_map is not None, "Must give a valid bounds map"
+        assert (
+            self.subproblem_solver_name is not None
+        ), "Must give a valid subproblem solver name"
 
         if len(options) > 0:
             self.set_options(**options)
@@ -791,6 +825,7 @@ class BendersSolver(object):
             objective_sense=pyo.minimize,
             etas_ordered=False,
         )
+        upper_model.pprint()
 
         # create topas Benders object
         root_vars = list(sp_upper.int_to_FirstStageVar[b_upper].values())
@@ -821,6 +856,7 @@ class BendersSolver(object):
         termination_condition = "Termination: unknown"
 
         #
+        iteration = 0
         while True:
             iteration_timer.tic(None)
             iteration += 1
@@ -881,13 +917,13 @@ class BendersSolver(object):
 
         logger.info("")
         logger.info("-" * 70)
-        logger.info("ProgressiveHedgingSolver - RESULTS")
+        logger.info("BendersSolver - RESULTS")
         if logger.isEnabledFor(logging.DEBUG):
             pprint.pprint(self.solutions.to_dict())
             sys.stdout.flush()
 
         logger.info("")
         logger.info("-" * 70)
-        logger.info("ProgressiveHedgingSolver - STOP")
+        logger.info("BendersSolver - STOP")
 
         return self.solutions

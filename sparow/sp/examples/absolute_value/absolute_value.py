@@ -114,6 +114,65 @@ def builder(data, args):
 
     return m
 
+def builder_integral_x(data, args):
+    """
+    This subproblem implements the following function
+
+    Q(x) =  max{R(x-a), -L(x-a)} if x \in [LB, UB]
+            +\infty              if x \not \in [LB,UB]
+
+    The subproblem that implements this is:
+    Q(x) = min_{y >= 0} R*y[R] + L*y[L]
+            s.t.    -y[R] + y[L] == a - x
+                    y[UB_Slack] == UB - x
+                    y[LB_Slack] == -LB + x
+
+    Note that this is only LP representable when -L <= R
+    This subproblem should result in the following cuts:
+    Opt Cuts:
+    \theta >= R(x-a)
+    \theta >= -L(x-a)
+    Corresponding to dual vertices [R, 0, 0]' and [-L, 0, 0]'
+
+    Feas Cuts:
+    0 >= x - UB
+    0 >= -x + LB
+    Corresponding to extreme rays [0, -1, 0]' and [0, 0, -1]
+    """
+
+    a = data["a"]
+    c = data.get("c", 0)
+    L = data["L"]
+    R = data["R"]
+    LB = data.get("LB", None)
+    UB = data.get("UB", None)
+
+    m = pyo.ConcreteModel(data["ID"])
+    m.x = pyo.Var(domain=pyo.Integers)
+
+    y_indices = ["Right", "Left"]
+    if LB is not None:
+        y_indices.append("LB_Slack")
+    if UB is not None:
+        y_indices.append("UB_Slack")
+    m.y_indices = pyo.Set(initialize=y_indices)
+    m.y = pyo.Var(m.y_indices, bounds=(0, None))
+
+    # objective
+    m.obj = pyo.Objective(expr=c * m.x + R * m.y["Right"] + L * m.y["Left"])
+
+    # vertex constriant
+    m.vertex_cons = pyo.Constraint(expr=-m.y["Right"] + m.y["Left"] == a - m.x)
+
+    # optional lower bound constraint
+    if LB is not None:
+        m.lb_cons = pyo.Constraint(expr=m.y["LB_Slack"] - m.x == -LB)
+
+    if UB is not None:
+        m.ub_cons = pyo.Constraint(expr=m.y["UB_Slack"] + m.x == UB)
+
+    return m
+
 
 def simple_absolute_value():
     """
@@ -180,5 +239,31 @@ def feasibility_included_absolute_value():
         unique_solution=True,
         solution_values={
             "x": modified_app_data["a"],
+        },
+    )
+
+def absolute_value_integral_x():
+    sp = stochastic_program(first_stage_variables=["x"])
+    sp.initialize_application(app_data=app_data)
+    sp.initialize_model(model_data=model_data, model_builder=builder_integral_x)
+    return Munch(
+        sp=sp,
+        objective_value=0,
+        unique_solution=True,
+        solution_values={
+            "x": app_data["a"],
+        },
+    )
+
+def adjustable_absolute_value(*,local_app_data, local_model_data):
+    sp = stochastic_program(first_stage_variables=["x"])
+    sp.initialize_application(app_data=local_app_data)
+    sp.initialize_model(model_data=local_model_data, model_builder=builder)
+    return Munch(
+        sp=sp,
+        objective_value=0,
+        unique_solution=True,
+        solution_values={
+            "x": app_data["a"],
         },
     )
