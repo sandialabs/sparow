@@ -9,7 +9,7 @@ import pprint
 # general pyomo imports
 from pyomo.common.timing import tic, toc, TicTocTimer
 import pyomo.environ as pyo
-from pyomo.common.collections import ComponentMap
+from pyomo.common.collections import ComponentMap, ComponentSet
 import pyomo.repn
 
 # sparow imports
@@ -249,7 +249,7 @@ class BendersSolver(object):
         It will not remove something like a tracking variable \theta from an objective of <c,x> + <d,y> + \theta, where \theta >= <p,x>.
 
         This is done by achieving several steps:
-        
+
         1. updating the objective
             1a. if remove_first_stage_objective_terms == True, remove c^Tx terms.
             1b. Weight the objective by probability p_s.
@@ -289,6 +289,8 @@ class BendersSolver(object):
         # we now assume subproblem_model is constructed
         # TODO: may need to check if cuid map initialized
 
+        subproblem_first_stage_vars = None
+
         # step 1: updating the objective
         # Note: we assume the objective is called obj
         if hasattr(subproblem_model, "obj") and subproblem_model.obj.active:
@@ -296,16 +298,17 @@ class BendersSolver(object):
             original_sense = subproblem_model.obj.sense
             subproblem_model.obj.deactivate()
             expr_holder = original_expr
-            
-            # Handle the removal of <c,x> terms if desired. 
+
+            # Handle the removal of <c,x> terms if desired.
             if remove_first_stage_objective_terms:
-                #This implicitly enforces a linearity assumption on the objective.
-                #The linearity check is buried in how or_topas.util.pyomo_utils.split_expr
+                # This implicitly enforces a linearity assumption on the objective.
+                # The linearity check is buried in how or_topas.util.pyomo_utils.split_expr
                 #   will handle parsing using Pyomo's get_standard_repn.
 
-                #N.B. this subproblem_first_stage_vars is a set coming from a dict .values() method
-                subproblem_first_stage_vars = sp_lower.int_to_FirstStageVar[b].values()
-                fsv_names = [s.name for s in subproblem_first_stage_vars]
+                # N.B. this subproblem_first_stage_vars is a set coming from a dict .values() method
+                subproblem_first_stage_vars = ComponentSet(
+                    sp_lower.int_to_FirstStageVar[b].values()
+                )
                 obj_split = split_expr(
                     expr_holder, subproblem_first_stage_vars, allow_iterables=True
                 )
@@ -317,14 +320,10 @@ class BendersSolver(object):
                 ]
                 expr_holder = p_s * expr_holder
 
-            #need to update the objective in place
-            subproblem_model.obj = pyo.Objective(
-                expr=expr_holder, sense=original_sense
-            )
+            # need to update the objective in place
+            subproblem_model.obj = pyo.Objective(expr=expr_holder, sense=original_sense)
         else:
-            raise ValueError(
-                f"No active objective found on subproblem for bundle {b}"
-            )
+            raise ValueError(f"No active objective found on subproblem for bundle {b}")
 
         # step 2: relax first_stage variable domains
         for i, x in sp_lower.int_to_FirstStageVar[b].items():
@@ -333,20 +332,18 @@ class BendersSolver(object):
         # step 3:
         if remove_first_stage_only_cons:
             cons_to_delete = []
+            if subproblem_first_stage_vars is None:
+                subproblem_first_stage_vars = sp_lower.int_to_FirstStageVar[b].values()
             for cons in subproblem_model.component_data_objects(
                 pyo.Constraint, descend_into=True
             ):
-                # variable listing method adapted from
-                # https://stackoverflow.com/questions/48538945/access-all-variables-occurring-in-a-pyomo-constraint
                 if all(
-                    pyo.ComponentUID(var, context=subproblem_model)
-                    in sp_lower.varcuid_to_int
+                    var in subproblem_first_stage_vars
                     for var in pyo.visitor.identify_variables(cons.body)
                 ):
                     # this amounts to an if all vars in first_stage_vars check
                     # sp.varcuid_to_int only holds varcuid's for first_stage_variables
                     cons_to_delete.append(cons)
-
             # unneed cons handling point
             for cons in cons_to_delete:
                 # we can either deactivate or delete
@@ -650,6 +647,7 @@ class BendersSolver(object):
 
         # gather cons to remove to process later
         # TODO: consider caching the CUIDs for second-stage vars
+        # TODO: do we need to delete inactive constraints
         cons_to_delete = []
         for cons in upper_model.component_data_objects(
             pyo.Constraint, descend_into=True

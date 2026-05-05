@@ -15,6 +15,6 @@ from .newsvendor.newsvendor import simple_newsvendor
 from .absolute_value.absolute_value import (
     simple_absolute_value,
     feasibility_included_absolute_value,
-    absolute_value_integral_x,
+    absolute_value_testing_version,
     adjustable_absolute_value,
 )
