@@ -315,9 +315,9 @@ class BendersSolver(object):
                 expr_holder = obj_split.not_in_set + obj_split.constant
             # Handle probablity weighting
             if weight_obj_by_prob:
-                p_s = sp_lower.bundles[b].scenario_probability[
-                    sp_lower.bundles[b].scenarios[0]
-                ]
+                # we use the sp.bundles[b].probability prob here
+                # we want to use the version that ripples to thetas in master here.
+                p_s = sp_lower.bundles[b].probability
                 expr_holder = p_s * expr_holder
 
             # need to update the objective in place

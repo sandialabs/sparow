@@ -6,6 +6,7 @@ from sparow.sp.examples import (
     feasibility_included_absolute_value,
     absolute_value_testing_version,
     adjustable_absolute_value,
+    simple_newsvendor,
 )
 
 from pyomo.common.dependencies import attempt_import
@@ -16,6 +17,7 @@ if not param_available:
 parameterized = parameterized.parameterized
 
 from sparow.benders import BendersSolver
+from sparow.ef import ExtensiveFormSolver
 from or_topas.util.pyomo_utils import split_expr
 
 import pyomo.opt
@@ -37,7 +39,6 @@ class TestBendersTransforms:
         solver.set_options(solver=solver, subproblem_solver=solver)
 
     def test_transform_to_subproblem_model_domain_changes(self):
-        solver = open_source_solver
 
         solver = BendersSolver()
         solver.set_options(solver=solver, subproblem_solver=solver)
@@ -64,8 +65,57 @@ class TestBendersTransforms:
                 for i in m.s[None, 1].y.index_set()
             ), f"Expected all second_stage_variables to stay as pyo.Reals"
 
+    def test_simple_ef_check(self):
+        mip_solver = next(iter(open_source_solver))
+        app = simple_absolute_value()
+        solver = ExtensiveFormSolver()
+        solver.set_options(solver=mip_solver)
+        results = solver.solve(app.sp)
+        results_dict = results.to_dict()
+        soln = next(iter(results_dict["solutions"].values()))
+
+        obj_val = soln["objectives"][0]["value"]
+        assert obj_val == pytest.approx(app.objective_value)
+        assert app.unique_solution
+        x = soln["variables"][0]["value"]
+        assert x == pytest.approx(app.solution_values["x"])
+
+    def test_create_sp_upper(self):
+        solver_name = next(iter(open_source_solver))
+
+        app = simple_absolute_value()
+        sp_lower = app.sp
+        sp_upper = BendersSolver._create_sp_upper(sp_lower=sp_lower)
+        test_a_val = 1
+        sp_upper.app_data["a"] = test_a_val
+
+        # default behavior check for sp_lower
+        solver = ExtensiveFormSolver()
+        solver.set_options(solver=solver_name)
+        results = solver.solve(sp_lower)
+        results_dict = results.to_dict()
+        soln = next(iter(results_dict["solutions"].values()))
+
+        obj_val = soln["objectives"][0]["value"]
+        assert obj_val == pytest.approx(app.objective_value)
+        assert app.unique_solution
+        x = soln["variables"][0]["value"]
+        assert x == pytest.approx(app.solution_values["x"])
+
+        # behavior check for sp_upper
+        solver2 = ExtensiveFormSolver()
+        solver2.set_options(solver=solver_name)
+        results2 = solver2.solve(sp_upper)
+        results_dict2 = results2.to_dict()
+        soln2 = next(iter(results_dict2["solutions"].values()))
+
+        obj_val2 = soln2["objectives"][0]["value"]
+        assert obj_val == pytest.approx(app.objective_value)
+        assert app.unique_solution
+        x2 = soln2["variables"][0]["value"]
+        assert x2 == pytest.approx(test_a_val)
+
     def test_transform_to_subproblem_constraint_updates(self):
-        solver = open_source_solver
 
         solver = BendersSolver()
         solver.set_options(solver=solver, subproblem_solver=solver)
@@ -99,6 +149,94 @@ class TestBendersTransforms:
                 assert m.s[None, 1].x_lower.active
                 assert m.s[None, 1].x_upper.active
                 assert len(cons_list) == 3
+
+    # two objectives point applies here too
+    # why is obj on m and m.s[None,b] but only active on one
+    def Xtest_transform_to_subproblem_prob_weight_obj_weird(self):
+
+        solver = BendersSolver()
+        solver.set_options(solver=solver, subproblem_solver=solver)
+
+        # obj_options = [True, False]
+        obj_options = [True]
+        for o_option in obj_options:
+            app = simple_newsvendor()
+            sp = app.sp
+            for b in sp.bundles:
+                m = BendersSolver._transform_to_subproblem_model(
+                    sp_lower=sp,
+                    b=b,
+                    default_domain=pyo.Reals,
+                    remove_first_stage_only_cons=False,
+                    weight_obj_by_prob=o_option,
+                    remove_first_stage_objective_terms=True,
+                )
+                m.pprint()
+                print(m.obj.expr)
+                print(m.s)
+                print(list(m.s.keys()))
+                # print(m.s[(None,b)])
+                # print(sp.int_to_FirstStageVar[b][0].name)
+
+                # ask bill what is going on with erroring on this access
+                # print(m.s[None,b].y)
+                factor = 0.2 if o_option else 1
+                generate_standard_repn(m.obj.expr)
+                # assert compare_expressions(
+                #     m.obj.expr,
+                #     factor * m.s[None,b].y,
+                # )
+                # m.pprint()
+                # print(f"{sp.bundles[b].probability=}, {b=}")
+
+                # b = next(iter(sp.bundles))
+                # m = BendersSolver._transform_to_subproblem_model(
+                #     sp_lower=sp,
+                #     b=b,
+                #     default_domain=pyo.Reals,
+                #     remove_first_stage_only_cons=False,
+                #     weight_obj_by_prob=o_option,
+                #     remove_first_stage_objective_terms=True,
+                # )
+                # cons_list = [
+                #     c
+                #     for c in m.component_data_objects(
+                #         pyo.Constraint, descend_into=True, active=True
+                #     )
+                # ]
+                # if r_option:
+                #     assert m.s[None, 1].vertex_cons.active
+                #     assert not m.s[None, 1].x_lower.active
+                #     assert not m.s[None, 1].x_upper.active
+                #     assert len(cons_list) == 1
+                # else:
+                #     assert m.s[None, 1].vertex_cons.active
+                #     assert m.s[None, 1].x_lower.active
+                #     assert m.s[None, 1].x_upper.active
+                #     assert len(cons_list) == 3
+
+    def test_transform_to_subproblem_prob_weight_obj(self):
+
+        solver = BendersSolver()
+        solver.set_options(solver=solver, subproblem_solver=solver)
+
+        obj_options = [True, False]
+        # obj_options = [True]
+        for o_option in obj_options:
+            app = simple_newsvendor()
+            sp = app.sp
+            for b in sp.bundles:
+                m = BendersSolver._transform_to_subproblem_model(
+                    sp_lower=sp,
+                    b=b,
+                    default_domain=pyo.Reals,
+                    remove_first_stage_only_cons=False,
+                    weight_obj_by_prob=o_option,
+                    remove_first_stage_objective_terms=True,
+                )
+                factor = 0.2 if o_option else 1
+                repn = generate_standard_repn(m.obj.expr)
+                assert repn.linear_coefs == pytest.approx([factor])
 
     # multiple objective question
     def Xtest_transform_to_subproblem_model_update_objective_1(self):
