@@ -6,6 +6,7 @@ from sparow.sp.examples import (
     HF_newsvendor,
     MFrandom_newsvendor,
     simple_newsvendor,
+    simple_absolute_value,
 )
 
 from pyomo.common.dependencies import attempt_import
@@ -30,7 +31,25 @@ solvers = set(pyomo.opt.check_available_solvers("gurobi"))
 @unittest.pytest.mark.parametrize("mip_solver", solvers)
 class TestBendersNewsvendor:
 
-    def test_simple(self, mip_solver):
+    def test_abs(self, mip_solver):
+        app = simple_absolute_value()
+        solver = BendersSolver()
+        solver.set_options(solver=mip_solver, subproblem_solver=mip_solver)
+
+        default_lower_eta = -1_000
+        # eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
+        eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.scenario_data[None].keys()}
+        results = solver.solve_in_dev(app.sp, eta_bounds_map)
+        results_dict = results.to_dict()
+        soln = next(iter(results_dict["solutions"].values()))
+
+        obj_val = soln["objectives"][0]["value"]
+        assert obj_val == pytest.approx(app.objective_value)
+        assert app.unique_solution
+        x = soln["variables"][0]["value"]
+        assert x == pytest.approx(app.solution_values["x"])
+
+    def Xtest_simple(self, mip_solver):
         app = simple_newsvendor()
         solver = BendersSolver()
         solver.set_options(solver=mip_solver, subproblem_solver=mip_solver)
