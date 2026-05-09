@@ -87,6 +87,7 @@ def builder(data, args):
     R = data["R"]
     LB = data.get("LB", None)
     UB = data.get("UB", None)
+    constant_offset = data.get("constant_offset", 0)
 
     m = pyo.ConcreteModel(data["ID"])
     m.x = pyo.Var()
@@ -100,7 +101,7 @@ def builder(data, args):
     m.y = pyo.Var(m.y_indices, bounds=(0, None))
 
     # objective
-    m.obj = pyo.Objective(expr=c * m.x + R * m.y["Right"] + L * m.y["Left"])
+    m.obj = pyo.Objective(expr=c * m.x + R * m.y["Right"] + L * m.y["Left"] + constant_offset)
 
     # vertex constriant
     m.vertex_cons = pyo.Constraint(expr=-m.y["Right"] + m.y["Left"] == a - m.x)

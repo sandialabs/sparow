@@ -638,11 +638,10 @@ class BendersSolver(object):
         # name the resulting expression the first_stage_cost
         # note the assumption here that the objective is affine
         # this is intentionally done before any of the other alterantions to the model
-        repn = pyomo.repn.generate_standard_repn(upper_model.obj, quadratic=False)
+        repn = pyomo.repn.generate_standard_repn(upper_model.obj.expr, quadratic=False)
         first_stage_cost = repn.constant if repn.constant is not None else 0
         for i, var in enumerate(repn.linear_vars):
-            cuid = pyo.ComponentUID(var)
-            if cuid in sp.varcuid_to_int:
+            if var in first_stage_vars:
                 # this is the 'is first stage variable' check
                 # assumes that all vars in repn.linear_vars come from just the present upper_model
                 first_stage_cost += repn.linear_coefs[i] * var
