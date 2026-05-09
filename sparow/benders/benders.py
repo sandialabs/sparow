@@ -753,6 +753,9 @@ class BendersSolver(object):
                 b_lower
             ][i]
 
+        print(f"Subproblem:")
+        model_lower.pprint()
+
         # return the subproblem model, b, and the complicating variable map.
         return model_lower, complicating_variable_map
 
@@ -825,7 +828,7 @@ class BendersSolver(object):
             b=b_upper,
             eta_bounds_map=eta_bounds_map,
             lower_bounding_otherwise_enforced=False,
-            fix_second_stage_vars=False,
+            fix_second_stage_vars=True,
             objective_sense=pyo.minimize,
             etas_ordered=False,
         )
