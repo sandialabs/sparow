@@ -533,6 +533,7 @@ class BendersSolver(object):
         eta_bounds_map,
         lower_bounding_otherwise_enforced=False,
         fix_second_stage_vars=False,
+        fix_only_active_second_stage_vars=False,
         objective_sense=pyo.minimize,
         etas_ordered=False,
     ):
@@ -625,6 +626,10 @@ class BendersSolver(object):
             rho=None,
             compact_repn=True,
         )
+
+        #we will use this component set for several inclusion checks later on.
+        first_stage_vars = ComponentSet(sp.int_to_FirstStageVar[b].values())
+
         # N.B. since this is a single scenario model, it's creation logic will rely on _create_single_scenario_EF_repn
         # the information from that model is then put in EF by ConcreteModel's transfer_attributes_from method
         # so the cuids and maps will be based on this correct model.
@@ -654,10 +659,19 @@ class BendersSolver(object):
         ):
             # variable listing method adapted from
             # https://stackoverflow.com/questions/48538945/access-all-variables-occurring-in-a-pyomo-constraint
-            if any(
-                pyo.ComponentUID(var, context=upper_model) not in sp.varcuid_to_int
-                for var in pyo.visitor.identify_variables(cons.body)
-            ):
+            
+            #TODO: see subproblem transform, correct lookup uses 
+            # subproblem_first_stage_vars = ComponentSet(sp_lower.int_to_FirstStageVar[b].values())
+            # and then all(var in subproblem_first_stage_vars
+            #           for var in pyo.visitor.identify_variables(cons.body)
+            #           )
+            # equiv here should be any(var not in subproblem_first_stage_vars ...)
+            if any(var not in first_stage_vars 
+                   for var in pyo.visitor.identify_variables(cons.body)):
+            # if any(
+            #     pyo.ComponentUID(var, context=upper_model) not in sp.varcuid_to_int
+            #     for var in pyo.visitor.identify_variables(cons.body)
+            # ):
                 # this amounts to an any vars not in first_stage_vars check
                 # sp.varcuid_to_int only holds varcuid's for first_stage_variables
                 cons_to_delete.append(cons)
@@ -672,10 +686,11 @@ class BendersSolver(object):
         if fix_second_stage_vars:
             # gather vars to remove to process later
             vars_to_delete = []
-            for var in upper_model.component_data_objects(pyo.Var, descend_into=True):
+            for var in upper_model.component_data_objects(pyo.Var, descend_into=True, active=fix_only_active_second_stage_vars):
                 # this amounts to a var not in first_stage_vars check
                 # sp.varcuid_to_int only holds varcuid's for first_stage_variables
-                if pyo.ComponentUID(var, context=upper_model) not in sp.varcuid_to_int:
+                if var in first_stage_vars:
+                # if pyo.ComponentUID(var, context=upper_model) not in sp.varcuid_to_int:
                     # TODO: handle edgecases for bound definitions
                     vars_to_delete.append(var)
 

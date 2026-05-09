@@ -33,7 +33,7 @@ class TestBendersNewsvendor:
     def test_simple(self, mip_solver):
         app = simple_newsvendor()
         solver = BendersSolver()
-        solver.set_options(solver=mip_solver)
+        solver.set_options(solver=mip_solver, subproblem_solver=mip_solver)
 
         default_lower_eta = -1_000
         eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
