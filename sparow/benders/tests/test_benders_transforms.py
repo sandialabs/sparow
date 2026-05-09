@@ -24,6 +24,7 @@ import pyomo.opt
 from pyomo.common import unittest
 from pyomo.core.expr.compare import compare_expressions
 from pyomo.repn.standard_repn import generate_standard_repn
+from pyomo.common.collections import ComponentMap, ComponentSet
 
 open_source_solver = set(pyomo.opt.check_available_solvers("highs"))
 if len(open_source_solver) == 0:
@@ -57,13 +58,12 @@ class TestBendersTransforms:
         x = soln["variables"][0]["value"]
         assert x == pytest.approx(app.solution_values["x"])
 
-
     def test_promotion(self):
         m = pyo.ConcreteModel()
         m.b = pyo.Block()
         m.b.x = pyo.Var()
-        m.obj = pyo.Objective(expr = m.b.x)
-        m.cons = pyo.Constraint(expr = m.b.x >= 5)
+        m.obj = pyo.Objective(expr=m.b.x)
+        m.cons = pyo.Constraint(expr=m.b.x >= 5)
         # m.pprint()
 
     def test_promotion2(self):
@@ -71,11 +71,9 @@ class TestBendersTransforms:
         m.b = pyo.Block()
         m.b.b2 = pyo.Block()
         m.b.b2.x = pyo.Var()
-        m.obj = pyo.Objective(expr = m.b.b2.x)
-        m.b.cons = pyo.Constraint(expr = m.b.b2.x >= 5)
+        m.obj = pyo.Objective(expr=m.b.b2.x)
+        m.b.cons = pyo.Constraint(expr=m.b.b2.x >= 5)
         # m.pprint()
-        
-
 
     #
     # Subproblem Transform Checks
@@ -107,7 +105,6 @@ class TestBendersTransforms:
                 m.s[None, 1].y[i].domain is pyo.Reals
                 for i in m.s[None, 1].y.index_set()
             ), f"Expected all second_stage_variables to stay as pyo.Reals"
-
 
     def test_transform_to_subproblem_constraint_updates(self):
 
@@ -143,7 +140,7 @@ class TestBendersTransforms:
                 assert m.s[None, 1].x_lower.active
                 assert m.s[None, 1].x_upper.active
                 assert len(cons_list) == 3
-    
+
     def test_transform_to_subproblem_prob_weight_obj(self):
 
         solver = BendersSolver()
@@ -211,7 +208,6 @@ class TestBendersTransforms:
     # Create SP Upper Tests
     #
 
-
     def test_create_sp_upper(self):
         solver_name = next(iter(open_source_solver))
 
@@ -247,9 +243,8 @@ class TestBendersTransforms:
         x2 = soln2["variables"][0]["value"]
         assert x2 == pytest.approx(test_a_val)
 
-
     #
-    #master transform tests
+    # master transform tests
     #
 
     def Xtest_simple(self, mip_solver):
@@ -269,7 +264,6 @@ class TestBendersTransforms:
         x = soln["variables"][0]["value"]
         assert x == pytest.approx(app.solution_values["x"])
 
-
     def test_transform_to_master_constraint_updates_1(self):
         solver = BendersSolver()
         solver.set_options(solver=solver, subproblem_solver=solver)
@@ -278,19 +272,19 @@ class TestBendersTransforms:
         b = next(iter(sp.bundles))
         assert sp.scenario_data is not None
         assert len(sp.scenario_data[None].keys()) > 0
-        #note this mapping works for single scenario bundles
-        #not multiple scenario bundles
-        #the keys for sp.scenario_data[None].keys() are scen["ID"]
-        bounds_map = {s : (-1_000,None) for s in sp.scenario_data[None].keys()}
+        # note this mapping works for single scenario bundles
+        # not multiple scenario bundles
+        # the keys for sp.scenario_data[None].keys() are scen["ID"]
+        bounds_map = {s: (-1_000, None) for s in sp.scenario_data[None].keys()}
         m = BendersSolver._transform_to_master_model(
-                sp = sp,
-                b = b,
-                eta_bounds_map = bounds_map,
-                lower_bounding_otherwise_enforced=False,
-                fix_second_stage_vars=False,
-                objective_sense=pyo.minimize,
-                etas_ordered=False,
-            )
+            sp=sp,
+            b=b,
+            eta_bounds_map=bounds_map,
+            lower_bounding_otherwise_enforced=False,
+            fix_second_stage_vars=False,
+            objective_sense=pyo.minimize,
+            etas_ordered=False,
+        )
         cons_list = [
             c
             for c in m.component_data_objects(
@@ -310,30 +304,32 @@ class TestBendersTransforms:
         b = next(iter(sp.bundles))
         assert sp.scenario_data is not None
         assert len(sp.scenario_data[None].keys()) > 0
-        #note this mapping works for single scenario bundles
-        #not multiple scenario bundles
-        #the keys for sp.scenario_data[None].keys() are scen["ID"]
-        bounds_map = {s : (-1_000,None) for s in sp.scenario_data[None].keys()}
+        # note this mapping works for single scenario bundles
+        # not multiple scenario bundles
+        # the keys for sp.scenario_data[None].keys() are scen["ID"]
+        bounds_map = {s: (-1_000, None) for s in sp.scenario_data[None].keys()}
         m = BendersSolver._transform_to_master_model(
-                sp = sp,
-                b = b,
-                eta_bounds_map = bounds_map,
-                lower_bounding_otherwise_enforced=False,
-                fix_second_stage_vars=False,
-                objective_sense=pyo.minimize,
-                etas_ordered=False,
-            )
-        #check number of etas is as expected
+            sp=sp,
+            b=b,
+            eta_bounds_map=bounds_map,
+            lower_bounding_otherwise_enforced=False,
+            fix_second_stage_vars=False,
+            objective_sense=pyo.minimize,
+            etas_ordered=False,
+        )
+        # check number of etas is as expected
         assert len(m.etas) == len(bounds_map.keys())
 
-        #check that the bounds are as expected
-        for s,bounds in bounds_map.items():
+        # check that the bounds are as expected
+        for s, bounds in bounds_map.items():
             assert [m.etas[s].lb, m.etas[s].ub] == pytest.approx([bounds[0], bounds[1]])
-        
-        #check that the contribution to the objective is as expected
-        split = split_expr(m.obj.expr, [m.etas[i] for i in m.etas.index_set()], allow_iterables=True)
+
+        # check that the contribution to the objective is as expected
+        split = split_expr(
+            m.obj.expr, [m.etas[i] for i in m.etas.index_set()], allow_iterables=True
+        )
         repn = generate_standard_repn(split.in_set)
-        assert repn.linear_coefs == pytest.approx([1]*len(m.etas))
+        assert repn.linear_coefs == pytest.approx([1] * len(m.etas))
 
     def test_transform_to_master_eta_check_2(self):
         solver = BendersSolver()
@@ -343,30 +339,32 @@ class TestBendersTransforms:
         b = next(iter(sp.bundles))
         assert sp.scenario_data is not None
         assert len(sp.scenario_data[None].keys()) > 0
-        #note this mapping works for single scenario bundles
-        #not multiple scenario bundles
-        #the keys for sp.scenario_data[None].keys() are scen["ID"]
-        bounds_map = {s : (-1_000,None) for s in sp.scenario_data[None].keys()}
+        # note this mapping works for single scenario bundles
+        # not multiple scenario bundles
+        # the keys for sp.scenario_data[None].keys() are scen["ID"]
+        bounds_map = {s: (-1_000, None) for s in sp.scenario_data[None].keys()}
         m = BendersSolver._transform_to_master_model(
-                sp = sp,
-                b = b,
-                eta_bounds_map = bounds_map,
-                lower_bounding_otherwise_enforced=False,
-                fix_second_stage_vars=False,
-                objective_sense=pyo.minimize,
-                etas_ordered=False,
-            )
-        #check number of etas is as expected
+            sp=sp,
+            b=b,
+            eta_bounds_map=bounds_map,
+            lower_bounding_otherwise_enforced=False,
+            fix_second_stage_vars=False,
+            objective_sense=pyo.minimize,
+            etas_ordered=False,
+        )
+        # check number of etas is as expected
         assert len(m.etas) == len(bounds_map.keys())
 
-        #check that the bounds are as expected
-        for s,bounds in bounds_map.items():
+        # check that the bounds are as expected
+        for s, bounds in bounds_map.items():
             assert [m.etas[s].lb, m.etas[s].ub] == pytest.approx([bounds[0], bounds[1]])
-        
-        #check that the contribution to the objective is as expected
-        split = split_expr(m.obj.expr, [m.etas[i] for i in m.etas.index_set()], allow_iterables=True)
+
+        # check that the contribution to the objective is as expected
+        split = split_expr(
+            m.obj.expr, [m.etas[i] for i in m.etas.index_set()], allow_iterables=True
+        )
         repn = generate_standard_repn(split.in_set)
-        assert repn.linear_coefs == pytest.approx([1]*len(m.etas))
+        assert repn.linear_coefs == pytest.approx([1] * len(m.etas))
 
     def test_transform_to_master_objective_check_1(self):
         solver = BendersSolver()
@@ -374,54 +372,62 @@ class TestBendersTransforms:
         constant_offset = 10
         model_data = {
             "scenarios": [
-                {"ID": 1, "LB": None, "UB": None, "constant_offset" : constant_offset},
+                {"ID": 1, "LB": None, "UB": None, "constant_offset": constant_offset},
             ],
         }
-        c_vals = [0,1,-3,4]
+        c_vals = [0, 1, -3, 4]
         for c in c_vals:
             app_data = dict(a=0, c=c, L=1, R=1)
-            app = adjustable_absolute_value(local_app_data = app_data, local_model_data=model_data)
+            app = adjustable_absolute_value(
+                local_app_data=app_data, local_model_data=model_data
+            )
             sp = app.sp
             b = next(iter(sp.bundles))
             assert sp.scenario_data is not None
             assert len(sp.scenario_data[None].keys()) > 0
-            #note this mapping works for single scenario bundles
-            #not multiple scenario bundles
-            #the keys for sp.scenario_data[None].keys() are scen["ID"]
-            bounds_map = {s : (-1_000,None) for s in sp.scenario_data[None].keys()}
+            # note this mapping works for single scenario bundles
+            # not multiple scenario bundles
+            # the keys for sp.scenario_data[None].keys() are scen["ID"]
+            bounds_map = {s: (-1_000, None) for s in sp.scenario_data[None].keys()}
             m = BendersSolver._transform_to_master_model(
-                    sp = sp,
-                    b = b,
-                    eta_bounds_map = bounds_map,
-                    lower_bounding_otherwise_enforced=False,
-                    fix_second_stage_vars=False,
-                    objective_sense=pyo.minimize,
-                    etas_ordered=False,
-                )
-            
-            #check number of etas is as expected
+                sp=sp,
+                b=b,
+                eta_bounds_map=bounds_map,
+                lower_bounding_otherwise_enforced=False,
+                fix_second_stage_vars=False,
+                objective_sense=pyo.minimize,
+                etas_ordered=False,
+            )
+
+            # check number of etas is as expected
             assert len(m.etas) == len(bounds_map.keys())
 
-            #check that the contribution to the objective is as expected: sum_i etas[i]
-            split_etas = split_expr(m.obj.expr, [m.etas[i] for i in m.etas.index_set()], allow_iterables=True)
+            # check that the contribution to the objective is as expected: sum_i etas[i]
+            split_etas = split_expr(
+                m.obj.expr,
+                [m.etas[i] for i in m.etas.index_set()],
+                allow_iterables=True,
+            )
             repn = generate_standard_repn(split_etas.in_set)
-            assert repn.linear_coefs == pytest.approx([1]*len(m.etas))
+            assert repn.linear_coefs == pytest.approx([1] * len(m.etas))
 
-            #check that the constant contribution to the objective is as expected: constant_offset.
+            # check that the constant contribution to the objective is as expected: constant_offset.
             assert split_etas.constant == pytest.approx(constant_offset)
 
-            #check that the x variable (first stage vars) contribution to the objective is as expected: c.
-            split_x = split_expr(m.obj.expr, [m.s[None,1].x], allow_iterables=True)
+            # check that the x variable (first stage vars) contribution to the objective is as expected: c.
+            split_x = split_expr(m.obj.expr, [m.s[None, 1].x], allow_iterables=True)
             if c == 0:
                 assert split_x.in_set == pytest.approx(0)
             else:
                 repn_x = generate_standard_repn(split_x.in_set)
                 assert repn_x.linear_coefs == pytest.approx([c])
 
-            #check that the second-stage variables is as expected: 0.
+            # check that the second-stage variables is as expected: 0.
             all_expected_first_stage = [m.etas[i] for i in m.etas.index_set()]
-            all_expected_first_stage.append(m.s[None,1].x)
-            split_fsv = split_expr(m.obj.expr, all_expected_first_stage, allow_iterables=True)
+            all_expected_first_stage.append(m.s[None, 1].x)
+            split_fsv = split_expr(
+                m.obj.expr, all_expected_first_stage, allow_iterables=True
+            )
             assert split_fsv.not_in_set == pytest.approx(0)
 
     def test_transform_to_master_objective_check_2(self):
@@ -433,45 +439,126 @@ class TestBendersTransforms:
         b = next(iter(sp.bundles))
         assert sp.scenario_data is not None
         assert len(sp.scenario_data[None].keys()) > 0
-        #note this mapping works for single scenario bundles
-        #not multiple scenario bundles
-        #the keys for sp.scenario_data[None].keys() are scen["ID"]
-        bounds_map = {s : (-1_000,None) for s in sp.scenario_data[None].keys()}
+        # note this mapping works for single scenario bundles
+        # not multiple scenario bundles
+        # the keys for sp.scenario_data[None].keys() are scen["ID"]
+        bounds_map = {s: (-1_000, None) for s in sp.scenario_data[None].keys()}
         m = BendersSolver._transform_to_master_model(
-                sp = sp,
-                b = b,
-                eta_bounds_map = bounds_map,
+            sp=sp,
+            b=b,
+            eta_bounds_map=bounds_map,
+            lower_bounding_otherwise_enforced=False,
+            fix_second_stage_vars=False,
+            objective_sense=pyo.minimize,
+            etas_ordered=False,
+        )
+
+        # check number of etas is as expected
+        assert len(m.etas) == len(bounds_map.keys())
+
+        # check that the contribution to the objective is as expected: sum_i etas[i]
+        split_etas = split_expr(
+            m.obj.expr, [m.etas[i] for i in m.etas.index_set()], allow_iterables=True
+        )
+        repn = generate_standard_repn(split_etas.in_set)
+        assert repn.linear_coefs == pytest.approx([1] * len(m.etas))
+
+        # check that the constant contribution to the objective is as expected: 0.
+        assert split_etas.constant == pytest.approx(0)
+
+        # check that the x variable (first stage vars) contribution to the objective is as expected: 0.
+        split_x = split_expr(m.obj.expr, [m.s[None, 1].x], allow_iterables=True)
+        assert split_x.in_set == pytest.approx(0)
+
+        # check that the second-stage variables is as expected: 0.
+        all_expected_first_stage = [m.etas[i] for i in m.etas.index_set()]
+        all_expected_first_stage.append(m.s[None, 1].x)
+        split_fsv = split_expr(
+            m.obj.expr, all_expected_first_stage, allow_iterables=True
+        )
+        assert split_fsv.not_in_set == pytest.approx(0)
+
+    def test_transform_to_master_fix_second_stage_vars_1(self):
+        solver = BendersSolver()
+        solver.set_options(solver=solver, subproblem_solver=solver)
+        constant_offset = 10
+        model_data = {
+            "scenarios": [
+                {"ID": 1, "LB": None, "UB": None, "constant_offset": constant_offset},
+            ],
+        }
+        f_options = [True, False]
+        for fix_second_stage_vars in f_options:
+            app_data = dict(a=0, c=1, L=1, R=1)
+            app = adjustable_absolute_value(
+                local_app_data=app_data, local_model_data=model_data
+            )
+            sp = app.sp
+            b = next(iter(sp.bundles))
+            assert sp.scenario_data is not None
+            assert len(sp.scenario_data[None].keys()) > 0
+            # note this mapping works for single scenario bundles
+            # not multiple scenario bundles
+            # the keys for sp.scenario_data[None].keys() are scen["ID"]
+            bounds_map = {s: (-1_000, None) for s in sp.scenario_data[None].keys()}
+            m = BendersSolver._transform_to_master_model(
+                sp=sp,
+                b=b,
+                eta_bounds_map=bounds_map,
                 lower_bounding_otherwise_enforced=False,
-                fix_second_stage_vars=False,
+                fix_second_stage_vars=fix_second_stage_vars,
                 objective_sense=pyo.minimize,
                 etas_ordered=False,
             )
-        
-        #check number of etas is as expected
-        assert len(m.etas) == len(bounds_map.keys())
+            all_expected_first_stage = [m.etas[i] for i in m.etas.index_set()]
+            all_expected_first_stage.append(m.s[None, 1].x)
+            first_stage_vars = ComponentSet(all_expected_first_stage)
+            for var in m.component_data_objects(
+                pyo.Var, descend_into=True, active=True
+            ):
+                if var not in first_stage_vars and fix_second_stage_vars:
+                    # should be fixed in here
+                    assert var.fixed
+                    assert var.value == 0
+                    assert var.domain is pyo.Reals
+                else:
+                    # should not be fixed in here
+                    assert not var.fixed
 
-        #check that the contribution to the objective is as expected: sum_i etas[i]
-        split_etas = split_expr(m.obj.expr, [m.etas[i] for i in m.etas.index_set()], allow_iterables=True)
-        repn = generate_standard_repn(split_etas.in_set)
-        assert repn.linear_coefs == pytest.approx([1]*len(m.etas))
-
-        #check that the constant contribution to the objective is as expected: 0.
-        assert split_etas.constant == pytest.approx(0)
-
-        #check that the x variable (first stage vars) contribution to the objective is as expected: 0.
-        split_x = split_expr(m.obj.expr, [m.s[None,1].x], allow_iterables=True)
-        assert split_x.in_set == pytest.approx(0)
-
-        #check that the second-stage variables is as expected: 0.
-        all_expected_first_stage = [m.etas[i] for i in m.etas.index_set()]
-        all_expected_first_stage.append(m.s[None,1].x)
-        split_fsv = split_expr(m.obj.expr, all_expected_first_stage, allow_iterables=True)
-        assert split_fsv.not_in_set == pytest.approx(0)
-            
-
-
-
-
-    
-    
-
+    def test_transform_to_master_fix_second_stage_vars_2(self):
+        solver = BendersSolver()
+        solver.set_options(solver=solver, subproblem_solver=solver)
+        f_options = [True, False]
+        for fix_second_stage_vars in f_options:
+            app = simple_newsvendor()
+            sp = app.sp
+            b = next(iter(sp.bundles))
+            assert sp.scenario_data is not None
+            assert len(sp.scenario_data[None].keys()) > 0
+            # note this mapping works for single scenario bundles
+            # not multiple scenario bundles
+            # the keys for sp.scenario_data[None].keys() are scen["ID"]
+            bounds_map = {s: (-1_000, None) for s in sp.scenario_data[None].keys()}
+            m = BendersSolver._transform_to_master_model(
+                sp=sp,
+                b=b,
+                eta_bounds_map=bounds_map,
+                lower_bounding_otherwise_enforced=False,
+                fix_second_stage_vars=fix_second_stage_vars,
+                objective_sense=pyo.minimize,
+                etas_ordered=False,
+            )
+            all_expected_first_stage = [m.etas[i] for i in m.etas.index_set()]
+            all_expected_first_stage.append(m.s[None, 1].x)
+            first_stage_vars = ComponentSet(all_expected_first_stage)
+            for var in m.component_data_objects(
+                pyo.Var, descend_into=True, active=True
+            ):
+                if var not in first_stage_vars and fix_second_stage_vars:
+                    # should be fixed in here
+                    assert var.fixed
+                    assert var.value == 0
+                    assert var.domain is pyo.Reals
+                else:
+                    # should not be fixed in here
+                    assert not var.fixed
