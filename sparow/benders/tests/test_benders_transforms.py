@@ -270,12 +270,7 @@ class TestBendersTransforms:
         app = absolute_value_testing_version()
         sp = app.sp
         b = next(iter(sp.bundles))
-        assert sp.scenario_data is not None
-        assert len(sp.scenario_data[None].keys()) > 0
-        # note this mapping works for single scenario bundles
-        # not multiple scenario bundles
-        # the keys for sp.scenario_data[None].keys() are scen["ID"]
-        bounds_map = {s: (-1_000, None) for s in sp.scenario_data[None].keys()}
+        bounds_map = {s: (-1_000, None) for s in sp.bundles}
         m = BendersSolver._transform_to_master_model(
             sp=sp,
             b=b,
@@ -301,13 +296,10 @@ class TestBendersTransforms:
         solver.set_options(solver=solver, subproblem_solver=solver)
         app = absolute_value_testing_version()
         sp = app.sp
+        assert sp.bundles is not None
+        assert len(sp.bundles) > 0
         b = next(iter(sp.bundles))
-        assert sp.scenario_data is not None
-        assert len(sp.scenario_data[None].keys()) > 0
-        # note this mapping works for single scenario bundles
-        # not multiple scenario bundles
-        # the keys for sp.scenario_data[None].keys() are scen["ID"]
-        bounds_map = {s: (-1_000, None) for s in sp.scenario_data[None].keys()}
+        bounds_map = {s: (-1_000, None) for s in sp.bundles}
         m = BendersSolver._transform_to_master_model(
             sp=sp,
             b=b,
@@ -336,13 +328,10 @@ class TestBendersTransforms:
         solver.set_options(solver=solver, subproblem_solver=solver)
         app = simple_newsvendor()
         sp = app.sp
+        assert sp.bundles is not None
+        assert len(sp.bundles) > 0
         b = next(iter(sp.bundles))
-        assert sp.scenario_data is not None
-        assert len(sp.scenario_data[None].keys()) > 0
-        # note this mapping works for single scenario bundles
-        # not multiple scenario bundles
-        # the keys for sp.scenario_data[None].keys() are scen["ID"]
-        bounds_map = {s: (-1_000, None) for s in sp.scenario_data[None].keys()}
+        bounds_map = {s: (-1_000, None) for s in sp.bundles}
         m = BendersSolver._transform_to_master_model(
             sp=sp,
             b=b,
@@ -382,13 +371,10 @@ class TestBendersTransforms:
                 local_app_data=app_data, local_model_data=model_data
             )
             sp = app.sp
+            assert sp.bundles is not None
+            assert len(sp.bundles) > 0
             b = next(iter(sp.bundles))
-            assert sp.scenario_data is not None
-            assert len(sp.scenario_data[None].keys()) > 0
-            # note this mapping works for single scenario bundles
-            # not multiple scenario bundles
-            # the keys for sp.scenario_data[None].keys() are scen["ID"]
-            bounds_map = {s: (-1_000, None) for s in sp.scenario_data[None].keys()}
+            bounds_map = {s: (-1_000, None) for s in sp.bundles}
             m = BendersSolver._transform_to_master_model(
                 sp=sp,
                 b=b,
@@ -436,13 +422,10 @@ class TestBendersTransforms:
 
         app = simple_newsvendor()
         sp = app.sp
+        assert sp.bundles is not None
+        assert len(sp.bundles) > 0
         b = next(iter(sp.bundles))
-        assert sp.scenario_data is not None
-        assert len(sp.scenario_data[None].keys()) > 0
-        # note this mapping works for single scenario bundles
-        # not multiple scenario bundles
-        # the keys for sp.scenario_data[None].keys() are scen["ID"]
-        bounds_map = {s: (-1_000, None) for s in sp.scenario_data[None].keys()}
+        bounds_map = {s: (-1_000, None) for s in sp.bundles}
         m = BendersSolver._transform_to_master_model(
             sp=sp,
             b=b,
@@ -494,13 +477,10 @@ class TestBendersTransforms:
                 local_app_data=app_data, local_model_data=model_data
             )
             sp = app.sp
+            assert sp.bundles is not None
+            assert len(sp.bundles) > 0
             b = next(iter(sp.bundles))
-            assert sp.scenario_data is not None
-            assert len(sp.scenario_data[None].keys()) > 0
-            # note this mapping works for single scenario bundles
-            # not multiple scenario bundles
-            # the keys for sp.scenario_data[None].keys() are scen["ID"]
-            bounds_map = {s: (-1_000, None) for s in sp.scenario_data[None].keys()}
+            bounds_map = {s: (-1_000, None) for s in sp.bundles}
             m = BendersSolver._transform_to_master_model(
                 sp=sp,
                 b=b,
@@ -532,13 +512,10 @@ class TestBendersTransforms:
         for fix_second_stage_vars in f_options:
             app = simple_newsvendor()
             sp = app.sp
+            assert sp.bundles is not None
+            assert len(sp.bundles) > 0
             b = next(iter(sp.bundles))
-            assert sp.scenario_data is not None
-            assert len(sp.scenario_data[None].keys()) > 0
-            # note this mapping works for single scenario bundles
-            # not multiple scenario bundles
-            # the keys for sp.scenario_data[None].keys() are scen["ID"]
-            bounds_map = {s: (-1_000, None) for s in sp.scenario_data[None].keys()}
+            bounds_map = {s: (-1_000, None) for s in sp.bundles}
             m = BendersSolver._transform_to_master_model(
                 sp=sp,
                 b=b,
