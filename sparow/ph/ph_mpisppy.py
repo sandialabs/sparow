@@ -17,11 +17,28 @@ with or_topas.util.try_import() as mpisppy_available:
 
 from sparow.sp.sp_pyomo import find_objective
 import sparow.logs
+from sparow import solnpool
+from sparow.ph.ph import finalize_ph_results
+from sparow.sp.util import constrain_EF_model
 
 logger = sparow.logs.logger
 
 
-class Forestlib_client:
+class Sparow_client:
+    """
+    A client class for interfacing with MPISPPY.
+
+    Attributes
+    ----------
+    _sp : StochasticProgram
+        The stochastic program instance.
+    _scenario_probability : dict
+        Dictionary of scenario probabilities.
+    first_stage_solution : object or None
+        The first-stage solution.
+    minimizing : bool or None
+        Whether the problem is a minimization problem.
+    """
 
     def __init__(self, sp):
         self._sp = sp
@@ -31,9 +48,25 @@ class Forestlib_client:
 
     def scenario_creator(self, scenario_name, **kwargs):
         """
-        Create the specified scenario
-        """
+        Create the specified scenario.
 
+        Parameters
+        ----------
+        scenario_name : str
+            Name of the scenario to create.
+        **kwargs : dict
+            Additional keyword arguments.
+
+        Returns
+        -------
+        pyomo.ConcreteModel
+            The created scenario model.
+
+        Raises
+        ------
+        AssertionError
+            If the scenario name is unknown.
+        """
         assert (
             scenario_name in self._scenario_probability
         ), f"Unknown scenario: {scenario_name}"
@@ -61,6 +94,26 @@ class Forestlib_client:
         return model
 
     def scenario_names_creator(self, num_scens, start=None):
+        """
+        Create scenario names.
+
+        Parameters
+        ----------
+        num_scens : int, optional
+            Number of scenarios to create.
+        start : int, optional
+            Starting index for scenarios.
+
+        Returns
+        -------
+        list
+            List of scenario names.
+
+        Raises
+        ------
+        AssertionError
+            If the number of scenarios exceeds the number of bundles.
+        """
         bundle_names = sorted(self._sp.bundles.keys())
         if num_scens is not None:
             assert (
@@ -78,9 +131,35 @@ class Forestlib_client:
         return bundle_names
 
     def inparser_adder(self, cfg):
+        """
+        Add input parser configurations.
+
+        Parameters
+        ----------
+        cfg : object
+            Configuration object.
+
+        Returns
+        -------
+        object
+            The updated configuration object.
+        """
         return cfg
 
     def kw_creator(self, cfg):
+        """
+        Create keyword arguments for scenario creation.
+
+        Parameters
+        ----------
+        cfg : object
+            Configuration object.
+
+        Returns
+        -------
+        dict
+            Dictionary of keyword arguments.
+        """
         return {}
 
     def sample_tree_scen_creator(
@@ -97,23 +176,25 @@ class Forestlib_client:
         and simple for two-stage. (This function supports zhat and
         confidence interval code)
 
-        Args:
-            sname (string):
-                scenario name to be created
-            stage (int >=1 ):
-                for stages > 1, fix data based on sname in earlier stages
-            sample_branching_factors (list of ints):
-                branching factors for the sample tree
-            seed (int):
-                To allow random sampling (for some problems, it might be scenario offset)
-            given_scenario (Pyomo concrete model):
-                if not None, use this to get data for ealier stages
-            scenario_creator_kwargs (dict):
-                keyword args for the standard scenario creator funcion
+        Parameters
+        ----------
+        sname : str
+            Scenario name to be created.
+        stage : int
+            For stages > 1, fix data based on sname in earlier stages.
+        sample_branching_factors : list
+            Branching factors for the sample tree.
+        seed : int
+            To allow random sampling (for some problems, it might be scenario offset).
+        given_scenario : pyomo.ConcreteModel, optional
+            If not None, use this to get data for earlier stages.
+        scenario_creator_kwargs : dict
+            Keyword args for the standard scenario creator function.
 
-        Returns:
-            scenario (Pyomo concrete model): A scenario for sname with
-            data in stages < stage determined by the arguments
+        Returns
+        -------
+        pyomo.ConcreteModel
+            A scenario for sname with data in stages < stage determined by the arguments.
         """
         # Since this is a two-stage problem, we don't have to do much.
         sca = scenario_creator_kwargs.copy()
@@ -122,9 +203,32 @@ class Forestlib_client:
         return self.scenario_creator(sname, **sca)
 
     def scenario_denouement(self, rank, scenario_name, scenario):
+        """
+        Perform cleanup after scenario creation.
+
+        Parameters
+        ----------
+        rank : int
+            MPI rank.
+        scenario_name : str
+            Name of the scenario.
+        scenario : pyomo.ConcreteModel
+            The scenario model.
+        """
         pass
 
     def custom_writer(self, wheel, cfg):
+        """
+        Custom writer for first-stage solutions.
+
+        Parameters
+        ----------
+        wheel : object
+            The wheel object from MPISPPY.
+        cfg : object
+            Configuration object.
+        """
+
         def writer(client, file_name, scenario, bundling):
             root = scenario._mpisppy_node_list[0]
             assert root.name == "ROOT", f"Unexpected root name {root.name=}"
@@ -139,6 +243,14 @@ class Forestlib_client:
         )
 
     def get_first_stage_solutions(self):
+        """
+        Get the first-stage solutions from all MPI ranks.
+
+        Returns
+        -------
+        list
+            List of first-stage solutions.
+        """
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
         size = comm.Get_size()
@@ -161,6 +273,21 @@ class Forestlib_client:
 
 
 def mpisppy_generic_cylinders_main(module, options):
+    """
+    Main function for running MPISPPY generic cylinders.
+
+    Parameters
+    ----------
+    module : object
+        The module containing scenario creation functions.
+    options : dict
+        Dictionary of options for MPISPPY.
+
+    Returns
+    -------
+    dict
+        Dictionary containing the results.
+    """
     import mpisppy.generic_cylinders as gc
 
     cfg = gc._parse_args(module)
@@ -242,12 +369,29 @@ def mpisppy_generic_cylinders_main(module, options):
 
 
 def mpisppy_main(sp, options, argv):
+    """
+    Main function for running MPISPPY.
+
+    Parameters
+    ----------
+    sp : StochasticProgram
+        The stochastic program instance.
+    options : dict
+        Dictionary of options for MPISPPY.
+    argv : list
+        List of command-line arguments.
+
+    Returns
+    -------
+    dict
+        Dictionary containing the results.
+    """
     # Cache sys.argv
     old_argv = sys.argv
     # Clear sys.argv to force mpisppy to ignore it
     sys.argv = [sys.argv[0]] + argv
 
-    guest = Forestlib_client(sp)
+    guest = Sparow_client(sp)
     results = mpisppy_generic_cylinders_main(guest, options)
     if guest.minimizing:
         results = dict(
@@ -267,6 +411,42 @@ def mpisppy_main(sp, options, argv):
 
 
 class ProgressiveHedgingSolver_MPISPPY(object):
+    """
+    A solver for stochastic programs using the progressive hedging algorithm with MPISPPY.
+
+    Attributes
+    ----------
+    mpi_rank : int or None
+        The MPI rank of the current process.
+    rho : dict
+        Dictionary of penalty parameters for variables.
+    max_iterations : int
+        Maximum number of iterations (default is 100).
+    time_limit : float or None
+        Time limit for the solver.
+    convergence_tolerance : float
+        Tolerance for convergence (default is 1e-3).
+    normalize_convergence_norm : bool
+        Whether to normalize the convergence norm (default is True).
+    convergence_norm : int
+        The norm used for convergence checking (default is 1).
+    solver_name : str or None
+        Name of the solver to use.
+    solver_options : dict
+        Dictionary of solver options.
+    finalize_xbar_by_rounding : bool
+        Whether to round xbar values for binary/integer variables (default is True).
+    finalize_all_xbar : bool
+        Whether to finalize all xbar values (default is False).
+    solutions : object or None
+        The solution pool manager.
+    rho_updates : bool
+        Whether to update rho values (default is False).
+    default_rho : float
+        Default value for rho (default is 1.5).
+    mpisppy_options : list
+        List of options for MPISPPY.
+    """
 
     def __init__(self):
         if mpisppy_available:
@@ -308,6 +488,40 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         default_rho=None,
         mpisppy_options=None,
     ):
+        """
+        Set the options for the progressive hedging solver with MPISPPY.
+
+        Parameters
+        ----------
+        rho : dict, optional
+            Dictionary of penalty parameters for variables.
+        max_iterations : int, optional
+            Maximum number of iterations.
+        time_limit : float, optional
+            Time limit for the solver.
+        convergence_tolerance : float, optional
+            Tolerance for convergence.
+        normalize_convergence_norm : bool, optional
+            Whether to normalize the convergence norm.
+        convergence_norm : int, optional
+            The norm used for convergence checking.
+        solver : str, optional
+            Name of the solver to use.
+        solver_options : dict, optional
+            Dictionary of solver options.
+        loglevel : str, optional
+            Logging level.
+        finalize_xbar_by_rounding : bool, optional
+            Whether to round xbar values for binary/integer variables.
+        finalize_all_xbar : bool, optional
+            Whether to finalize all xbar values.
+        rho_updates : bool, optional
+            Whether to update rho values.
+        default_rho : float, optional
+            Default value for rho.
+        mpisppy_options : list, optional
+            List of options for MPISPPY.
+        """
         #
         # Misc configuration
         #
@@ -348,6 +562,21 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             logger.setLevel(loglevel)
 
     def solve(self, sp, **options):
+        """
+        Solve a stochastic program using the progressive hedging algorithm with MPISPPY.
+
+        Parameters
+        ----------
+        sp : StochasticProgram
+            The stochastic program to solve.
+        **options : dict
+            Additional options for the solver.
+
+        Returns
+        -------
+        object or None
+            The solution pool manager containing the results, or None if MPISPPY is not available.
+        """
         if not mpisppy_available:
             # TODO - return metadata with a useful termination condition
             return None
@@ -378,15 +607,14 @@ class ProgressiveHedgingSolver_MPISPPY(object):
         #
         if self.mpi_rank == 0:
             if self.solutions is None:
-                self.solutions = or_topas.solnpool.PoolManager()
+                self.solutions = solnpool.SparowPoolManager()
             if self.finalize_all_xbar:
                 sp_metadata = self.solutions.add_pool(
-                    name="PH Iterations", policy=or_topas.solnpool.PoolPolicy.keep_all
+                    name="PH Iterations", policy=solnpool.PoolPolicy.keep_all
                 )
             else:
                 sp_metadata = self.solutions.add_pool(
-                    name="PH Iterations",
-                    policy=or_topas.solnpool.PoolPolicy.keep_latest,
+                    name="PH Iterations", policy=solnpool.PoolPolicy.keep_latest
                 )
             sp_metadata.solver = "PH Iteration Results"
             sp_metadata.solver_options = dict(
@@ -439,11 +667,34 @@ class ProgressiveHedgingSolver_MPISPPY(object):
 
             for soln in results["first_stage_solutions"]:
                 args = dict(sp=sp, xbar=soln)
-                if results["best_value"]:
-                    args["objective"] = or_topas.solnpool.ObjectiveInfo(
+                if results["best_value"] and sp.is_multifidelity == False:
+                    # MF objective is NOT archived
+                    args["objective"] = solnpool.create_objective(
                         value=float(results["best_value"])
                     )
-                self.archive_solution(**args)
+                # adding soln to the current pool
+                latest_soln = self.archive_solution(**args)
+
+            # creating a new pool
+            soln = self.solutions[latest_soln]
+            self.solutions.add_pool(
+                name="Finalized Last PH Solution",
+                policy=solnpool.PoolPolicy.keep_best,
+            )
+
+            if (
+                results["best_value"]
+                and sp.is_multifidelity == False
+                and sp.continuous_fsv()
+            ):
+                for soln in results["first_stage_solutions"]:
+                    args = dict(sp=sp, xbar=soln)
+                    args["objective"] = solnpool.create_objective(
+                        value=float(results["best_value"])
+                    )
+                    self.archive_solution(**args)
+            else:
+                finalize_ph_results(soln, sp=sp, solutions=self.solutions)
 
             sp_metadata.end_time = str(end_time)
             sp_metadata.time_elapsed = str(end_time - start_time)
@@ -462,9 +713,28 @@ class ProgressiveHedgingSolver_MPISPPY(object):
             return self.solutions
 
     def archive_solution(self, *, sp, xbar, w=None, **kwds):
+        """
+        Archive the current solution.
+
+        Parameters
+        ----------
+        sp : StochasticProgram
+            The stochastic program instance.
+        xbar : list
+            List of variable values.
+        w : dict, optional
+            Dictionary of weights.
+        **kwds : dict
+            Additional keyword arguments.
+
+        Returns
+        -------
+        int
+            The index of the archived solution.
+        """
         w = {} if w is None else w
         variables = [
-            or_topas.solnpool.VariableInfo(
+            solnpool.create_variable(
                 value=float(val),
                 index=i,
                 name=sp.get_variable_name(i),

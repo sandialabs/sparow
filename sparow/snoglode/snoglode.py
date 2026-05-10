@@ -65,6 +65,17 @@ class CustomCandidateGenerator(AbstractCandidateGenerator):
     Note: this saving is happening *before we actually solve for the UB,
     so we do not have a good concept of what the "best" or how close to optimal
     any solution is; this is for demonstrative purposes.
+
+    Attributes
+    ----------
+    ub_required : bool
+        Whether the upper bound problem must be solved.
+    opt : object
+        The solver instance.
+    pm : PoolManager or None
+        The pool manager for storing candidate solutions.
+    candidates : list
+        List of candidate solutions (if alt_sol_available is False).
     """
 
     def __init__(self, solver, subproblems: Subproblems, time_ub: int) -> None:
@@ -102,8 +113,10 @@ class CustomCandidateGenerator(AbstractCandidateGenerator):
         Parameters
         -----------
         subproblem_lifted_variables : list
-            list of all the first stage variables.
-        candidate_solution : dict
+            List of all the first stage variables.
+        subproblem_var_map : pyo.ComponentMap
+            Mapping of variables to their data.
+        candidate_solution_state : dict
             Dictionary containing all candidate solution values.
         """
         # for each of the first stage variables, retrieve value & fix
@@ -116,20 +129,20 @@ class CustomCandidateGenerator(AbstractCandidateGenerator):
         self, subproblem_model: pyo.ConcreteModel
     ) -> Tuple[bool, float]:
         """
-        Given a Pyomo model representing one of the subproblems, solve
+        Given a Pyomo model representing one of the subproblems, solve.
 
         Parameters
         -----------
-        subproblem_model : pyo.ConcreteModel()
-            A pyomo model representing a single subproblem.
-            Should be reflecting current node state
+        subproblem_model : pyo.ConcreteModel
+            A Pyomo model representing a single subproblem.
+            Should be reflecting current node state.
 
         Returns
-        -----------
-        feasible_solution : bool
-            Was the model feasible / solved okay?
-        scenario_objective : float
-            The value of the objective; returns None if infeasible.
+        -------
+        tuple
+            A tuple containing:
+            - feasible_solution (bool): Whether the model was feasible/solved okay.
+            - scenario_objective (float): The value of the objective; None if infeasible.
         """
         # solve model
         results = self.opt.solve(
@@ -169,22 +182,19 @@ class CustomCandidateGenerator(AbstractCandidateGenerator):
         Parameters
         ----------
         node : Node
-            node object representing the current node we are exploring in the branch
+            Node object representing the current node we are exploring in the branch
             and bound tree. Contains all bounding information.
         subproblems : Subproblems
-            initialized subproblem manager.
-            contains all subproblem names, models, probabilities, and lifted var lists/
+            Initialized subproblem manager.
+            Contains all subproblem names, models, probabilities, and lifted var lists.
 
         Returns
-        ----------
-        candidate_found : bool
-            If this method successfully found a candidate or not
-        candidate_solution : dict
-            For each of the lifted variable ID's, therre should be a
-            corresponding value to fix the variable to.
-        candidate_solution_obj : float
-            If we do not want a global guarantee, an objective value is necessary
-            to be produced.
+        -------
+        tuple
+            A tuple containing:
+            - candidate_found (bool): If this method successfully found a candidate or not.
+            - candidate_solution (dict): For each of the lifted variable ID's, there should be a corresponding value to fix the variable to.
+            - candidate_solution_obj (float): If we do not want a global guarantee, an objective value is necessary to be produced.
         """
         # compute the average across all LB solutions as the candidate
         candidate_solution = compute.average_lb_solution(node, subproblems)
@@ -254,28 +264,34 @@ class CustomCandidateGenerator(AbstractCandidateGenerator):
 
 
 class subproblem_creator:
+    """
+    A class to create subproblems for SNoGLoDe.
+
+    Attributes
+    ----------
+    sp : StochasticProgram
+        The stochastic program instance.
+    """
 
     def __init__(self, sp):
         self.sp = sp
 
     def __call__(self, scen_name):
         """
-        function is called once per scenario name passed.
+        Function is called once per scenario name passed.
 
         Parameters
-        ------------
+        -----------
         scen_name : str
-            name representing a unique scenario.
+            Name representing a unique scenario.
 
         Returns
-        ------------
-        scen_model : pyo.ConcreteModel()
-            model representing this particular scenario
-        lifted_var_ids : dict
-            keys = first stage variable ID's (str OR tuple)
-            vals = pyo.Var linked to that first stage var
-        scen_prob : float
-            probability associated with this scenario occuring
+        -------
+        tuple
+            A tuple containing:
+            - scen_model (pyo.ConcreteModel): Model representing this particular scenario.
+            - lifted_var_ids (dict): Keys are first stage variable ID's (str OR tuple), values are pyo.Var linked to that first stage var.
+            - scen_prob (float): Probability associated with this scenario occurring.
         """
         # grab model
         scen_model = self.sp.create_subproblem(scen_name)
@@ -290,6 +306,18 @@ class subproblem_creator:
 
 
 class SnoglodeSolver(object):
+    """
+    A solver for stochastic programs using the SNoGLoDe algorithm.
+
+    Attributes
+    ----------
+    solver_name : str or None
+        Name of the solver to use.
+    max_iterations : int
+        Maximum number of iterations (default is 100).
+    solver_options : dict
+        Dictionary of solver options.
+    """
 
     def __init__(self):
         self.solver_name = None
@@ -299,6 +327,20 @@ class SnoglodeSolver(object):
     def set_options(
         self, *, solver=None, solver_options=None, max_iterations=None, loglevel=None
     ):
+        """
+        Set the options for the SNoGLoDe solver.
+
+        Parameters
+        ----------
+        solver : str, optional
+            Name of the solver to use.
+        solver_options : dict, optional
+            Dictionary of solver options.
+        max_iterations : int, optional
+            Maximum number of iterations.
+        loglevel : str, optional
+            Logging level.
+        """
         #
         # Misc configuration
         #
@@ -315,6 +357,21 @@ class SnoglodeSolver(object):
             logger.setLevel(loglevel)
 
     def solve(self, sp, **options):
+        """
+        Solve a stochastic program using the SNoGLoDe algorithm.
+
+        Parameters
+        ----------
+        sp : StochasticProgram
+            The stochastic program to solve.
+        **options : dict
+            Additional options for the solver.
+
+        Returns
+        -------
+        object
+            The solution pool manager containing the results.
+        """
         start_time = datetime.datetime.now()
         if len(options) > 0:
             self.set_options(**options)

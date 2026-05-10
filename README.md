@@ -32,6 +32,10 @@ pip install -e .
 cd ..
 ```
 
+## Using SPAROW
+
+See [sparow_examples](https://github.com/sandialabs/sparow_examples) for a library of SPAROW examples.
+
 ## Testing
 
 The Pytest software can be used to automatically run all tests within the current directory:
@@ -45,11 +49,3 @@ Additionally, the following syntax generates a summary that includes code covera
 ```bash
 pytest --cov-report term-missing --cov=sparow .
 ```
-
-## Getting started
-
-TODO
-
-## License
-
-TBD (probably BSD)
