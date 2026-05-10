@@ -581,9 +581,9 @@ class BendersSolver(object):
         b : BundleObj
             The BundleObj object (custom to this library).
         eta_bounds_map : dictionary or ComponentMap
-            A dicitonary mapping scenario keys to bound tuples.
+            A dicitonary mapping bundle keys to bound tuples.
             The tuples are in (LowerBound, UpperBound) format.
-            The keys are assumed to be ids for Benders subproblems.
+            The keys are assumed to be bundle ids corresponding to Benders subproblems.
             Constant scenarios should use (0,0) as bound format.
         lower_bounding_otherwise_enforced : Boolean
             A boolean stating if lower bounding of the master objective will be handled external to this code
