@@ -96,6 +96,7 @@ class BendersSolver(object):
         self.master_problem_bundle = None
         self.BendersCutGenerator = BendersGenerator_Serial
         self.BendersTransform = "standard_lp"
+        self.is_persistent_solver = None
 
     def set_options(
         self,
@@ -111,6 +112,7 @@ class BendersSolver(object):
         solutions=None,
         loglevel=None,
         BendersCutGenerator=None,
+        is_persistent_solver=False,
     ):
         # TODO: adapt settings to Benders
         # Likely a subset of these settings for now
@@ -142,6 +144,8 @@ class BendersSolver(object):
             self.support_feasibility_cuts = support_feasibility_cuts
         if BendersCutGenerator is not None:
             self.BendersCutGenerator = BendersCutGenerator
+        if is_persistent_solver is not None:
+            self.is_persistent_solver = is_persistent_solver
 
         if loglevel is not None:
             if loglevel == "DEBUG" or loglevel == "VERBOSE":
@@ -753,8 +757,10 @@ class BendersSolver(object):
                 b_lower
             ][i]
 
-        print(f"Subproblem:")
         model_lower.pprint()
+        print(f"End of model pprint")
+        var_name_list = [(k.name, v.name) for k, v in complicating_variable_map.items()]
+        print(f"{var_name_list=}")
 
         # return the subproblem model, b, and the complicating variable map.
         return model_lower, complicating_variable_map
@@ -769,7 +775,9 @@ class BendersSolver(object):
     # iterate while adding benders cuts
     # report results to user
 
-    def solve_in_dev(self, sp_lower, eta_bounds_map, **options):
+    def solve_in_dev(
+        self, sp_lower, eta_bounds_map, error_on_initialized_root_vars=False, **options
+    ):
         start_time = datetime.datetime.now()
         assert eta_bounds_map is not None, "Must give a valid bounds map"
         assert (
@@ -786,6 +794,9 @@ class BendersSolver(object):
             print(f"  relax_subproblem_integrality {self.relax_subproblem_integrality}")
             print(f"  support_feasibility_cuts     {self.support_feasibility_cuts}")
             print("")
+        assert (
+            not self.is_persistent_solver
+        ), "Assuming for moment, non-persistent solver"
 
         #
         # Setup solution manager and archive context information
@@ -832,23 +843,46 @@ class BendersSolver(object):
             objective_sense=pyo.minimize,
             etas_ordered=False,
         )
+        print(f"Sparow Level Upper Model pprint start:")
         upper_model.pprint()
+        print(f"Sparow Level Upper Model pprint end.")
+
+        root_vars = list(sp_upper.int_to_FirstStageVar[b_upper].values())
+        unitialized_root_vars = [rv for rv in root_vars if rv.value is None]
+        if len(unitialized_root_vars) > 0:
+            if error_on_initialized_root_vars:
+                raise RuntimeWarning(f"There are root variables without initial values")
+            for rv in unitialized_root_vars:
+                if rv.lb is not None:
+                    rv.value = rv.lb
+                elif rv.ub is not None:
+                    rv.value = rv.ub
+                else:
+                    rv.value = 0
+            print(f"Gave default values to {len(unitialized_root_vars)} variables")
+
+        default_root_values = [(rv.name, rv.value, rv.lb, rv.ub) for rv in root_vars]
+        print(f"{default_root_values=}")
 
         # create topas Benders object
-        root_vars = list(sp_upper.int_to_FirstStageVar[b_upper].values())
+
         upper_model.benders = self.BendersCutGenerator()
         # TODO: add the allow feasibility cut flags here
         upper_model.benders.set_input(
             root_vars=root_vars, tol=1e-8, transform=self.BendersTransform
         )
         # create master solver object
-        opt = pyo.SolverFactory(self.solver_name)
+        if self.is_persistent_solver:
+            raise RuntimeError(f"Not Supporting Peristent Solvers at present")
+        else:
+            opt = pyo.SolverFactory(self.solver_name)
         # TODO: handle persistent solver setup
         # opt.set_instance(m)
 
         # add subproblems
         tic("Creating subproblems", logger=logger, level=logging.VERBOSE)
         for b_lower in sp_lower.bundles:
+            print(f"Sparow Level Subproblem {b_lower=} creation start:")
             subproblem_fn_kwargs = dict()
             subproblem_fn_kwargs["sp_lower"] = sp_lower
             subproblem_fn_kwargs["b_lower"] = b_lower
@@ -860,6 +894,7 @@ class BendersSolver(object):
                 root_eta=upper_model.etas[b_lower],  # this may be finicky
                 subproblem_solver=self.subproblem_solver_name,  # make sure this is initialized above
             )
+            print(f"Sparow Level Subproblem {b_lower=} creation end.")
         termination_condition = "Termination: unknown"
 
         #
@@ -877,12 +912,19 @@ class BendersSolver(object):
             # )
 
             # add Benders iteration here
-
             # handle non-persistent case
-            res = opt.solve(tee=False, save_results=False)
-            cuts_added = upper_model.benders.generate_cut()
-            for c in cuts_added:
-                opt.add_constraint(c)
+            if self.is_persistent_solver:
+                raise RuntimeError(f"Not Supporting Persitent Solvers at present")
+                res = opt.solve(tee=False, save_results=False)
+                cuts_added = upper_model.benders.generate_cut()
+                for c in cuts_added:
+                    opt.add_constraint(c)
+            else:
+                res = opt.solve(
+                    upper_model,
+                    tee=False,
+                )
+                cuts_added = upper_model.benders.generate_cut()
 
             if len(cuts_added) == 0:
                 termination_condition = f"Termination: No Cuts Added"
