@@ -7,6 +7,7 @@ from sparow.sp.examples import (
     MFrandom_newsvendor,
     simple_newsvendor,
     simple_absolute_value,
+    adjustable_absolute_value,
 )
 
 from pyomo.common.dependencies import attempt_import
@@ -47,6 +48,59 @@ class TestBendersNewsvendor:
         assert app.unique_solution
         x = soln["variables"][0]["value"]
         assert x == pytest.approx(app.solution_values["x"])
+
+    def test_shifted_abs(self, mip_solver):
+        solver = BendersSolver()
+        solver.set_options(solver=mip_solver, subproblem_solver=mip_solver)
+        a_val = 1
+        model_data = {
+            "scenarios": [
+                {"ID": 1, "LB": None, "UB": None},
+            ],
+        }
+        app_data = dict(a=a_val, c=0, L=1, R=1)
+        app = adjustable_absolute_value(
+            local_app_data=app_data, local_model_data=model_data
+        )
+
+        default_lower_eta = -1_000
+        eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
+        results = solver.solve_in_dev(app.sp, eta_bounds_map)
+        results_dict = results.to_dict()
+        soln = next(iter(results_dict["solutions"].values()))
+
+        obj_val = soln["objectives"][0]["value"]
+        assert obj_val == pytest.approx(app.objective_value)
+        assert app.unique_solution
+        x = soln["variables"][0]["value"]
+        assert x == pytest.approx(a_val)
+
+    def test_shifted_abs_2(self, mip_solver):
+        solver = BendersSolver()
+        solver.set_options(solver=mip_solver, subproblem_solver=mip_solver)
+        a_vals = [1, -1, 3, 4]
+        for a_val in a_vals:
+            model_data = {
+                "scenarios": [
+                    {"ID": 1, "LB": None, "UB": None},
+                ],
+            }
+            app_data = dict(a=a_val, c=0, L=1, R=1)
+            app = adjustable_absolute_value(
+                local_app_data=app_data, local_model_data=model_data
+            )
+
+            default_lower_eta = -1_000
+            eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
+            results = solver.solve_in_dev(app.sp, eta_bounds_map)
+            results_dict = results.to_dict()
+            soln = next(iter(results_dict["solutions"].values()))
+
+            obj_val = soln["objectives"][0]["value"]
+            assert obj_val == pytest.approx(app.objective_value)
+            assert app.unique_solution
+            x = soln["variables"][0]["value"]
+            assert x == pytest.approx(a_val)
 
     def Xtest_simple(self, mip_solver):
         app = simple_newsvendor()
