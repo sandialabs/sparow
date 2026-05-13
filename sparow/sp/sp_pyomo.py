@@ -724,17 +724,18 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
         pyomo.ConcreteModel
             The extensive form model for the bundle.
         """
-        if len(self.bundles[b].scenarios) == 1:
+        if not compact_repn:
+            EF_model = self._create_noncompact_bundle_EF_repn(
+                b=b, w=w, x_bar=x_bar, rho=rho, cached=cached
+            )
+
+        elif len(self.bundles[b].scenarios) == 1:
             EF_model = self._create_single_scenario_EF_repn(
                 b=b, w=w, x_bar=x_bar, rho=rho, cached=cached
             )
 
-        elif compact_repn:
-            EF_model = self._create_compact_bundle_EF_repn(
-                b=b, w=w, x_bar=x_bar, rho=rho, cached=cached
-            )
         else:
-            EF_model = self._create_noncompact_bundle_EF_repn(
+            EF_model = self._create_compact_bundle_EF_repn(
                 b=b, w=w, x_bar=x_bar, rho=rho, cached=cached
             )
 
