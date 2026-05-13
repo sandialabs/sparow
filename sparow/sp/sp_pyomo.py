@@ -352,6 +352,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
 
     def create_EF(
         self,
+        *,
         model_fidelities: dict | None = None,
         cache_bundles: bool = False,
         compact_repn: bool = True,

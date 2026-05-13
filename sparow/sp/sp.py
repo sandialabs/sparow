@@ -302,8 +302,10 @@ class StochasticProgram(object):
 
     def create_EF(
         self,
+        *,
         model_fidelities: dict[str, Any] | None = None,
         cache_bundles: bool = False,
+        compact_repn: bool = True,
     ) -> Any:
         """
         Create the extensive form of the stochastic program.
