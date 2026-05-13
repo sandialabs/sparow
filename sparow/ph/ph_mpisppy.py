@@ -72,7 +72,7 @@ class Sparow_client:
         ), f"Unknown scenario: {scenario_name}"
 
         # Create the concrete model object
-        model = self._sp.create_subproblem(scenario_name,compact_repn=False)
+        model = self._sp.create_subproblem(scenario_name, compact_repn=False)
         obj = find_objective(model)
         self.minimizing = obj.is_minimizing()
 
