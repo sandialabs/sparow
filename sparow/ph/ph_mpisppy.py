@@ -80,8 +80,8 @@ class Sparow_client:
         model._mpisppy_probability = self._scenario_probability[scenario_name]
 
         # Add _nonant_vardata_list
-        varlist =[v for v in model.first_stage_variables.values()]
-    
+        varlist = [v for v in model.first_stage_variables.values()]
+
         model._nonant_vardata_list = mpisppy.utils.sputils.build_vardatalist(
             model, varlist
         )
