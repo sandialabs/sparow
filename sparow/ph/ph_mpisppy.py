@@ -81,10 +81,7 @@ class Sparow_client:
 
         # Add _nonant_vardata_list
         varlist =[v for v in model.first_stage_variables.values()]
-        #varlist = [
-        #    self._sp.int_to_FirstStageVar[scenario_name][i]
-        #    for i in sorted(self._sp.int_to_FirstStageVar[scenario_name].keys())
-        #]
+    
         model._nonant_vardata_list = mpisppy.utils.sputils.build_vardatalist(
             model, varlist
         )
