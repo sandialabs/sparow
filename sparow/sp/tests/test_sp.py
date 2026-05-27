@@ -127,7 +127,7 @@ class TestSP(object):
 
     def test_sp0_EF_noncompact(self, sp0):
         M = sp0.create_EF(compact_repn=False)
-        assert getattr(M, "non_ant_cons", None) == None
+        assert len(M.non_ant_cons) == 1
         assert len(M.s) == 1
         assert len(M.first_stage_variables) == 1
 

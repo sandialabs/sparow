@@ -72,7 +72,7 @@ class Sparow_client:
         ), f"Unknown scenario: {scenario_name}"
 
         # Create the concrete model object
-        model = self._sp.create_subproblem(scenario_name)
+        model = self._sp.create_subproblem(scenario_name, compact_repn=False)
         obj = find_objective(model)
         self.minimizing = obj.is_minimizing()
 
@@ -80,10 +80,8 @@ class Sparow_client:
         model._mpisppy_probability = self._scenario_probability[scenario_name]
 
         # Add _nonant_vardata_list
-        varlist = [
-            self._sp.int_to_FirstStageVar[scenario_name][i]
-            for i in sorted(self._sp.int_to_FirstStageVar[scenario_name].keys())
-        ]
+        varlist = [v for v in model.first_stage_variables.values()]
+
         model._nonant_vardata_list = mpisppy.utils.sputils.build_vardatalist(
             model, varlist
         )
@@ -290,13 +288,13 @@ def mpisppy_generic_cylinders_main(module, options):
     """
     import mpisppy.generic_cylinders as gc
 
-    cfg = gc._parse_args(module)
+    cfg = gc.parse_args(module)
     if options:
         for option, value in options.items():
             cfg[option] = value
 
     bundle_wrapper = None  # the default
-    if gc._proper_bundles(cfg):
+    if gc.proper_bundles(cfg):
         import mpisppy.utils.proper_bundler as proper_bundler
 
         bundle_wrapper = proper_bundler.ProperBundler(module)
