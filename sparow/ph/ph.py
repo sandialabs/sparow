@@ -143,11 +143,12 @@ class ProgressiveHedgingSolver(object):
         self.normalize_convergence_norm = True
         self.convergence_norm = 1
         self.solver_name = None
-        self.subproblem_solver = None
         self.solver_options = {}
-        self.relax_subproblem_integrality = False
-        self.support_feasibility_cuts = False
+        self.finalize_xbar_by_rounding = True
+        self.finalize_all_xbar = False
         self.solutions = None
+        self.rho_updates = False
+        self.default_rho = None
 
     def set_options(
         self,
@@ -229,9 +230,7 @@ class ProgressiveHedgingSolver(object):
         if finalize_all_xbar is not None:
             self.finalize_all_xbar = finalize_all_xbar
         if solution_manager is not None:
-            self.solution_manager = (
-                solution_manager  # TODO: this isn't used in here, we use self.solutions
-            )
+            self.solution_manager = solution_manager
 
         if loglevel is not None:
             if loglevel == "DEBUG" or loglevel == "VERBOSE":

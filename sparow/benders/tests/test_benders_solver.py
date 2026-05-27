@@ -6,6 +6,7 @@ from sparow.sp.examples import (
     HF_newsvendor,
     MFrandom_newsvendor,
     simple_newsvendor,
+    single_scenario_newsvendor,
     simple_absolute_value,
     adjustable_absolute_value,
 )
@@ -101,6 +102,24 @@ class TestBendersNewsvendor:
             assert app.unique_solution
             x = soln["variables"][0]["value"]
             assert x == pytest.approx(a_val)
+
+    def Xtest_single_scenario_newsvendor(self, mip_solver):
+        app = single_scenario_newsvendor()
+        solver = BendersSolver()
+        solver.set_options(solver=mip_solver, subproblem_solver=mip_solver)
+
+        default_lower_eta = -1_000
+        eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
+        results = solver.solve_in_dev(app.sp, eta_bounds_map)
+        results_dict = results.to_dict()
+        soln = next(iter(results_dict["solutions"].values()))
+
+
+        assert app.unique_solution
+        x = soln["variables"][0]["value"]
+        assert x == pytest.approx(app.solution_values["x"])
+        obj_val = soln["objectives"][0]["value"]
+        assert obj_val == pytest.approx(app.objective_value)
 
     def Xtest_simple_newsvendor(self, mip_solver):
         app = simple_newsvendor()

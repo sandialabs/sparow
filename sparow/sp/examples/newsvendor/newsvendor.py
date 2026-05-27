@@ -62,7 +62,6 @@ def simple_newsvendor():
         objective_value=76.5,
         unique_solution=True,
         solution_values={"x": 60.0, "s[None,1].x": 15.0, "s[None,2].x": 60.0},
-        # solution_values={"x": 60.0},
     )
 
 def single_scenario_newsvendor():
@@ -90,9 +89,12 @@ def single_scenario_newsvendor():
     #where is s[None,1].x and "s[None,2]" coming from?
     #there are either 1 or 5 scenarios
     #could be that only 2 of the 5 values were being checked in the earlier logic
+
+    #when x=0, y \geq bd, or for multiple scenarios y \geq sum_i p_i b_i d_i
+    #in this case, that should be 50*1.5=75.
     return Munch(
         sp=sp,
         objective_value=50.0,
         unique_solution=True,
-        solution_values={"x": 60.0, "s[None,1].x": 15.0, "s[None,2].x": 60.0},
+        solution_values={"x": 50.0},
     )
