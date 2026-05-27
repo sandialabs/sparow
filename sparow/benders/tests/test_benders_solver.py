@@ -102,7 +102,7 @@ class TestBendersNewsvendor:
             x = soln["variables"][0]["value"]
             assert x == pytest.approx(a_val)
 
-    def Xtest_simple(self, mip_solver):
+    def Xtest_simple_newsvendor(self, mip_solver):
         app = simple_newsvendor()
         solver = BendersSolver()
         solver.set_options(solver=mip_solver, subproblem_solver=mip_solver)
@@ -113,11 +113,13 @@ class TestBendersNewsvendor:
         results_dict = results.to_dict()
         soln = next(iter(results_dict["solutions"].values()))
 
-        obj_val = soln["objectives"][0]["value"]
-        assert obj_val == pytest.approx(app.objective_value)
+
         assert app.unique_solution
         x = soln["variables"][0]["value"]
         assert x == pytest.approx(app.solution_values["x"])
+        obj_val = soln["objectives"][0]["value"]
+        assert obj_val == pytest.approx(app.objective_value)
+        
 
     def Xtest_LF(self, mip_solver):
         app = LF_newsvendor()

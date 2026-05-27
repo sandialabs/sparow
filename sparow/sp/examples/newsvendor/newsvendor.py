@@ -62,4 +62,37 @@ def simple_newsvendor():
         objective_value=76.5,
         unique_solution=True,
         solution_values={"x": 60.0, "s[None,1].x": 15.0, "s[None,2].x": 60.0},
+        # solution_values={"x": 60.0},
+    )
+
+def single_scenario_newsvendor():
+    """
+    Newsvendor example adapted from
+
+    A Tutorial on Stochastic Programming
+    Alexander Shapiro∗ and Andy Philpott†
+    March 21, 2007
+    https://www.epoc.org.nz/papers/ShapiroTutorialSP.pdf
+
+    Specifically the d = 50 case, where z^* also is 50.0
+
+    This is designed to check the probability weighting piece of benders
+    """
+
+    local_model_data = {
+    "scenarios": [
+        {"ID": 1, "d": 50},
+        ],
+    }
+    sp = stochastic_program(first_stage_variables=["x"])
+    sp.initialize_application(app_data=app_data)
+    sp.initialize_model(model_data=local_model_data, model_builder=builder)
+    #where is s[None,1].x and "s[None,2]" coming from?
+    #there are either 1 or 5 scenarios
+    #could be that only 2 of the 5 values were being checked in the earlier logic
+    return Munch(
+        sp=sp,
+        objective_value=50.0,
+        unique_solution=True,
+        solution_values={"x": 60.0, "s[None,1].x": 15.0, "s[None,2].x": 60.0},
     )

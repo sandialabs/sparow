@@ -737,7 +737,7 @@ class BendersSolver(object):
         At present, it builds the needed map from the first-stage variables in m_upper to those in b.
         It then returns the subproblem model, b, and that complicating variable map.
         """
-
+        # print(f"Working on setting up subproblem {b_lower=}")
         # rely on _transform_to_subproblem_model to create the subproblem model
         model_lower = BendersSolver._transform_to_subproblem_model(
             sp_lower, b_lower, default_domain=pyo.Reals
@@ -752,6 +752,9 @@ class BendersSolver(object):
         # this format actually does not require that sp_upper and sp_lower are separate sp objects, but it can handle separate sp objects
 
         complicating_variable_map = ComponentMap()
+
+        # in the case where there is one first stage variable 'x'
+        # this should link upper_model.s[None, b_upper].x to lower_model.s[None, b_lower].x
         for i, var_upper in sp_upper.int_to_FirstStageVar[b_upper].items():
             complicating_variable_map[var_upper] = sp_lower.int_to_FirstStageVar[
                 b_lower
@@ -925,6 +928,16 @@ class BendersSolver(object):
                     tee=False,
                 )
                 cuts_added = upper_model.benders.generate_cut()
+                print(f"Number of cuts: {len(cuts_added)}")
+
+            if True:
+                #I think there is an issue in the cuts somewhere for simple_newsvendor
+                #we get the same x value between two iterations that is not the optimal
+                #check with the single scenario case
+                #but need to figure out the x vs s[None,1].x vs s[None,2].x difference
+                print(f"Start of Pretty Print of {iteration=} Upper Model")
+                upper_model.pprint()
+                print(f"End of Pretty Print of {iteration=} Upper Model")
 
             if len(cuts_added) == 0:
                 termination_condition = f"Termination: No Cuts Added"
@@ -948,6 +961,9 @@ class BendersSolver(object):
         sp_metadata.termination_condition = termination_condition
         sp_metadata.start_time = str(start_time)
 
+        print(f"Sparow Level Upper Model after solve pprint start:")
+        upper_model.pprint()
+        print(f"Sparow Level Upper Model after solve pprint end.")
         variables = [
             solnpool.create_variable(
                 value=sp_upper.get_variable_value(b_upper, i),
