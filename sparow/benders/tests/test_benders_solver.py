@@ -103,7 +103,7 @@ class TestBendersNewsvendor:
             x = soln["variables"][0]["value"]
             assert x == pytest.approx(a_val)
 
-    def Xtest_single_scenario_newsvendor(self, mip_solver):
+    def test_single_scenario_newsvendor(self, mip_solver):
         app = single_scenario_newsvendor()
         solver = BendersSolver()
         solver.set_options(solver=mip_solver, subproblem_solver=mip_solver)
@@ -114,14 +114,16 @@ class TestBendersNewsvendor:
         results_dict = results.to_dict()
         soln = next(iter(results_dict["solutions"].values()))
 
-
+        
         assert app.unique_solution
-        x = soln["variables"][0]["value"]
-        assert x == pytest.approx(app.solution_values["x"])
         obj_val = soln["objectives"][0]["value"]
+        x = soln["variables"][0]["value"]
+        print(f"{x=}, {obj_val=}")
         assert obj_val == pytest.approx(app.objective_value)
+        assert x == pytest.approx(app.solution_values["x"])
+        
 
-    def Xtest_simple_newsvendor(self, mip_solver):
+    def test_simple_newsvendor(self, mip_solver):
         app = simple_newsvendor()
         solver = BendersSolver()
         solver.set_options(solver=mip_solver, subproblem_solver=mip_solver)
@@ -140,43 +142,4 @@ class TestBendersNewsvendor:
         assert obj_val == pytest.approx(app.objective_value)
         
 
-    def Xtest_LF(self, mip_solver):
-        app = LF_newsvendor()
-        solver = BendersSolver()
-        solver.set_options(solver=mip_solver)
-        results = solver.solve_in_dev(app.sp)
-        results_dict = results.to_dict()
-        soln = next(iter(results_dict["solutions"].values()))
-
-        obj_val = soln["objectives"][0]["value"]
-        assert obj_val == pytest.approx(app.objective_value)
-        assert app.unique_solution
-        x = soln["variables"][0]["value"]
-        assert x == pytest.approx(app.solution_values["x"])
-
-    def Xtest_HF(self, mip_solver):
-        app = HF_newsvendor()
-        solver = BendersSolver()
-        solver.set_options(solver=mip_solver)
-        results = solver.solve_in_dev(app.sp)
-        results_dict = results.to_dict()
-        soln = next(iter(results_dict["solutions"].values()))
-
-        obj_val = soln["objectives"][0]["value"]
-        assert obj_val == pytest.approx(app.objective_value)
-        assert app.unique_solution
-        x = soln["variables"][0]["value"]
-        assert x == pytest.approx(app.solution_values["x"])
-
-    def Xtest_MFrandom(self, mip_solver):
-        app = MFrandom_newsvendor()
-        solver = BendersSolver()
-        solver.set_options(solver=mip_solver)
-        results = solver.solve_in_dev(app.sp)
-        results_dict = results.to_dict()
-        soln = next(iter(results_dict["solutions"].values()))
-
-        obj_val = soln["objectives"][0]["value"]
-        assert obj_val == pytest.approx(app.objective_value)
-        assert not app.unique_solution
-        # The optimal x value is not unique, so we don't test its value
+    

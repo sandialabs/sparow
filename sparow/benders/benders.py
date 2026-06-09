@@ -760,11 +760,6 @@ class BendersSolver(object):
                 b_lower
             ][i]
 
-        model_lower.pprint()
-        print(f"End of model pprint")
-        var_name_list = [(k.name, v.name) for k, v in complicating_variable_map.items()]
-        print(f"{var_name_list=}")
-
         # return the subproblem model, b, and the complicating variable map.
         return model_lower, complicating_variable_map
 
@@ -846,9 +841,6 @@ class BendersSolver(object):
             objective_sense=pyo.minimize,
             etas_ordered=False,
         )
-        print(f"Sparow Level Upper Model pprint start:")
-        upper_model.pprint()
-        print(f"Sparow Level Upper Model pprint end.")
 
         root_vars = list(sp_upper.int_to_FirstStageVar[b_upper].values())
         unitialized_root_vars = [rv for rv in root_vars if rv.value is None]
@@ -864,8 +856,8 @@ class BendersSolver(object):
                     rv.value = 0
             print(f"Gave default values to {len(unitialized_root_vars)} variables")
 
-        default_root_values = [(rv.name, rv.value, rv.lb, rv.ub) for rv in root_vars]
-        print(f"{default_root_values=}")
+        # default_root_values = [(rv.name, rv.value, rv.lb, rv.ub) for rv in root_vars]
+        # print(f"{default_root_values=}")
 
         # create topas Benders object
 
@@ -885,7 +877,6 @@ class BendersSolver(object):
         # add subproblems
         tic("Creating subproblems", logger=logger, level=logging.VERBOSE)
         for b_lower in sp_lower.bundles:
-            print(f"Sparow Level Subproblem {b_lower=} creation start:")
             subproblem_fn_kwargs = dict()
             subproblem_fn_kwargs["sp_lower"] = sp_lower
             subproblem_fn_kwargs["b_lower"] = b_lower
@@ -897,7 +888,6 @@ class BendersSolver(object):
                 root_eta=upper_model.etas[b_lower],  # this may be finicky
                 subproblem_solver=self.subproblem_solver_name,  # make sure this is initialized above
             )
-            print(f"Sparow Level Subproblem {b_lower=} creation end.")
         termination_condition = "Termination: unknown"
 
         #
@@ -928,16 +918,6 @@ class BendersSolver(object):
                     tee=False,
                 )
                 cuts_added = upper_model.benders.generate_cut()
-                print(f"Number of cuts: {len(cuts_added)}")
-
-            if True:
-                #I think there is an issue in the cuts somewhere for simple_newsvendor
-                #we get the same x value between two iterations that is not the optimal
-                #check with the single scenario case
-                #but need to figure out the x vs s[None,1].x vs s[None,2].x difference
-                print(f"Start of Pretty Print of {iteration=} Upper Model")
-                upper_model.pprint()
-                print(f"End of Pretty Print of {iteration=} Upper Model")
 
             if len(cuts_added) == 0:
                 termination_condition = f"Termination: No Cuts Added"
@@ -961,9 +941,9 @@ class BendersSolver(object):
         sp_metadata.termination_condition = termination_condition
         sp_metadata.start_time = str(start_time)
 
-        print(f"Sparow Level Upper Model after solve pprint start:")
-        upper_model.pprint()
-        print(f"Sparow Level Upper Model after solve pprint end.")
+        # print(f"Sparow Level Upper Model after solve pprint start:")
+        # upper_model.pprint()
+        # print(f"Sparow Level Upper Model after solve pprint end.")
         variables = [
             solnpool.create_variable(
                 value=sp_upper.get_variable_value(b_upper, i),
