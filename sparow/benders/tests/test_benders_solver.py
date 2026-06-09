@@ -114,14 +114,12 @@ class TestBendersNewsvendor:
         results_dict = results.to_dict()
         soln = next(iter(results_dict["solutions"].values()))
 
-        
         assert app.unique_solution
         obj_val = soln["objectives"][0]["value"]
         x = soln["variables"][0]["value"]
         print(f"{x=}, {obj_val=}")
         assert obj_val == pytest.approx(app.objective_value)
         assert x == pytest.approx(app.solution_values["x"])
-        
 
     def test_simple_newsvendor(self, mip_solver):
         app = simple_newsvendor()
@@ -134,12 +132,8 @@ class TestBendersNewsvendor:
         results_dict = results.to_dict()
         soln = next(iter(results_dict["solutions"].values()))
 
-
         assert app.unique_solution
         x = soln["variables"][0]["value"]
         assert x == pytest.approx(app.solution_values["x"])
         obj_val = soln["objectives"][0]["value"]
         assert obj_val == pytest.approx(app.objective_value)
-        
-
-    

@@ -10,10 +10,7 @@ from .newsvendor.mf_newsvendor import (
     MFrandom_newsvendor,
     MFpaired_newsvendor,
 )
-from .newsvendor.newsvendor import (
-    simple_newsvendor, 
-    single_scenario_newsvendor
-)
+from .newsvendor.newsvendor import simple_newsvendor, single_scenario_newsvendor
 
 from .absolute_value.absolute_value import (
     simple_absolute_value,

@@ -92,7 +92,9 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         self.varcuid_to_int: dict = {}
         self.int_to_FirstStageVar: dict = {}  # indexed by bundle id
         self.int_to_FirstStageVarName: dict = {}
-        self.int_to_ObjectiveCoef: dict = {} # MPV: I think this mapping implies that all objectives are linear?
+        self.int_to_ObjectiveCoef: dict = (
+            {}
+        )  # MPV: I think this mapping implies that all objectives are linear?
         self.solver_options: dict = {}
         self.pyo_solver: Any | None = None
         self._model_cache: dict = {}  # indexed by bundle id

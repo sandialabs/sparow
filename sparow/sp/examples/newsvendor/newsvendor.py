@@ -64,6 +64,7 @@ def simple_newsvendor():
         solution_values={"x": 60.0, "s[None,1].x": 15.0, "s[None,2].x": 60.0},
     )
 
+
 def single_scenario_newsvendor():
     """
     Newsvendor example adapted from
@@ -79,19 +80,19 @@ def single_scenario_newsvendor():
     """
 
     local_model_data = {
-    "scenarios": [
-        {"ID": 1, "d": 50},
+        "scenarios": [
+            {"ID": 1, "d": 50},
         ],
     }
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(model_data=local_model_data, model_builder=builder)
-    #where is s[None,1].x and "s[None,2]" coming from?
-    #there are either 1 or 5 scenarios
-    #could be that only 2 of the 5 values were being checked in the earlier logic
+    # where is s[None,1].x and "s[None,2]" coming from?
+    # there are either 1 or 5 scenarios
+    # could be that only 2 of the 5 values were being checked in the earlier logic
 
-    #when x=0, y \geq bd, or for multiple scenarios y \geq sum_i p_i b_i d_i
-    #in this case, that should be 50*1.5=75.
+    # when x=0, y \geq bd, or for multiple scenarios y \geq sum_i p_i b_i d_i
+    # in this case, that should be 50*1.5=75.
     return Munch(
         sp=sp,
         objective_value=50.0,
