@@ -1,3 +1,5 @@
+import pprint
+
 # import parallel PH solver (mpi-sppy wrapper)
 from sparow.ph.ph_mpisppy import ProgressiveHedgingSolver_MPISPPY
 
