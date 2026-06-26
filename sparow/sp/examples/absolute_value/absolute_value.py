@@ -73,7 +73,9 @@ def builder(data, args):
     m.y = pyo.Var(m.y_indices, bounds=(0, None))
 
     # objective
-    m.obj = pyo.Objective(expr=c * m.x + R * m.y["Right"] + L * m.y["Left"] + constant_offset)
+    m.obj = pyo.Objective(
+        expr=c * m.x + R * m.y["Right"] + L * m.y["Left"] + constant_offset
+    )
 
     # vertex constriant
     m.vertex_cons = pyo.Constraint(expr=-m.y["Right"] + m.y["Left"] == a - m.x)
@@ -86,6 +88,7 @@ def builder(data, args):
         m.ub_cons = pyo.Constraint(expr=m.y["UB_Slack"] + m.x == UB)
 
     return m
+
 
 def builder_testing(data, args):
     """
@@ -118,8 +121,8 @@ def builder_testing(data, args):
     m.vertex_cons = pyo.Constraint(expr=-m.y["Right"] + m.y["Left"] == a - m.x)
 
     # x constraint
-    m.x_lower = pyo.Constraint(expr = -m.x <= 5)
-    m.x_upper = pyo.Constraint(expr = m.x <= 7)
+    m.x_lower = pyo.Constraint(expr=-m.x <= 5)
+    m.x_upper = pyo.Constraint(expr=m.x <= 7)
 
     # optional lower bound constraint
     if LB is not None:
@@ -199,6 +202,7 @@ def feasibility_included_absolute_value():
         },
     )
 
+
 def absolute_value_testing_version():
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_application(app_data=app_data)
@@ -212,7 +216,8 @@ def absolute_value_testing_version():
         },
     )
 
-def adjustable_absolute_value(*,local_app_data, local_model_data):
+
+def adjustable_absolute_value(*, local_app_data, local_model_data):
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_application(app_data=local_app_data)
     sp.initialize_model(model_data=local_model_data, model_builder=builder)

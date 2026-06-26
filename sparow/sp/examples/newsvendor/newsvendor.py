@@ -64,6 +64,7 @@ def simple_newsvendor():
         solution_values={"x": 60.0, "s[None,1].x": 15.0, "s[None,2].x": 60.0},
     )
 
+
 def single_scenario_newsvendor():
     """
     Newsvendor example adapted from
@@ -79,8 +80,8 @@ def single_scenario_newsvendor():
     """
 
     local_model_data = {
-    "scenarios": [
-        {"ID": 1, "d": 50},
+        "scenarios": [
+            {"ID": 1, "d": 50},
         ],
     }
     sp = stochastic_program(first_stage_variables=["x"])
