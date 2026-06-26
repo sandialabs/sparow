@@ -40,7 +40,7 @@ class TestBendersNewsvendor:
 
         default_lower_eta = -1_000
         eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
-        results = solver.solve_in_dev(app.sp, eta_bounds_map)
+        results = solver.solve(app.sp, eta_bounds_map)
         results_dict = results.to_dict()
         soln = next(iter(results_dict["solutions"].values()))
 
@@ -66,7 +66,7 @@ class TestBendersNewsvendor:
 
         default_lower_eta = -1_000
         eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
-        results = solver.solve_in_dev(app.sp, eta_bounds_map)
+        results = solver.solve(app.sp, eta_bounds_map)
         results_dict = results.to_dict()
         soln = next(iter(results_dict["solutions"].values()))
 
@@ -93,7 +93,7 @@ class TestBendersNewsvendor:
 
             default_lower_eta = -1_000
             eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
-            results = solver.solve_in_dev(app.sp, eta_bounds_map)
+            results = solver.solve(app.sp, eta_bounds_map)
             results_dict = results.to_dict()
             soln = next(iter(results_dict["solutions"].values()))
 
@@ -110,7 +110,7 @@ class TestBendersNewsvendor:
 
         default_lower_eta = -1_000
         eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
-        results = solver.solve_in_dev(app.sp, eta_bounds_map)
+        results = solver.solve(app.sp, eta_bounds_map)
         results_dict = results.to_dict()
         soln = next(iter(results_dict["solutions"].values()))
 
@@ -130,7 +130,7 @@ class TestBendersNewsvendor:
 
         default_lower_eta = -1_000
         eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
-        results = solver.solve_in_dev(app.sp, eta_bounds_map)
+        results = solver.solve(app.sp, eta_bounds_map)
         results_dict = results.to_dict()
         soln = next(iter(results_dict["solutions"].values()))
 

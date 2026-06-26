@@ -27,36 +27,8 @@ modified_model_data = {
 }
 
 
-#
-# Function that constructs a newsvendor model
-# including a single second stage
-#
-# def builder(data, args):
-#     # This function creates a polyhedral objective with 2 sections,
-#     #   which is formed by: greater and less.
-#     # Since there are two line segments, there can be up to one vertex.
-#     # This is the same model creation logic as LF_newsvendor in sp/examples/mf_newsvendor.py.
-#     # Scenario data between files may be different.
-#     b = data["b"]
-#     c = data["c"]
-#     h = data["h"]
-#     d = data["d"]
-
-#     M = pyo.ConcreteModel(data["ID"])
-
-#     M.x = pyo.Var(within=pyo.NonNegativeReals)
-
-#     M.y = pyo.Var()
-#     M.greater = pyo.Constraint(expr=M.y >= (c - b) * M.x + b * d)
-#     M.less = pyo.Constraint(expr=M.y >= (c + h) * M.x - h * d)
-
-#     M.o = pyo.Objective(expr=M.y)
-
-#     return M
-
-
 def builder(data, args):
-    """
+    r"""
     This subproblem implements the following function
 
     Q(x) =  max{R(x-a), -L(x-a)} if x \in [LB, UB]
@@ -160,7 +132,7 @@ def builder_testing(data, args):
 
 
 def simple_absolute_value():
-    """
+    r"""
     Adapted from Modified_Absolute_Value problem in OR-TOPAS
     Implements the following function:
 
