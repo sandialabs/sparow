@@ -17,10 +17,6 @@ from sparow import solnpool
 import sparow.logs
 from sparow.sp.bundling import bundling_functions
 
-# these work
-import sparow.logs
-from sparow import solnpool
-
 # or-topas imports
 import or_topas.benders
 from or_topas.benders.benders_serial import BendersGenerator_Serial
@@ -78,6 +74,10 @@ class BendersSolver(object):
 
     5. All the in-place model transformation into Benders format is a conceptual difference from how the rest of
     Sparow works. It is necessary for Benders Decomposition and the use of OR-TOPAS for Benders Cut Generation.
+    This means that the models used for subproblems are converted into Benders subproblems.
+    The models used for master problems are converted into master problems.
+    This is not a tranform that can directly easily reverse or deactivated.
+    This holds true even though the models are attached to an sparow sp object.
     !!!!!!!!!!!
     """
 
@@ -114,11 +114,6 @@ class BendersSolver(object):
         BendersCutGenerator=None,
         is_persistent_solver=False,
     ):
-        # TODO: adapt settings to Benders
-        # Likely a subset of these settings for now
-        #
-        # Required settings
-        #
 
         assert solver is not None, "Need to declare an upper level solver"
         assert subproblem_solver is not None, "Need to declare a subproblem solver"
@@ -151,72 +146,6 @@ class BendersSolver(object):
             if loglevel == "DEBUG" or loglevel == "VERBOSE":
                 sparow.logs.use_debugging_formatter()
             logger.setLevel(loglevel)
-
-    #
-    # This is the same as the ExtensiveForm Solver to test that the logic
-    # to access this solver works, separately from the Benders logic
-    def solve_and_return_EF(self, sp, **options):
-        start_time = datetime.datetime.now()
-        if len(options) > 0:
-            self.set_options(**options)
-        # The StochProgram object manages the sub-solver interface.  By default, we assume
-        #   the user has initialized the sub-solver within the SP object.
-        if self.solver_name:
-            sp.set_solver(self.solver_name)
-
-        logger.info("")
-        logger.info("-" * 70)
-        logger.info("ExtensiveFormSolver - START")
-        if logger.isEnabledFor(logging.VERBOSE):
-            print(f"  Solver: {self.solver_name}")
-            print(f"  Solver Options")
-            for k, v in self.solver_options.items():
-                print(f"    {k}= {v}")
-        tic(None)
-
-        M = sp.create_EF(compact_repn=True)
-        if logger.isEnabledFor(logging.DEBUG):
-            # Print extensive form model
-            M.pprint()
-            sys.stdout.flush()
-
-        toc("Created extensive form", logger=logger, level=logging.VERBOSE)
-        results = sp.solve(M, solver_options=self.solver_options)
-
-        # TODO - show value of subproblem
-        toc("Optimized extensive form", logger=logger, level=logging.VERBOSE)
-        end_time = datetime.datetime.now()
-
-        solutions = solnpool.SparowPoolManager()
-        metadata = solutions.metadata
-        metadata.termination_condition = str(results.termination_condition)
-        metadata.status = str(results.status)
-        metadata.start_time = str(start_time)
-        metadata.end_time = str(end_time)
-        metadata.time_elapsed = str(end_time - start_time)
-
-        if results.obj_value is not None:
-            b = next(iter(sp.bundles))
-            variables = [
-                solnpool.create_variable(
-                    value=sp.get_variable_value(b, i),
-                    index=i,
-                    name=sp.get_variable_name(i),
-                )
-                for i, _ in enumerate(sp.get_variables())
-            ]
-            objectives = [solnpool.create_objective(value=results.obj_value)]
-
-            solutions.add(variables=variables, objectives=objectives)
-
-        logger.info("")
-        logger.info("-" * 70)
-        logger.info("ExtensiveFormSolver - STOP")
-
-        return munch.Munch(solutions=solutions, model=M)
-
-    def solve(self, sp, **options):
-        return self.solve_and_return_EF(sp, **options).solutions
 
     @staticmethod
     def _transform_to_subproblem_model(
@@ -280,8 +209,6 @@ class BendersSolver(object):
             len(sp_lower.bundles[b].scenarios) == 1
         ), "There should be only one scenario in this bundle"
 
-        # TODO: ask Rachael what the right way to do this construction is
-        # N.B. create_subproblem is a wrapper for create_bundle_ef and _create_single_scenario_EF_repn for single scenario in bundle models
         subproblem_model = sp_lower.create_bundle_EF(
             b=b,
             w=None,
@@ -290,51 +217,52 @@ class BendersSolver(object):
             cached=False,
             compact_repn=True,
         )
-        # we now assume subproblem_model is constructed
-        # TODO: may need to check if cuid map initialized
+        # we now assume subproblem_model is constructed (and the associated cuid map initialized)
 
         subproblem_first_stage_vars = None
 
         # step 1: updating the objective
         # Note: we assume the objective is called obj
-        if hasattr(subproblem_model, "obj") and subproblem_model.obj.active:
-            original_expr = subproblem_model.obj.expr
-            original_sense = subproblem_model.obj.sense
-            subproblem_model.obj.deactivate()
-            expr_holder = original_expr
-
-            # Handle the removal of <c,x> terms if desired.
-            if remove_first_stage_objective_terms:
-                # This implicitly enforces a linearity assumption on the objective.
-                # The linearity check is buried in how or_topas.util.pyomo_utils.split_expr
-                #   will handle parsing using Pyomo's get_standard_repn.
-
-                # N.B. this subproblem_first_stage_vars is a set coming from a dict .values() method
-                subproblem_first_stage_vars = ComponentSet(
-                    sp_lower.int_to_FirstStageVar[b].values()
-                )
-                obj_split = split_expr(
-                    expr_holder, subproblem_first_stage_vars, allow_iterables=True
-                )
-                expr_holder = obj_split.not_in_set + obj_split.constant
-            # Handle probablity weighting
-            if weight_obj_by_prob:
-                # we use the sp.bundles[b].probability prob here
-                # we want to use the version that ripples to thetas in master here.
-                p_s = sp_lower.bundles[b].probability
-                expr_holder = p_s * expr_holder
-
-            # need to update the objective in place
-            subproblem_model.obj = pyo.Objective(expr=expr_holder, sense=original_sense)
-        else:
+        if not hasattr(subproblem_model, "obj") or not subproblem_model.obj.active:
             raise ValueError(f"No active objective found on subproblem for bundle {b}")
+        original_expr = subproblem_model.obj.expr
+        original_sense = subproblem_model.obj.sense
+        subproblem_model.obj.deactivate()
+        expr_holder = original_expr
 
+        # Handle the removal of <c,x> terms if desired.
+        if remove_first_stage_objective_terms:
+            # This implicitly enforces a linearity assumption on the objective.
+            # The linearity check is buried in how or_topas.util.pyomo_utils.split_expr
+            #   will handle parsing using Pyomo's get_standard_repn.
+
+            # N.B. this subproblem_first_stage_vars is a set coming from a dict .values() method
+            subproblem_first_stage_vars = ComponentSet(
+                sp_lower.int_to_FirstStageVar[b].values()
+            )
+            obj_split = split_expr(
+                expr_holder, subproblem_first_stage_vars, allow_iterables=True
+            )
+            expr_holder = obj_split.not_in_set + obj_split.constant
+        # Handle probablity weighting
+        if weight_obj_by_prob:
+            # we use the sp.bundles[b].probability prob here
+            # we want to use the version that ripples to thetas in master here.
+            p_s = sp_lower.bundles[b].probability
+            expr_holder = p_s * expr_holder
+
+        # need to update the objective in place
+        subproblem_model.obj = pyo.Objective(expr=expr_holder, sense=original_sense)
+        
         # step 2: relax first_stage variable domains
         for i, x in sp_lower.int_to_FirstStageVar[b].items():
             x.domain = default_domain
 
         # step 3:
         if remove_first_stage_only_cons:
+            #since this is a Benders subproblem, we can remove any constriant that
+            #only involves first-stage variables. 
+            #This is equivalent to removing those that do not invovle second-stage variables.
             cons_to_delete = []
             if subproblem_first_stage_vars is None:
                 subproblem_first_stage_vars = sp_lower.int_to_FirstStageVar[b].values()
@@ -353,7 +281,7 @@ class BendersSolver(object):
                 # we can either deactivate or delete
                 # deactivating for now
                 cons.deactivate()
-        # step 4: remove any unneeded PH style varaible fluff
+        # step 4: remove any unneeded PH style variable fluff
         # this may be all handled by setting w, x_bar, rho, and cached to false
         return subproblem_model
 
@@ -363,170 +291,13 @@ class BendersSolver(object):
         This method takes an sp object and a bundle and uses that to make a separate sp object with data
         for just that one bundle b.
         """
-        # return BendersSolver._create_sp_upper_grok_attempt(sp_lower, b)
         return BendersSolver._create_sp_upper_large_copy(sp_lower)
 
     @staticmethod
     def _create_sp_upper_large_copy(sp_lower):
+        #TODO: this is a possibly quite large deepcopy.
+        # look at more efficient ways to accomplish the goal of creating an sp object for master problem data
         sp_upper = copy.deepcopy(sp_lower)
-        return sp_upper
-        placeholder_bundle = bundling_functions.BundleObj(
-            data=scenario_data,
-            models=sp_upper.bundles.bundle_models,
-            scheme=sp_upper.bundles.bundle_scheme_str,
-            bundle_args=sp_upper.bundles.bundle_args,
-        )
-
-    @staticmethod
-    def _create_sp_upper_grok_attempt(sp_lower, b=None):
-        """
-        Create a new StochasticProgram object (sp_upper) containing *only*
-        the minimal data required for the selected bundle from sp_lower.
-
-        This lightweight sp_upper is intended to serve as the basis for the
-        Benders master problem. It avoids copying scenario data for any
-        bundles/scenarios not needed by the chosen bundle.
-
-        Parameters
-        ----------
-        sp_lower : StochasticProgram
-            The original StochasticProgram containing the full scenario set.
-        b : bundle identifier, optional
-            The bundle to copy into sp_upper. If None, the first bundle
-            in sp_lower.bundles is used (deterministic via next(iter())).
-
-        Returns
-        -------
-        sp_upper : StochasticProgram
-            A new StochasticProgram instance of the same concrete class as
-            sp_lower, containing only the data for the selected bundle.
-
-        Core Assumptions
-        ----------------
-        1. Bundle structure:
-           - The selected bundle `b` exists in `sp_lower.bundles`.
-           - Each bundle contains at least one scenario.
-
-        2. Scenario representation:
-           - Scenarios in `bundle.scenarios` are either 2-tuples `(model_name, scenario_id)`
-             or simple scalars (in which case `sp_lower.default_model` is used).
-           - This matches the format expected by `_create_scenario()` in sp_pyomo.py.
-
-        3. Data model:
-           - `model_data` and `scenario_data` follow the standard dict structure used
-             throughout Sparow.
-
-        4. StochasticProgram subclass:
-           - `type(sp_lower)()` creates a valid empty instance of the same class.
-           - The class supports `set_bundles()` and `initialize_bundles()`.
-
-        5. BundleObj internals:
-           - We call `initialize_bundles(scheme="single_bundle")` then overwrite
-             `sp_upper.bundles._bundles` to preserve the original bundle key.
-           - This relies on internal structure of `bundling_functions.BundleObj`.
-
-        6. First-stage variables:
-           - Integer indices via `varcuid_to_int` are assumed consistent for the
-             chosen bundle between sp_lower and sp_upper.
-
-        Notes
-        -----
-        - Only relevant model/scenario data is copied (lightweight).
-        - `app_data` is fully copied as it is typically small/global.
-        - Custom model_weight or bundle_args from the original initialization are not preserved.
-        """
-        if b is None:
-            b = next(iter(sp_lower.bundles))
-            logger.debug(
-                f"_create_sp_upper: No bundle specified, defaulting to first bundle {b}"
-            )
-
-        if b not in sp_lower.bundles:
-            raise KeyError(f"Bundle {b} not found in sp_lower.bundles")
-
-        bundle = sp_lower.bundles[b]
-        scenarios = bundle.scenarios
-
-        # ------------------------------------------------------------------
-        # 1. Identify exactly which models and scenario IDs are needed
-        # ------------------------------------------------------------------
-        used_models = set()
-        needed_scenario_data = {}
-
-        for scen_tuple in scenarios:
-            if isinstance(scen_tuple, (list, tuple)) and len(scen_tuple) >= 2:
-                model_name = scen_tuple[0]
-                scen_id = scen_tuple[1]
-            else:
-                # fallback for scalar scenario storage
-                model_name = sp_lower.default_model
-                scen_id = scen_tuple
-
-            used_models.add(model_name)
-
-            if (
-                model_name in sp_lower.scenario_data
-                and scen_id in sp_lower.scenario_data[model_name]
-            ):
-                if model_name not in needed_scenario_data:
-                    needed_scenario_data[model_name] = {}
-                needed_scenario_data[model_name][scen_id] = copy.deepcopy(
-                    sp_lower.scenario_data[model_name][scen_id]
-                )
-
-        # ------------------------------------------------------------------
-        # 2. Copy only the model_data entries we actually use
-        # ------------------------------------------------------------------
-        needed_model_data = {
-            m: copy.deepcopy(sp_lower.model_data[m])
-            for m in used_models
-            if m in sp_lower.model_data
-        }
-
-        # ------------------------------------------------------------------
-        # 3. Create a fresh StochasticProgram of the exact same concrete class
-        # ------------------------------------------------------------------
-        sp_upper = type(sp_lower)(sp_lower.first_stage_variables)
-
-        # Copy essential configuration
-        sp_upper.solver = sp_lower.solver
-        sp_upper.app_data = copy.deepcopy(sp_lower.app_data)
-        sp_upper.default_model = sp_lower.default_model
-
-        # Minimal data only
-        sp_upper.model_data = needed_model_data
-        sp_upper.scenario_data = needed_scenario_data
-
-        # Copy relevant model_builder entries for NamedBuilder subclass
-        if hasattr(sp_lower, "model_builder") and sp_lower.model_builder:
-            sp_upper.model_builder = {
-                m: sp_lower.model_builder[m]
-                for m in used_models
-                if m in sp_lower.model_builder
-            }
-
-        # ------------------------------------------------------------------
-        # 4. Initialize bundles with minimal data
-        # ------------------------------------------------------------------
-        sp_upper.set_bundles(
-            initialize_bundles(
-                scheme="single_bundle",
-                models=list(used_models),
-                model_data=sp_upper.model_data,
-                scenario_data=sp_upper.scenario_data,
-            )
-        )
-
-        # ------------------------------------------------------------------
-        # 5. Force the exact original bundle key and metadata
-        # ------------------------------------------------------------------
-        sp_upper.bundles._bundles = {b: copy.deepcopy(bundle)}
-
-        logger.debug(
-            f"_create_sp_upper: Created lightweight sp_upper from bundle {b} "
-            f"({len(scenarios)} scenario(s) across {len(used_models)} model(s))"
-        )
-
         return sp_upper
 
     @staticmethod
@@ -666,10 +437,6 @@ class BendersSolver(object):
                 var not in first_stage_vars
                 for var in pyo.visitor.identify_variables(cons.body)
             ):
-                # if any(
-                #     pyo.ComponentUID(var, context=upper_model) not in sp.varcuid_to_int
-                #     for var in pyo.visitor.identify_variables(cons.body)
-                # ):
                 # this amounts to an any vars not in first_stage_vars check
                 # sp.varcuid_to_int only holds varcuid's for first_stage_variables
                 cons_to_delete.append(cons)
@@ -686,7 +453,6 @@ class BendersSolver(object):
             vars_to_delete = []
             for var in upper_model.component_data_objects(pyo.Var, descend_into=True):
                 if var not in first_stage_vars:
-                    # TODO: handle edgecases for bound definitions
                     vars_to_delete.append(var)
 
             for var in vars_to_delete:
@@ -737,7 +503,6 @@ class BendersSolver(object):
         At present, it builds the needed map from the first-stage variables in m_upper to those in b.
         It then returns the subproblem model, b, and that complicating variable map.
         """
-        # print(f"Working on setting up subproblem {b_lower=}")
         # rely on _transform_to_subproblem_model to create the subproblem model
         model_lower = BendersSolver._transform_to_subproblem_model(
             sp_lower, b_lower, default_domain=pyo.Reals
@@ -763,19 +528,18 @@ class BendersSolver(object):
         # return the subproblem model, b, and the complicating variable map.
         return model_lower, complicating_variable_map
 
-    # steps for general solve
-    # take overall sp model with full scenario data, this will be sp_lower
-    # create sp model with single scenario for sp_upper
-    # for each bundle in sp_lower, transform to subproblem
-    # transform sp_upper model to master format
-    # setup or-topas benders model
-    # extract subproblem solver information from sp_lower
-    # iterate while adding benders cuts
-    # report results to user
-
-    def solve_in_dev(
+    def solve(
         self, sp_lower, eta_bounds_map, error_on_initialized_root_vars=False, **options
     ):
+        # steps for general solve
+        # take overall sp model with full scenario data, this will be sp_lower
+        # create sp model with single scenario for sp_upper
+        # for each bundle in sp_lower, transform to subproblem
+        # transform sp_upper model to master format
+        # setup or-topas benders model
+        # extract subproblem solver information from sp_lower
+        # iterate while adding benders cuts
+        # report results to user
         start_time = datetime.datetime.now()
         assert eta_bounds_map is not None, "Must give a valid bounds map"
         assert (
@@ -817,7 +581,7 @@ class BendersSolver(object):
             solver_options=self.solver_options,
         )
 
-        # add check that the single scenario to bundle rules are followed
+        # TODO: add check that the single scenario to bundle rules are followed
         # we may be able to relax this later
 
         logger.info("BendersSolver - START")
@@ -829,7 +593,6 @@ class BendersSolver(object):
         sp_upper = BendersSolver._create_sp_upper(sp_lower=sp_lower)
 
         b_upper = next(iter(sp_upper.bundles))
-        # self.master_problem_bundle #this may need to be the version copied to sp_upper, and come from _create_sp_upper
 
         # TODO: update all of these to be parameters for the solver later
         upper_model = BendersSolver._transform_to_master_model(
@@ -854,10 +617,8 @@ class BendersSolver(object):
                     rv.value = rv.ub
                 else:
                     rv.value = 0
-            print(f"Gave default values to {len(unitialized_root_vars)} variables")
-
-        # default_root_values = [(rv.name, rv.value, rv.lb, rv.ub) for rv in root_vars]
-        # print(f"{default_root_values=}")
+            if logger.isEnabledFor(logging.DEBUG):
+                print(f"Gave default values to {len(unitialized_root_vars)} variables")
 
         # create topas Benders object
 
@@ -872,7 +633,6 @@ class BendersSolver(object):
         else:
             opt = pyo.SolverFactory(self.solver_name)
         # TODO: handle persistent solver setup
-        # opt.set_instance(m)
 
         # add subproblems
         tic("Creating subproblems", logger=logger, level=logging.VERBOSE)
@@ -888,10 +648,11 @@ class BendersSolver(object):
                 root_eta=upper_model.etas[b_lower],  # this may be finicky
                 subproblem_solver=self.subproblem_solver_name,  # make sure this is initialized above
             )
-        termination_condition = "Termination: unknown"
+        
 
         #
         iteration = 0
+        termination_condition = "Termination: unknown"
         while True:
             iteration_timer.tic(None)
             iteration += 1
@@ -900,9 +661,6 @@ class BendersSolver(object):
             # time_last_iter = iteration_timer.toc(None)
 
             # possibly add a log iteration here.
-            # self.log_iteration(
-            #     iteration=iteration,
-            # )
 
             # add Benders iteration here
             # handle non-persistent case
@@ -941,9 +699,6 @@ class BendersSolver(object):
         sp_metadata.termination_condition = termination_condition
         sp_metadata.start_time = str(start_time)
 
-        # print(f"Sparow Level Upper Model after solve pprint start:")
-        # upper_model.pprint()
-        # print(f"Sparow Level Upper Model after solve pprint end.")
         variables = [
             solnpool.create_variable(
                 value=sp_upper.get_variable_value(b_upper, i),
