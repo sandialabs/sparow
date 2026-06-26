@@ -253,16 +253,16 @@ class BendersSolver(object):
 
         # need to update the objective in place
         subproblem_model.obj = pyo.Objective(expr=expr_holder, sense=original_sense)
-        
+
         # step 2: relax first_stage variable domains
         for i, x in sp_lower.int_to_FirstStageVar[b].items():
             x.domain = default_domain
 
         # step 3:
         if remove_first_stage_only_cons:
-            #since this is a Benders subproblem, we can remove any constriant that
-            #only involves first-stage variables. 
-            #This is equivalent to removing those that do not invovle second-stage variables.
+            # since this is a Benders subproblem, we can remove any constriant that
+            # only involves first-stage variables.
+            # This is equivalent to removing those that do not invovle second-stage variables.
             cons_to_delete = []
             if subproblem_first_stage_vars is None:
                 subproblem_first_stage_vars = sp_lower.int_to_FirstStageVar[b].values()
@@ -295,7 +295,7 @@ class BendersSolver(object):
 
     @staticmethod
     def _create_sp_upper_large_copy(sp_lower):
-        #TODO: this is a possibly quite large deepcopy.
+        # TODO: this is a possibly quite large deepcopy.
         # look at more efficient ways to accomplish the goal of creating an sp object for master problem data
         sp_upper = copy.deepcopy(sp_lower)
         return sp_upper
@@ -648,7 +648,6 @@ class BendersSolver(object):
                 root_eta=upper_model.etas[b_lower],  # this may be finicky
                 subproblem_solver=self.subproblem_solver_name,  # make sure this is initialized above
             )
-        
 
         #
         iteration = 0
