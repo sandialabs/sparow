@@ -113,6 +113,7 @@ class BendersSolver(object):
         loglevel=None,
         BendersCutGenerator=None,
         is_persistent_solver=False,
+        allow_infeasible_subproblems=False,
     ):
 
         assert solver is not None, "Need to declare an upper level solver"
@@ -141,6 +142,8 @@ class BendersSolver(object):
             self.BendersCutGenerator = BendersCutGenerator
         if is_persistent_solver is not None:
             self.is_persistent_solver = is_persistent_solver
+        if allow_infeasible_subproblems is not None:
+            self.allow_infeasible_subproblems = allow_infeasible_subproblems
 
         if loglevel is not None:
             if loglevel == "DEBUG" or loglevel == "VERBOSE":
@@ -253,16 +256,16 @@ class BendersSolver(object):
 
         # need to update the objective in place
         subproblem_model.obj = pyo.Objective(expr=expr_holder, sense=original_sense)
-        
+
         # step 2: relax first_stage variable domains
         for i, x in sp_lower.int_to_FirstStageVar[b].items():
             x.domain = default_domain
 
         # step 3:
         if remove_first_stage_only_cons:
-            #since this is a Benders subproblem, we can remove any constriant that
-            #only involves first-stage variables. 
-            #This is equivalent to removing those that do not invovle second-stage variables.
+            # since this is a Benders subproblem, we can remove any constriant that
+            # only involves first-stage variables.
+            # This is equivalent to removing those that do not invovle second-stage variables.
             cons_to_delete = []
             if subproblem_first_stage_vars is None:
                 subproblem_first_stage_vars = sp_lower.int_to_FirstStageVar[b].values()
@@ -295,7 +298,7 @@ class BendersSolver(object):
 
     @staticmethod
     def _create_sp_upper_large_copy(sp_lower):
-        #TODO: this is a possibly quite large deepcopy.
+        # TODO: this is a possibly quite large deepcopy.
         # look at more efficient ways to accomplish the goal of creating an sp object for master problem data
         sp_upper = copy.deepcopy(sp_lower)
         return sp_upper
@@ -529,7 +532,12 @@ class BendersSolver(object):
         return model_lower, complicating_variable_map
 
     def solve(
-        self, sp_lower, eta_bounds_map, error_on_initialized_root_vars=False, **options
+        self,
+        sp_lower,
+        eta_bounds_map,
+        error_on_initialized_root_vars=False,
+        convergence_tol=1e-8,
+        **options,
     ):
         # steps for general solve
         # take overall sp model with full scenario data, this will be sp_lower
@@ -540,11 +548,20 @@ class BendersSolver(object):
         # extract subproblem solver information from sp_lower
         # iterate while adding benders cuts
         # report results to user
+
+        # TODO: at present we are saying the master and subproblem solver must have the same
+        # persistence behavior, we could move to tracking is_persistent automatically based off solver name
+        # in future
+
         start_time = datetime.datetime.now()
         assert eta_bounds_map is not None, "Must give a valid bounds map"
         assert (
             self.subproblem_solver_name is not None
         ), "Must give a valid subproblem solver name"
+        if self.allow_infeasible_subproblems:
+            assert (
+                self.is_persistent_solver
+            ), "Must use a persistent solver to support feasibility cuts"
 
         if len(options) > 0:
             self.set_options(**options)
@@ -555,10 +572,9 @@ class BendersSolver(object):
             print(f"  subproblem_solver_name       {self.subproblem_solver_name}")
             print(f"  relax_subproblem_integrality {self.relax_subproblem_integrality}")
             print(f"  support_feasibility_cuts     {self.support_feasibility_cuts}")
+            print(f"  is_persistent_solver         {self.is_persistent_solver}")
+            print(f"  allow_infeasible_subproblems {self.allow_infeasible_subproblems}")
             print("")
-        assert (
-            not self.is_persistent_solver
-        ), "Assuming for moment, non-persistent solver"
 
         #
         # Setup solution manager and archive context information
@@ -625,13 +641,19 @@ class BendersSolver(object):
         upper_model.benders = self.BendersCutGenerator()
         # TODO: add the allow feasibility cut flags here
         upper_model.benders.set_input(
-            root_vars=root_vars, tol=1e-8, transform=self.BendersTransform
+            root_vars=root_vars,
+            tol=convergence_tol,
+            transform=self.BendersTransform,
+            allow_infeasible=self.allow_infeasible_subproblems,
         )
         # create master solver object
+        # if self.is_persistent_solver:
+        #     raise RuntimeError(f"Not Supporting Peristent Solvers at present")
+        # else:
+        #     opt = pyo.SolverFactory(self.solver_name)
+        opt = pyo.SolverFactory(self.solver_name)
         if self.is_persistent_solver:
-            raise RuntimeError(f"Not Supporting Peristent Solvers at present")
-        else:
-            opt = pyo.SolverFactory(self.solver_name)
+            opt.set_instance(upper_model)
         # TODO: handle persistent solver setup
 
         # add subproblems
@@ -648,7 +670,6 @@ class BendersSolver(object):
                 root_eta=upper_model.etas[b_lower],  # this may be finicky
                 subproblem_solver=self.subproblem_solver_name,  # make sure this is initialized above
             )
-        
 
         #
         iteration = 0
@@ -665,7 +686,7 @@ class BendersSolver(object):
             # add Benders iteration here
             # handle non-persistent case
             if self.is_persistent_solver:
-                raise RuntimeError(f"Not Supporting Persitent Solvers at present")
+                # raise RuntimeError(f"Not Supporting Persitent Solvers at present")
                 res = opt.solve(tee=False, save_results=False)
                 cuts_added = upper_model.benders.generate_cut()
                 for c in cuts_added:

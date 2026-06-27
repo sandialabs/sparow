@@ -96,7 +96,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         # of the style first_stage_obj = sum(c[i]*var[i] for i in keys)
         # where c = self.int_to_ObjectiveCoef, var = int_to_FirstStageVar, keys = self.int_to_ObjectiveCoef.keys()
         # this may suffice for now, but does not extend clearly to support affine or quadratic first_stage_objs
-        self.int_to_ObjectiveCoef: dict = {} 
+        self.int_to_ObjectiveCoef: dict = {}
         self.solver_options: dict = {}
         self.pyo_solver: Any | None = None
         self._model_cache: dict = {}  # indexed by bundle id
