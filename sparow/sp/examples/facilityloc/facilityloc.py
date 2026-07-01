@@ -13,6 +13,14 @@ CAPACITATED FACILITY LOCATION
         - HF scenarios can be Low, Medium, and High for each customer (e.g., ['Low', 'High', 'Low', 'Medium'])
 * Can specify number of HF scenarios by including "num_HF" key in app_data; otherwise, defaults to 8
 * Problem data adapted from https://ampl.com/colab/notebooks/ampl-development-tutorial-26-stochastic-capacitated-facility-location-problem.html#problem-description
+
+N.B. the AMPL example satisfies relatively complete recourse (RCR) but not complete recourse (CR) with First Stage Variables as x
+RCR satisfied, as constraints on x guarantee ability to meet demand level, second-stage has model.z[0, j] = d[j].
+There is nuance here on the RCR guarantee, the first-stage model could either get:
+ 1. For a single scenario (fixed xi), sum(k[i, xi] * model.x[i] for i in range(n)) >= sum(d[j,xi] for j in range(t))
+ 2. For all scenarios (fixed xi), sum(k[i, xi] * model.x[i] for i in range(n)) >= sum(d[j,xi] for j in range(t)) forall xi in XI
+RCR is only guaranteed in case 2, case 1 is how the Benders code works.
+CR not satiesfied, let x be a vector of all negative 1's and second stage infeasible
 """
 
 app_data = {"n": 3, "t": 4}  # number of facilities & customers
@@ -209,6 +217,15 @@ def AMPL_facilityloc():
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
         name="HF", model_data=model_data["LF"], model_builder=HF_builder
+    )
+    return Munch(sp=sp, objective_value=16758018.59625)
+
+def AMPL_facilityloc_Benders_Test():
+    sp = stochastic_program(first_stage_variables=["x"])
+    sp.initialize_application(app_data=app_data)
+    sp.initialize_model(
+        # name="HF", 
+        model_data=model_data["LF"], model_builder=HF_builder
     )
     return Munch(sp=sp, objective_value=16758018.59625)
 

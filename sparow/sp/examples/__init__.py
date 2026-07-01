@@ -3,6 +3,7 @@ from .facilityloc.facilityloc import (
     HF_facilityloc,
     MFrandom_facilityloc,
     AMPL_facilityloc,
+    AMPL_facilityloc_Benders_Test,
 )
 from .newsvendor.mf_newsvendor import (
     LF_newsvendor,
