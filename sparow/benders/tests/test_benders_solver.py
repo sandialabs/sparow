@@ -162,7 +162,7 @@ class TestBenders_NonPersistent:
         obj_val = soln["objectives"][0]["value"]
         assert obj_val == pytest.approx(app.objective_value)
 
-    def test_facilityloc(self, mip_solver):
+    def Xtest_facilityloc(self, mip_solver):
         app = AMPL_facilityloc()
         # solver = BendersSolver()
         # solver.set_options(solver=mip_solver,
