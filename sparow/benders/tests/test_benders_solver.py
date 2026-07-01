@@ -9,7 +9,10 @@ from sparow.sp.examples import (
     single_scenario_newsvendor,
     simple_absolute_value,
     adjustable_absolute_value,
+    AMPL_facilityloc,
+    AMPL_facilityloc_Benders_Test,
 )
+from sparow.ef import ExtensiveFormSolver
 
 from pyomo.common.dependencies import attempt_import
 
@@ -60,7 +63,9 @@ class TestBenders_NonPersistent:
 
     def test_shifted_abs(self, mip_solver):
         solver = BendersSolver()
-        solver.set_options(solver=mip_solver, subproblem_solver=mip_solver)
+        solver.set_options(solver=mip_solver, subproblem_solver=mip_solver,
+                        #    loglevel="DEBUG",
+                           )
         a_val = 1
         model_data = {
             "scenarios": [
@@ -114,7 +119,9 @@ class TestBenders_NonPersistent:
     def test_single_scenario_newsvendor(self, mip_solver):
         app = single_scenario_newsvendor()
         solver = BendersSolver()
-        solver.set_options(solver=mip_solver, subproblem_solver=mip_solver)
+        solver.set_options(solver=mip_solver, subproblem_solver=mip_solver,
+                        #    loglevel="DEBUG",
+                           )
 
         default_lower_eta = -1_000
         eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
@@ -132,10 +139,13 @@ class TestBenders_NonPersistent:
     def test_simple_newsvendor(self, mip_solver):
         app = simple_newsvendor()
         solver = BendersSolver()
-        solver.set_options(solver=mip_solver, subproblem_solver=mip_solver)
+        solver.set_options(solver=mip_solver, subproblem_solver=mip_solver, 
+                        #    loglevel= "DEBUG",
+                           )
 
         default_lower_eta = -1_000
         eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
+        print(eta_bounds_map.keys())
         results = solver.solve(app.sp, eta_bounds_map)
         results_dict = results.to_dict()
         soln = next(iter(results_dict["solutions"].values()))
@@ -144,6 +154,64 @@ class TestBenders_NonPersistent:
         x = soln["variables"][0]["value"]
         assert x == pytest.approx(app.solution_values["x"])
         obj_val = soln["objectives"][0]["value"]
+        assert obj_val == pytest.approx(app.objective_value)
+
+    def test_facilityloc(self, mip_solver):
+        app = AMPL_facilityloc()
+        # solver = BendersSolver()
+        # solver.set_options(solver=mip_solver, 
+        #                    subproblem_solver=mip_solver, 
+        #                    loglevel= "DEBUG",
+        #                    )
+        # default_lower_eta = -1_000
+        # #not sure the s values here map to what the bundles actually expect
+        # eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
+        # #app.sp.bundles are {'HF_High', 'HF_Low', 'HF_Medium'}
+        # #so the eta's are getting those names
+
+        # #the scenario keys for s are of the style ('HF', 'Low') as a tuple
+        # #for each of the scenario models, we get a block definition like:
+        # #s : Size=1, Index={('HF', 'High')}, Active=True
+        # #so there appears to be a mismatch between bundles and scenario keys
+
+        # #first iteration of subproblems is giving infeasible/unbounded error code
+        # #need to print out first master solve results, master model, and subproblem model
+        # results = solver.solve(app.sp, eta_bounds_map)
+        # results_dict = results.to_dict()
+        # obj_val = results_dict["solutions"][0]["objectives"][0]["value"]
+
+        # assert obj_val == pytest.approx(app.objective_value)
+
+        solver = BendersSolver()
+        solver.set_options(solver=mip_solver, 
+                           subproblem_solver=mip_solver, 
+                           custom_b_upper = 'High',
+                        #    loglevel= "INFO",
+                        # loglevel="DEBUG",
+                           )
+        default_lower_eta = -100_000
+        eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
+        results = solver.solve(app.sp, eta_bounds_map)
+        results_dict = results.to_dict()
+        obj_val = results_dict["solutions"][0]["objectives"][0]["value"]
+
+        assert obj_val == pytest.approx(app.objective_value)
+
+    def test_facilitylo_benders_test(self, mip_solver):
+        app = AMPL_facilityloc_Benders_Test()
+        solver = BendersSolver()
+        solver.set_options(solver=mip_solver, 
+                           subproblem_solver=mip_solver, 
+                           custom_b_upper = 'High',
+                        #    loglevel= "INFO",
+                        # loglevel="DEBUG",
+                           )
+        default_lower_eta = -100_000
+        eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
+        results = solver.solve(app.sp, eta_bounds_map)
+        results_dict = results.to_dict()
+        obj_val = results_dict["solutions"][0]["objectives"][0]["value"]
+
         assert obj_val == pytest.approx(app.objective_value)
 
 
