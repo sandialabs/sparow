@@ -115,7 +115,7 @@ class BendersSolver(object):
         BendersCutGenerator=None,
         is_persistent_solver=False,
         allow_infeasible_subproblems=False,
-        custom_b_upper = None,
+        custom_b_upper=None,
     ):
 
         assert solver is not None, "Need to declare an upper level solver"
@@ -517,7 +517,10 @@ class BendersSolver(object):
         """
         # rely on _transform_to_subproblem_model to create the subproblem model
         model_lower = BendersSolver._transform_to_subproblem_model(
-            sp_lower, b_lower, default_domain=pyo.Reals, remove_first_stage_objective_terms=remove_first_stage_objective_terms,
+            sp_lower,
+            b_lower,
+            default_domain=pyo.Reals,
+            remove_first_stage_objective_terms=remove_first_stage_objective_terms,
         )
 
         # create the complicating variable map
@@ -626,7 +629,6 @@ class BendersSolver(object):
             b_upper = self.custom_b_upper
         else:
             b_upper = next(iter(sp_upper.bundles))
-        
 
         # TODO: update all of these to be parameters for the solver later
         upper_model = BendersSolver._transform_to_master_model(

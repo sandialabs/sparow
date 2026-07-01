@@ -220,12 +220,14 @@ def AMPL_facilityloc():
     )
     return Munch(sp=sp, objective_value=16758018.59625)
 
+
 def AMPL_facilityloc_Benders_Test():
     sp = stochastic_program(first_stage_variables=["x"])
     sp.initialize_application(app_data=app_data)
     sp.initialize_model(
-        # name="HF", 
-        model_data=model_data["LF"], model_builder=HF_builder
+        # name="HF",
+        model_data=model_data["LF"],
+        model_builder=HF_builder,
     )
     return Munch(sp=sp, objective_value=16758018.59625)
 

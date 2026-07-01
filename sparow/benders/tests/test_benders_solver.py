@@ -63,9 +63,11 @@ class TestBenders_NonPersistent:
 
     def test_shifted_abs(self, mip_solver):
         solver = BendersSolver()
-        solver.set_options(solver=mip_solver, subproblem_solver=mip_solver,
-                        #    loglevel="DEBUG",
-                           )
+        solver.set_options(
+            solver=mip_solver,
+            subproblem_solver=mip_solver,
+            #    loglevel="DEBUG",
+        )
         a_val = 1
         model_data = {
             "scenarios": [
@@ -119,9 +121,11 @@ class TestBenders_NonPersistent:
     def test_single_scenario_newsvendor(self, mip_solver):
         app = single_scenario_newsvendor()
         solver = BendersSolver()
-        solver.set_options(solver=mip_solver, subproblem_solver=mip_solver,
-                        #    loglevel="DEBUG",
-                           )
+        solver.set_options(
+            solver=mip_solver,
+            subproblem_solver=mip_solver,
+            #    loglevel="DEBUG",
+        )
 
         default_lower_eta = -1_000
         eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
@@ -139,9 +143,11 @@ class TestBenders_NonPersistent:
     def test_simple_newsvendor(self, mip_solver):
         app = simple_newsvendor()
         solver = BendersSolver()
-        solver.set_options(solver=mip_solver, subproblem_solver=mip_solver, 
-                        #    loglevel= "DEBUG",
-                           )
+        solver.set_options(
+            solver=mip_solver,
+            subproblem_solver=mip_solver,
+            #    loglevel= "DEBUG",
+        )
 
         default_lower_eta = -1_000
         eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
@@ -159,8 +165,8 @@ class TestBenders_NonPersistent:
     def test_facilityloc(self, mip_solver):
         app = AMPL_facilityloc()
         # solver = BendersSolver()
-        # solver.set_options(solver=mip_solver, 
-        #                    subproblem_solver=mip_solver, 
+        # solver.set_options(solver=mip_solver,
+        #                    subproblem_solver=mip_solver,
         #                    loglevel= "DEBUG",
         #                    )
         # default_lower_eta = -1_000
@@ -183,12 +189,13 @@ class TestBenders_NonPersistent:
         # assert obj_val == pytest.approx(app.objective_value)
 
         solver = BendersSolver()
-        solver.set_options(solver=mip_solver, 
-                           subproblem_solver=mip_solver, 
-                           custom_b_upper = 'High',
-                        #    loglevel= "INFO",
-                        # loglevel="DEBUG",
-                           )
+        solver.set_options(
+            solver=mip_solver,
+            subproblem_solver=mip_solver,
+            custom_b_upper="High",
+            #    loglevel= "INFO",
+            # loglevel="DEBUG",
+        )
         default_lower_eta = -100_000
         eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
         results = solver.solve(app.sp, eta_bounds_map)
@@ -200,12 +207,13 @@ class TestBenders_NonPersistent:
     def test_facilitylo_benders_test(self, mip_solver):
         app = AMPL_facilityloc_Benders_Test()
         solver = BendersSolver()
-        solver.set_options(solver=mip_solver, 
-                           subproblem_solver=mip_solver, 
-                           custom_b_upper = 'High',
-                        #    loglevel= "INFO",
-                        # loglevel="DEBUG",
-                           )
+        solver.set_options(
+            solver=mip_solver,
+            subproblem_solver=mip_solver,
+            custom_b_upper="High",
+            #    loglevel= "INFO",
+            # loglevel="DEBUG",
+        )
         default_lower_eta = -100_000
         eta_bounds_map = {s: (default_lower_eta, None) for s in app.sp.bundles}
         results = solver.solve(app.sp, eta_bounds_map)
