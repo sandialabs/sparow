@@ -97,6 +97,7 @@ class BendersSolver(object):
         self.BendersCutGenerator = BendersGenerator_Serial
         self.BendersTransform = "standard_lp"
         self.is_persistent_solver = None
+        self.custom_b_upper = None
 
     def set_options(
         self,
@@ -114,6 +115,7 @@ class BendersSolver(object):
         BendersCutGenerator=None,
         is_persistent_solver=False,
         allow_infeasible_subproblems=False,
+        custom_b_upper = None,
     ):
 
         assert solver is not None, "Need to declare an upper level solver"
@@ -144,6 +146,8 @@ class BendersSolver(object):
             self.is_persistent_solver = is_persistent_solver
         if allow_infeasible_subproblems is not None:
             self.allow_infeasible_subproblems = allow_infeasible_subproblems
+        if custom_b_upper is not None:
+            self.custom_b_upper = custom_b_upper
 
         if loglevel is not None:
             if loglevel == "DEBUG" or loglevel == "VERBOSE":
@@ -207,6 +211,10 @@ class BendersSolver(object):
                              x in R^{n}, n = n_1 + n_2
                              y_s in R^{m}
         So the x == bar{x} functionality is done by OR-TOPAS's benders solver
+        This structure also has as a default that the <c,x> terms are left on in the subproblem.
+        We default to this here because it is an expensive step if it can be avoided.
+        Control of remove_first_stage_objective_terms is passed through to the solve method, which defaults to
+        remove_first_stage_objective_terms = True in solve at present.
         """
         assert (
             len(sp_lower.bundles[b].scenarios) == 1
@@ -498,6 +506,7 @@ class BendersSolver(object):
         b_lower,
         sp_upper,
         b_upper,
+        remove_first_stage_objective_terms,
     ):
         """
         This is a wrapper method that takes a stochastic program and bundle, sp_lower and b_lower,
@@ -508,7 +517,7 @@ class BendersSolver(object):
         """
         # rely on _transform_to_subproblem_model to create the subproblem model
         model_lower = BendersSolver._transform_to_subproblem_model(
-            sp_lower, b_lower, default_domain=pyo.Reals
+            sp_lower, b_lower, default_domain=pyo.Reals, remove_first_stage_objective_terms=remove_first_stage_objective_terms,
         )
 
         # create the complicating variable map
@@ -528,6 +537,10 @@ class BendersSolver(object):
                 b_lower
             ][i]
 
+        if logger.isEnabledFor(logging.DEBUG):
+            print(f"Subproblem {b_lower=} Initial Setup Start Pretty Print:")
+            model_lower.pprint()
+            print(f"Subproblem {b_lower=} Initial Setup End Pretty Print")
         # return the subproblem model, b, and the complicating variable map.
         return model_lower, complicating_variable_map
 
@@ -574,6 +587,7 @@ class BendersSolver(object):
             print(f"  support_feasibility_cuts     {self.support_feasibility_cuts}")
             print(f"  is_persistent_solver         {self.is_persistent_solver}")
             print(f"  allow_infeasible_subproblems {self.allow_infeasible_subproblems}")
+            print(f"  custom_b_upper               {self.custom_b_upper}")
             print("")
 
         #
@@ -608,7 +622,11 @@ class BendersSolver(object):
         tic("Creating Benders Master Problem", logger=logger, level=logging.VERBOSE)
         sp_upper = BendersSolver._create_sp_upper(sp_lower=sp_lower)
 
-        b_upper = next(iter(sp_upper.bundles))
+        if self.custom_b_upper is not None:
+            b_upper = self.custom_b_upper
+        else:
+            b_upper = next(iter(sp_upper.bundles))
+        
 
         # TODO: update all of these to be parameters for the solver later
         upper_model = BendersSolver._transform_to_master_model(
@@ -620,6 +638,13 @@ class BendersSolver(object):
             objective_sense=pyo.minimize,
             etas_ordered=False,
         )
+        # upper_model.s[None,'High'].x[0].fix(1)
+        # upper_model.s[None,'High'].x[1].fix(0)
+        # upper_model.s[None,'High'].x[2].fix(1)
+        if logger.isEnabledFor(logging.DEBUG):
+            print(f"Upper Model Initial Setup Start Pretty Print:")
+            upper_model.pprint()
+            print(f"Upper Model Initial Setup End Pretty Print:")
 
         root_vars = list(sp_upper.int_to_FirstStageVar[b_upper].values())
         unitialized_root_vars = [rv for rv in root_vars if rv.value is None]
@@ -664,6 +689,11 @@ class BendersSolver(object):
             subproblem_fn_kwargs["b_lower"] = b_lower
             subproblem_fn_kwargs["sp_upper"] = sp_upper
             subproblem_fn_kwargs["b_upper"] = b_upper
+            subproblem_fn_kwargs["remove_first_stage_objective_terms"] = True
+            if logger.isEnabledFor(logging.DEBUG):
+                print(f"Subproblem {b_lower=} debug info")
+                print(f"Subproblem setup keywords:")
+                print(subproblem_fn_kwargs)
             upper_model.benders.add_subproblem(
                 subproblem_fn=BendersSolver._setup_topas_subproblem,
                 subproblem_fn_kwargs=subproblem_fn_kwargs,
@@ -708,6 +738,7 @@ class BendersSolver(object):
             if iteration >= self.max_iterations:
                 termination_condition = f"Termination: max_iterations ({iteration} == {self.max_iterations})"
                 logger.info(termination_condition)
+
                 break
 
             # consider adding an iterates haven't moved by more than tolerance
@@ -726,7 +757,7 @@ class BendersSolver(object):
                 index=i,
                 name=sp_upper.get_variable_name(i),
             )
-            for i, _ in enumerate(sp_upper.get_variables())
+            for i, _ in enumerate(sp_upper.get_variables(b=b_upper))
         ]
         obj_value = pyo.value(upper_model.obj)
         objectives = [solnpool.create_objective(value=obj_value)]
@@ -739,6 +770,9 @@ class BendersSolver(object):
         logger.info("")
         logger.info("-" * 70)
         logger.info("BendersSolver - RESULTS")
+        for k, v in sp_metadata.items():
+            logger.info(f"Metadata {k}: {v}")
+        logger.info(f"Objective Value: {objectives[0]}")
         if logger.isEnabledFor(logging.DEBUG):
             pprint.pprint(self.solutions.to_dict())
             sys.stdout.flush()
