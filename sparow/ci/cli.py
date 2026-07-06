@@ -5,6 +5,7 @@ from html import parser
 import importlib
 import json
 import numpy as np
+from scipy import stats
 
 from sparow.ci.mrp_options import MRPOptions
 from sparow.ci.standard_mrp import StandardMRP
@@ -26,10 +27,15 @@ def parse_args():
     parser.add_argument("--alpha", type=float, default=0.05)
     parser.add_argument("--seed", type=int, default=12345)
 
-    parser.add_argument("--with-replacement", action="store_true")
-    parser.add_argument("--without-replacement", action="store_true")
-
     parser.add_argument("--xhat-file", required=True)
+
+    # Candidate-solution generation sampling
+    parser.add_argument("--candidate-with-replacement", action="store_true")
+    parser.add_argument("--candidate-without-replacement", action="store_true")
+
+    # MRP replication sampling
+    parser.add_argument("--mrp-with-replacement", action="store_true")
+    parser.add_argument("--mrp-without-replacement", action="store_true")
 
     # Single-run mode arguments
     parser.add_argument("--scenario-file", default=None)
@@ -185,9 +191,10 @@ def run_mrp_grid_experiment(
     solver_name,
     candidate_scen_count,
     candidate_seed,
-    with_replacement,
+    candidate_with_replacement,
     alpha,
     mrp_seed,
+    mrp_with_replacement,
     m_values,
     n_values,
     xhat_file,
@@ -204,6 +211,14 @@ def run_mrp_grid_experiment(
       3. computes the exact true optimality gap,
       4. runs MRP for all (m, n) parameter combinations,
       5. writes the results to a CSV file.
+
+    Note that we do the following to make result comparisons easier:
+        - We use the same candidate xhat for all (m, n) combinations.
+        - For each replication index k, first draw one superset sample of size
+    n_max = max(n_values) and fix its ordering. Then for smaller n value experiments, 
+    use the first n scenarios from that same sampled superset.
+    This means the sampled scenarios are nested:
+    n_small < n_large  ==>  sample(n_small) is a subset of sample(n_large)
     """
     problem_adapter = load_problem_adapter(
         model_module_name=model_module_name,
@@ -214,6 +229,9 @@ def run_mrp_grid_experiment(
     full_scenarios = problem_adapter.get_scenario_population()
     problem_adapter.validate_scenario_population(full_scenarios)
 
+    # ------------------------------------------------------
+    # Candidate xhat
+    # ------------------------------------------------------
     if use_existing_xhat:
         xhat = load_xhat(xhat_file)
         candidate_ef_objective = np.nan
@@ -223,11 +241,14 @@ def run_mrp_grid_experiment(
             full_scenarios=full_scenarios,
             candidate_scen_count=candidate_scen_count,
             candidate_seed=candidate_seed,
-            with_replacement=with_replacement,
+            with_replacement=candidate_with_replacement,
             solver_name=solver_name,
         )
         save_xhat(xhat, xhat_file)
 
+    # ------------------------------------------------------
+    # Exact true gap
+    # ------------------------------------------------------
     true_gap_evaluator = TrueOptimalityGapEvaluator(
         problem_adapter=problem_adapter,
         scenarios=full_scenarios,
@@ -240,23 +261,64 @@ def run_mrp_grid_experiment(
     candidate_true_objective = true_gap_results["xhat_true_value"]
     true_gap = true_gap_results["true_gap"]
 
+    print("\n=== True finite-population gap ===\n")
+    print(f"True optimal value: {true_optimal_value}")
+    print(f"Candidate true objective: {candidate_true_objective}")
+    print(f"True gap: {true_gap}")
+    print("\n==================================\n")
+
+    # ------------------------------------------------------
+    # Precompute superset of sampled scenarios once
+    # ------------------------------------------------------
+    n_values = sorted(n_values, reverse=True)   # sorted in descending order
+    n_max = max(n_values)
+    m_max = max(m_values)
+
+    sampler = ScenarioSampler(
+        scenarios=full_scenarios,
+        seed=mrp_seed,
+        with_replacement=mrp_with_replacement,
+    )
+
+    # Pre-draw the superset batch for every replication up to m_max
+    # Each replication k gets one sample of size n_max, and smaller n's
+    # will use prefixes of that sample.
+
+    sampled_supersets = {} # key = rep_id, value = list of sampled scenarios of size n_max
+    for rep_id in range(m_max):
+        sampled_supersets[rep_id] = sampler.draw_scenarios(
+            n=n_max,
+            replication_id=rep_id,
+        )
+
     rows = []
 
+    # ------------------------------------------------------
+    # Run StandardMRP for each fixed value of (m, n)
+    # ------------------------------------------------------
     for m in m_values:
         for n in n_values:
             print(f"\n=== Running MRP for m={m}, n={n} ===")
 
-            mrp_results = run_single_mrp_experiment(
-                problem_adapter=problem_adapter,
-                scenarios=full_scenarios,
-                xhat=xhat,
+            options = MRPOptions(
                 n=n,
                 m=m,
                 alpha=alpha,
                 seed=mrp_seed,
-                with_replacement=with_replacement,
+                with_replacement=mrp_with_replacement,
                 solver_name=solver_name,
+                verbose=True,
+                nested_sampling=True,
+                precomputed_supersets=sampled_supersets,
             )
+
+            mrp = StandardMRP(
+                problem_adapter=problem_adapter,
+                scenarios=full_scenarios,
+                options=options,
+            )
+
+            mrp_results = mrp.run(xhat=xhat)
 
             row = {
                 "model_module": model_module_name,
@@ -301,14 +363,25 @@ def run_mrp_grid_experiment(
 
 def main():
     args = parse_args()
+    print("Parsed CLI arguments:")
     print("ARGS:", args)
+    print("\n==================================\n")
 
-    if args.with_replacement and args.without_replacement:
-        raise ValueError("Choose only one of --with-replacement or --without-replacement.")
+    # Candidate-solution generation replacement rule
+    if args.candidate_with_replacement and args.candidate_without_replacement:
+        raise ValueError("Choose only one of --candidate-with-replacement or --candidate-without-replacement.")
 
-    with_replacement = True
-    if args.without_replacement:
-        with_replacement = False
+    candidate_with_replacement = True
+    if args.candidate_without_replacement:
+        candidate_with_replacement = False
+
+    # MRP replication replacement rule
+    if args.mrp_with_replacement and args.mrp_without_replacement:
+        raise ValueError("Choose only one of --mrp-with-replacement or --mrp-without-replacement.")
+
+    mrp_with_replacement = True
+    if args.mrp_without_replacement:
+        mrp_with_replacement = False
 
     # ----------------------------------------------------------------------
     # Grid-experiment mode
@@ -327,9 +400,10 @@ def main():
             solver_name=args.solver_name,
             candidate_scen_count=args.candidate_scen_count,
             candidate_seed=args.candidate_seed,
-            with_replacement=with_replacement,
+            candidate_with_replacement=candidate_with_replacement,
             alpha=args.alpha,
             mrp_seed=args.mrp_seed,
+            mrp_with_replacement=mrp_with_replacement,
             m_values=parse_int_list(args.m_values),
             n_values=parse_int_list(args.n_values),
             xhat_file=args.xhat_file,
@@ -372,7 +446,7 @@ def main():
         m=args.m,
         alpha=args.alpha,
         seed=args.seed,
-        with_replacement=with_replacement,
+        with_replacement=mrp_with_replacement,
         solver_name=args.solver_name,
     )
 

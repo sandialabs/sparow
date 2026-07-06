@@ -45,17 +45,31 @@ class StandardMRP:
                 print(f"Running MRP replication {rep_id + 1}/{opts.m}")
 
             # STEP 1 - draw a batch of n iid scenarios
-            sampled_scenarios = self.sampler.draw_scenarios(
-                n=opts.n,
-                replication_id=rep_id,
-            )
+            # We also have the option to draw a precomputed superset of scenarios 
+            # for each replication, and then use the first n scenarios from that superset
+            # when doing nested-sample experiments. 
+            # This is useful for comparing results across different n values.
+
+            if opts.nested_sampling:
+
+                if opts.precomputed_supersets is None:
+                    raise RuntimeError("nested_sampling=True requires precomputed_supersets in MRPOptions.")
+                if rep_id not in opts.precomputed_supersets:
+                    raise RuntimeError(f"Missing precomputed superset for replication {rep_id}.")
+
+                sampled_scenarios = opts.precomputed_supersets[rep_id][:opts.n]
+            else:
+                sampled_scenarios = self.sampler.draw_scenarios(
+                    n=opts.n,
+                    replication_id=rep_id,
+                )
 
             # Validate the format of the sampled scenarios
             self.problem_adapter.validate_scenario_population(sampled_scenarios)
 
             # We only use the population index to keep track of 
             # which scenarios were sampled in each replication.... this is NOT
-            # part of the sampling mechanism itssample_std / np.sqrt(opts.m)elf!
+            # part of the sampling mechanism
             sampled_population_indices_by_replication.append([s["Population_Index"] for s in sampled_scenarios])
 
             model_data_k = self.problem_adapter.build_model_data(sampled_scenarios)

@@ -14,3 +14,8 @@ class MRPOptions:
     solver_name: str = "highs"
     solver_options: Optional[Dict[str, Any]] = None
     verbose: bool = True
+
+    # Optional controls for nested-sample experiments. 
+    # Default is False (each replication draws its own independent sample of size n)
+    nested_sampling: bool = False
+    precomputed_supersets: Optional[Dict[int, list]] = None # key = rep_id, value = list of sampled scenarios of size n_max
