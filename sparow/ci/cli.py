@@ -461,6 +461,11 @@ def main():
     print(f"Half-width: {results['half_width']}")
     print(f"CI: [{results['ci_lower']}, {results['ci_upper']}]")
 
+    print("\n==================================\n")
+    print("REFERENCE VALUES FOR COMPARISON AGAINST BOOT SP OUTPUTS:")
+    print(f"Reference CI (two-sided normal): [{results['reference_ci_lower_two_sided_normal']}, {results['reference_ci_upper_two_sided_normal']}]")
+    print("\n==================================\n")
+
     if args.compute_true_gap:
         true_gap_evaluator = TrueOptimalityGapEvaluator(
             problem_adapter=adapter,

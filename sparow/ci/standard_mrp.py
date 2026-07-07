@@ -114,6 +114,19 @@ class StandardMRP:
         ci_lower = 0.0 # we know the optimality gap is non-negative
         ci_upper = point_estimate + half_width
 
+        # =================================================================
+        # FOR COMPARISON AGAINST BOOT SP CODE'S OUTPUTS
+        # We are outputting two-sided normal-based CI for renference only
+        # =================================================================
+        z_statistic_two_sided = float(stats.norm.ppf(1.0 - opts.alpha / 2.0))
+        # NOTE: BOOT SP USES SAMPLE STD INSTEAD OF STANDARD ERROR FOR THE HALF-WIDTH OF THE TWO-SIDED NORMAL CI
+        # I think this is because they are assuming the sample is actually just the full
+        # population distribution....
+        half_width_two_sided_normal = float(z_statistic_two_sided * sample_std)
+        reference_ci_lower_two_sided_normal = float(point_estimate - half_width_two_sided_normal)
+        reference_ci_upper_two_sided_normal = float(point_estimate + half_width_two_sided_normal)
+        # ==================================================================
+
         return {
             "point_estimate": point_estimate,
             "sample_variance": sample_variance,
@@ -129,4 +142,6 @@ class StandardMRP:
             "alpha": opts.alpha,
             "with_replacement": opts.with_replacement,
             "seed": opts.seed,
+            "reference_ci_lower_two_sided_normal": reference_ci_lower_two_sided_normal,
+            "reference_ci_upper_two_sided_normal": reference_ci_upper_two_sided_normal,
         }
