@@ -11,7 +11,7 @@ class MRPOptions:
     alpha: float = 0.05                 # confidence level is 1 - alpha
     seed: int = 12345                   # base random seed for entire MRP algorithm run
     with_replacement: bool = True       # bootstrap sampling from finite set of population scenarios
-    solver_name: str = "highs"
+    solver_name: str = "gurobi_direct"
     solver_options: Optional[Dict[str, Any]] = None
     verbose: bool = True
 

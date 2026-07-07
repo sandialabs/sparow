@@ -7,7 +7,7 @@ set -euo pipefail
 
 MODEL_MODULE="sparow_examples.farmers.MRPfarmers"
 MODEL_NAME="Advanced"
-SOLVER="highs"
+SOLVER="gurobi_direct"
 
 # Candidate-solution generation
 CANDIDATE_SCEN_COUNT=5
@@ -20,8 +20,8 @@ MRP_SEED=678
 MRP_WITH_REPLACEMENT="true"
 
 # Grid of m and n values
-M_VALUES="10,20,30"
-N_VALUES="1000,900,800,700,600,500,400,300,200"
+M_VALUES="20,30"
+N_VALUES="1000,900,800"
 
 # Files
 XHAT_FILE="candidate_xhat.npy"

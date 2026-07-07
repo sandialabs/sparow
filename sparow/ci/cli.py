@@ -4,6 +4,7 @@ import csv
 from html import parser
 import importlib
 import json
+from pprint import pprint
 import numpy as np
 from scipy import stats
 
@@ -23,9 +24,8 @@ def parse_args():
     parser.add_argument("--model-name", default=None)
     parser.add_argument("--use-integer", action="store_true")
 
-    parser.add_argument("--solver-name", default="highs")
+    parser.add_argument("--solver-name", default="gurobi")
     parser.add_argument("--alpha", type=float, default=0.05)
-    parser.add_argument("--seed", type=int, default=12345)
 
     parser.add_argument("--xhat-file", required=True)
 
@@ -433,10 +433,13 @@ def main():
 
     scenarios = load_scenarios(args.scenario_file)
     adapter.validate_scenario_population(scenarios)
+    print(f"Loaded {len(scenarios)} scenarios from {args.scenario_file}.")
 
     xhat = load_xhat(args.xhat_file)
     if "ROOT" in xhat:
         xhat = xhat["ROOT"]
+    print(f"Loaded candidate solution xhat from {args.xhat_file}:")
+    print(f"xhat: {xhat}")
 
     results = run_single_mrp_experiment(
         problem_adapter=adapter,
@@ -445,7 +448,7 @@ def main():
         n=args.n,
         m=args.m,
         alpha=args.alpha,
-        seed=args.seed,
+        seed=args.mrp_seed,
         with_replacement=mrp_with_replacement,
         solver_name=args.solver_name,
     )
