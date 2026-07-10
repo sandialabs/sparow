@@ -9,7 +9,9 @@ import numpy as np
 from scipy import stats
 
 from sparow.ci.mrp_options import MRPOptions
+from sparow.ci.acv_mrp_options import ACVMRPOptions
 from sparow.ci.standard_mrp import StandardMRP
+from sparow.ci.acv_mrp import ACVMRP
 from sparow.ci.evaluate_true_optimality_gap import TrueOptimalityGapEvaluator
 from sparow.ci.scenario_sampler import ScenarioSampler
 
@@ -18,7 +20,7 @@ from sparow.ci.scenario_sampler import ScenarioSampler
 # ============================================================================
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Run standard MRP confidence intervals.")
+    parser = argparse.ArgumentParser(description="Run standard MRP or ACV-MRP confidence intervals.")
 
     parser.add_argument("--model-module", required=True)
     parser.add_argument("--model-name", default=None)
@@ -41,6 +43,7 @@ def parse_args():
     parser.add_argument("--scenario-file", default=None)
     parser.add_argument("--n", type=int, default=None)
     parser.add_argument("--m", type=int, default=None)
+    parser.add_argument("--M", type=int, default=0)  # Additional LF-only replications for ACV-MRP
     parser.add_argument("--compute-true-gap", action="store_true")
 
     # Grid-experiment mode arguments
@@ -52,6 +55,10 @@ def parse_args():
     parser.add_argument("--n-values", type=str, default=None)
     parser.add_argument("--output-csv", type=str, default=None)
     parser.add_argument("--use-existing-xhat", action="store_true")
+
+    # ACV-MRP specific arguments
+    parser.add_argument("--acv-mrp", action="store_true", help="Run ACV-MRP instead of standard MRP")
+    parser.add_argument("--M-values", type=str, default=None, help="M values for ACV-MRP grid experiment")
 
     return parser.parse_args()
 
@@ -164,15 +171,15 @@ def build_candidate_solution(
 # Core MRP runners
 # ================================================================================
 
-def run_single_mrp_experiment(problem_adapter, scenarios, xhat, n, m, 
+def run_single_mrp_experiment(problem_adapter, scenarios, xhat, n, m,
                               alpha, seed, with_replacement, solver_name,):
-    
+
     options = MRPOptions(
-        n=n, 
-        m=m, 
-        alpha=alpha, 
-        seed=seed, 
-        with_replacement=with_replacement, 
+        n=n,
+        m=m,
+        alpha=alpha,
+        seed=seed,
+        with_replacement=with_replacement,
         solver_name=solver_name,
     )
 
@@ -183,6 +190,28 @@ def run_single_mrp_experiment(problem_adapter, scenarios, xhat, n, m,
     )
 
     return mrp.run(xhat=xhat)
+
+
+def run_single_acvmrp_experiment(problem_adapter, scenarios, xhat, n, m, M,
+                                alpha, seed, with_replacement, solver_name,):
+
+    options = ACVMRPOptions(
+        n=n,
+        m=m,
+        M=M,
+        alpha=alpha,
+        seed=seed,
+        with_replacement=with_replacement,
+        solver_name=solver_name,
+    )
+
+    acvmrp = ACVMRP(
+        problem_adapter=problem_adapter,
+        scenarios=scenarios,
+        options=options,
+    )
+
+    return acvmrp.run(xhat=xhat)
 
 
 def run_mrp_grid_experiment(
@@ -441,30 +470,68 @@ def main():
     print(f"Loaded candidate solution xhat from {args.xhat_file}:")
     print(f"xhat: {xhat}")
 
-    results = run_single_mrp_experiment(
-        problem_adapter=adapter,
-        scenarios=scenarios,
-        xhat=xhat,
-        n=args.n,
-        m=args.m,
-        alpha=args.alpha,
-        seed=args.mrp_seed,
-        with_replacement=mrp_with_replacement,
-        solver_name=args.solver_name,
-    )
+    if args.acv_mrp:
 
-    print("\nMRP results:")
-    print(f"Point estimate: {results['point_estimate']}")
-    print(f"Sample variance: {results['sample_variance']}")
-    print(f"Sample std dev: {results['sample_std']}")
-    print(f"t-statistic: {results['t_statistic']}")
-    print(f"Half-width: {results['half_width']}")
-    print(f"CI: [{results['ci_lower']}, {results['ci_upper']}]")
+        # Run ACV-MRP
+        print("\n=== Running ACV-MRP ===")
+        results = run_single_acvmrp_experiment(
+            problem_adapter=adapter,
+            scenarios=scenarios,
+            xhat=xhat,
+            n=args.n,
+            m=args.m,
+            M=args.M,
+            alpha=args.alpha,
+            seed=args.mrp_seed,
+            with_replacement=mrp_with_replacement,
+            solver_name=args.solver_name,
+        )
 
-    print("\n==================================\n")
-    print("REFERENCE VALUES FOR COMPARISON AGAINST BOOT SP OUTPUTS:")
-    print(f"Reference CI (two-sided normal): [{results['reference_ci_lower_two_sided_normal']}, {results['reference_ci_upper_two_sided_normal']}]")
-    print("\n==================================\n")
+        print("\nACV-MRPResults:\n")
+
+        print(f"ACV Point Estimator: {results['point_estimate']}")
+        print(f"Sample variance (HF): {results['sample_variance_F']}")
+        print(f"Plug-in variance estimate for ACV estimator: {results['variance_acv_estimator']}")
+        print(f"Variance reduction factor: {results['variance_reduction_factor']}")
+
+        print("\n")
+
+        print(f"Sample variance (paired LF): {results['sample_variance_G_paired']}")
+        print(f"Sample covariance (F,G): {results['sample_covariance_FG']}")
+        print(f"Estimated sample correlation (rho): {results['rho_hat']}")
+        print(f"Estimated control variate coefficient (alpha): {results['alpha_hat']}")
+        print(f"z_statistic: {results['z_statistic']}")
+        print(f"Half-width: {results['half_width']}")
+        print(f"CI: [{results['ci_lower']}, {results['ci_upper']}]")
+
+    else:
+
+        # Run standard MRP
+        print("\n=== Running Standard MRP ===")
+        results = run_single_mrp_experiment(
+            problem_adapter=adapter,
+            scenarios=scenarios,
+            xhat=xhat,
+            n=args.n,
+            m=args.m,
+            alpha=args.alpha,
+            seed=args.mrp_seed,
+            with_replacement=mrp_with_replacement,
+            solver_name=args.solver_name,
+        )
+
+        print("\nStandard MRP Results:")
+        print(f"Point estimate: {results['point_estimate']}")
+        print(f"Sample variance: {results['sample_variance']}")
+        print(f"Sample std dev: {results['sample_std']}")
+        print(f"t-statistic: {results['t_statistic']}")
+        print(f"Half-width: {results['half_width']}")
+        print(f"CI: [{results['ci_lower']}, {results['ci_upper']}]")
+
+        print("\n==================================\n")
+        print("REFERENCE VALUES FOR COMPARISON AGAINST BOOT SP OUTPUTS:")
+        print(f"Reference CI (two-sided normal): [{results['reference_ci_lower_two_sided_normal']}, {results['reference_ci_upper_two_sided_normal']}]")
+        print("\n==================================\n")
 
     if args.compute_true_gap:
         true_gap_evaluator = TrueOptimalityGapEvaluator(

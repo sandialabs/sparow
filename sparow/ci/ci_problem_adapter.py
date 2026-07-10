@@ -52,6 +52,9 @@ class CIProblemAdapter(ABC):
     def build_stochastic_program(self, model_data: Dict[str, Any]):
         """
         Build and return a Sparow stochastic_program object from model_data.
+        NOTE: This is the standard (high-fidelity) model. 
+        If your problem supports low-fidelity models, also implement 
+        build_low_fidelity_stochastic_program(...) seperately from this method.
         """
         raise NotImplementedError
 
@@ -244,5 +247,29 @@ class CIProblemAdapter(ABC):
             raise RuntimeError(f"Candidate first-stage solution evaluated infeasible on bundle/scenario {eval_result.bundle}.")
 
         return eval_result.objective
+    
+    # ======================================================================
+    # Optional Multifidelity ACV MRP-specific methods (default to None)
+    # ======================================================================
+
+    def build_low_fidelity_stochastic_program(self, model_data):
+        """Build low-fidelity stochastic program for ACV-MRP. Returns None if not supported."""
+        return None
+
+    def get_fidelity_levels(self):
+        """
+        Return list of supported fidelity levels. Default is ['standard'] 
+        for standard MRP. Override in subclass if low-fidelity models are supported.
+
+        Returns
+        -------
+        list of str
+            Fidelity level names (e.g., ['standard'], ['LF', 'HF'])
+        """
+        return ['standard']
+
+    def supports_acv(self):
+        """Whether this adapter supports ACV-MRP."""
+        return False
 
     

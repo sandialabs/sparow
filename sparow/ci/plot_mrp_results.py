@@ -1,10 +1,12 @@
 import sys
 import os
+import numpy as np
 import importlib
 from pathlib import Path
 
 import pandas as pd
 import matplotlib.pyplot as plt
+import textwrap
 
 csv_path = sys.argv[1]
 df = pd.read_csv(csv_path)
@@ -83,25 +85,66 @@ plt.savefig(output_dir / "ci_upper_vs_n.png", dpi=200)
 plt.close()
 
 # ----------------------------------------------------------
-# (c) Half-width vs n
+# (c) Normalized margin of error (half width) vs n
 # ----------------------------------------------------------
-plt.figure()
-for m, sub in df.groupby("m"):
-    sub = sub.sort_values("n")
-    plt.plot(
+fig, ax = plt.subplots()
+
+# Different shades of blue for each m
+grouped = list(df.groupby("m"))
+blue_shades = plt.cm.Blues(np.linspace(0.45, 0.9, len(grouped)))
+
+for color, (m, sub) in zip(blue_shades, grouped):
+    sub = sub.sort_values("n").copy()
+    sub["normalized_margin_of_error"] = sub["half_width"] / sub["point_estimate"]
+
+    ax.plot(
         sub["n"],
-        sub["half_width"],
+        sub["normalized_margin_of_error"],
         marker="o",
+        color=color,
         label=rf"Number of replications, $m={m}$"
     )
-plt.grid()
-plt.xlabel(r"Sample size $n$")
-plt.ylabel(r"Half-width $\epsilon_f$")
-plt.title(r"Confidence-interval half-width $\epsilon_f$ versus sample size $n$")
-plt.legend()
-plt.tight_layout()
-plt.savefig(output_dir / "halfwidth_vs_n.png", dpi=200)
-plt.close()
+
+# Reference line proportional to 1/sqrt(n)
+n_ref = np.sort(df["n"].unique())
+
+# Scale reference line to roughly match the first plotted value
+df_sorted = df.sort_values(["m", "n"]).copy()
+df_sorted["normalized_margin_of_error"] = df_sorted["half_width"] / df_sorted["point_estimate"]
+ref_scale = df_sorted["normalized_margin_of_error"].iloc[0] * np.sqrt(df_sorted["n"].iloc[0])
+ref_line = ref_scale / np.sqrt(n_ref)
+
+ax.plot(
+    n_ref,
+    ref_line,
+    linestyle=":",
+    color="black",
+    linewidth=1.8,
+    label=r"Reference $\propto 1/\sqrt{n}$"
+)
+
+ax.grid()
+ax.set_xlabel(r"Sample size $n$")
+ax.set_ylabel("Normalized margin of error")
+ax.set_title(r"Normalized one-sided CI margin of error vs sample size $n$")
+ax.legend()
+
+# Leave room at bottom for annotation
+fig.subplots_adjust(bottom=0.22)
+
+# Bottom annotation with formula, using normal division instead of \frac
+fig.text(
+    0.5,
+    0.04,
+    r"normalized margin of error = $\epsilon_f \,/\, \bar{F}_n^m(\hat{x})$",
+    ha="center",
+    va="bottom",
+    fontsize=10
+)
+
+fig.tight_layout(rect=[0, 0.08, 1, 1])
+fig.savefig(output_dir / "normalized_halfwidth_vs_n.png", dpi=200)
+plt.close(fig)
 
 # --------------------------------------------------------------
 # (d) Sample standard deviation (normalized by true gap) vs n
@@ -194,21 +237,62 @@ plt.close()
 # ----------------------------------------------------------
 # (g) Coefficient-of-variation-type quantity vs n
 # ----------------------------------------------------------
-plt.figure()
+fig, ax = plt.subplots()
+
 for m, sub in df.groupby("m"):
-    sub = sub.sort_values("n")
-    cv_like = sub["sample_std_dev"] / sub["point_estimate"]
-    plt.plot(
+    sub = sub.sort_values("n").copy()
+    cv_like_pct = 100.0 * sub["sample_std_dev"] / sub["point_estimate"]
+
+    ax.plot(
         sub["n"],
-        cv_like,
+        cv_like_pct,
         marker="o",
-        label=rf"$m={m}$"
+        label=rf"Replications, $m={m}$"
     )
-plt.grid()
-plt.xlabel(r"Sample size $n$")
-plt.ylabel(r"$\frac{s_F(\hat{x},m)}{\bar{F}_n^m(\hat{x})}$")
-plt.title(r"Coefficient-of-variation-type quantity $\frac{s_F(\hat{x},m)}{\bar{F}_n^m(\hat{x})}$ versus $n$")
-plt.legend()
-plt.tight_layout()
-plt.savefig(output_dir / "cv_like_vs_n.png", dpi=200)
-plt.close()
+
+# Reference trend line proportional to 1/sqrt(n)
+n_ref = np.sort(df["n"].unique())
+df_sorted = df.sort_values(["m", "n"]).copy()
+cv_like_pct_ref = 100.0 * df_sorted["sample_std_dev"] / df_sorted["point_estimate"]
+ref_scale = cv_like_pct_ref.iloc[0] * np.sqrt(df_sorted["n"].iloc[0])
+ref_line = ref_scale / np.sqrt(n_ref)
+
+ax.plot(
+    n_ref,
+    ref_line,
+    linestyle="--",
+    color="black",
+    label=r"Reference trend $\propto 1/\sqrt{n}$"
+)
+
+ax.grid()
+ax.set_xlabel(r"Sample size $n$")
+ax.set_ylabel(r"$100 \times \frac{s_F(\hat{x},m)}{\bar{F}_n^m(\hat{x})}$")
+ax.set_title(r"Relative replication variability versus $n$")
+ax.legend()
+
+caption = (
+    r"Relative replication variability, measured as "
+    r"$100 \times s_F(\hat{x},m)/\bar{F}_n^m(\hat{x})$, versus sample size $n$ "
+    r"for several replication counts $m$. The dashed reference line shows a trend "
+    r"proportional to $1/\sqrt{n}$. Large values indicate that replication-to-replication "
+    r"variability is high relative to the estimated upper bound itself."
+)
+
+# Wrapping for long captions
+wrapped_caption = "\n".join(textwrap.wrap(caption, width=110))
+
+# Leave room at bottom for caption
+fig.subplots_adjust(bottom=0.28)
+
+# Add caption inside the figure canvas
+fig.text(
+    0.5, 0.02,
+    wrapped_caption,
+    ha="center",
+    va="bottom",
+    fontsize=9
+)
+
+fig.savefig(output_dir / "cv_like_vs_n_percent.png", dpi=200, bbox_inches="tight")
+plt.close(fig)
