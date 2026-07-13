@@ -92,6 +92,10 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         self.varcuid_to_int: dict = {}
         self.int_to_FirstStageVar: dict = {}  # indexed by bundle id
         self.int_to_FirstStageVarName: dict = {}
+        # MPV: use of int_to_ObjectiveCoef for objective reconstruction implies linear structure
+        # of the style first_stage_obj = sum(c[i]*var[i] for i in keys)
+        # where c = self.int_to_ObjectiveCoef, var = int_to_FirstStageVar, keys = self.int_to_ObjectiveCoef.keys()
+        # this may suffice for now, but does not extend clearly to support affine or quadratic first_stage_objs
         self.int_to_ObjectiveCoef: dict = {}
         self.solver_options: dict = {}
         self.pyo_solver: Any | None = None
@@ -834,6 +838,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                     for i, x in self.int_to_FirstStageVar[b].items()
                 )
             )
+        # TODO: this assumes default sense for pyo.objective without checking obj[s] senses
         EF_model.obj = pyo.Objective(expr=obj)
 
         EF_model.scenario_varmap = {}
@@ -959,6 +964,8 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                     for i, x in EF_model.first_stage_variables.items()
                 )
             )
+
+        # TODO: this assumes default sense for pyo.objective without checking obj[s] senses
         EF_model.obj = pyo.Objective(expr=obj)
 
         return EF_model
@@ -1057,6 +1064,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                     for i, x in self.int_to_FirstStageVar[b].items()
                 )
             )
+        # TODO: this assumes default sense for pyo.objective without checking obj[s] senses
         EF_model.obj = pyo.Objective(expr=obj)
 
         # 4) Constrain First Stage Variable values to be equal under all scenarios

@@ -34,6 +34,9 @@ model_data = {
 # including a single second stage
 #
 def LF_builder(data, args):
+    # This function creates a polyhedral objective with 2 sections,
+    #   which is formed by: greater and less.
+    # Since there are two line segments, there can be up to one vertex.
     b = data["b"]
     c = data["c"]
     h = data["h"]
@@ -53,6 +56,11 @@ def LF_builder(data, args):
 
 
 def HF_builder(data, args):
+    # This function creates a polyhedral objective with 3 sections,
+    #   which is formed by: greater, greaterX, and less.
+    # The constraint greaterX is the new and not in the LF version.
+    # Since there are three line segments, there can be up to two vertices.
+    # N.B. M.greater and M.greaterX use different constants!
     b = data["b"]
     B = data["B"]
     c = data["c"]
