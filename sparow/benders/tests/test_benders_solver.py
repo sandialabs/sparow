@@ -16,15 +16,16 @@ from sparow.ef import ExtensiveFormSolver
 
 from pyomo.common.dependencies import attempt_import
 
+from sparow.benders import BendersSolver
+
+import pyomo.opt
+from pyomo.common import unittest
+
 parameterized, param_available = attempt_import("parameterized")
 if not param_available:
     raise unittest.SkipTest("Parameterized is not available.")
 parameterized = parameterized.parameterized
 
-from sparow.benders import BendersSolver
-
-import pyomo.opt
-from pyomo.common import unittest
 
 open_source_solver = set(pyomo.opt.check_available_solvers("highs"))
 if len(open_source_solver) == 0:
