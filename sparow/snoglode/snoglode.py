@@ -28,10 +28,8 @@ if True:
 else:
     PoolCounter, SolutionPool_KeepBest, Solution = None, None, None
     alt_sol_available = False
-    print(
-        "Alternative solutions package from or_topas is unavailable. \
-          \nReverting to simple saving behavior."
-    )
+    print("Alternative solutions package from or_topas is unavailable. \
+          \nReverting to simple saving behavior.")
 
 from sparow.sp import stochastic_program
 import sparow.logs
