@@ -204,7 +204,7 @@ class TestBenders_NonPersistent:
 
         assert obj_val == pytest.approx(app.objective_value)
 
-    def test_facilitylo_benders_test(self, mip_solver):
+    def test_facilityloc_benders_test(self, mip_solver):
         app = AMPL_facilityloc_Benders_Test()
         solver = BendersSolver()
         solver.set_options(

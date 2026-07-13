@@ -11,11 +11,6 @@ from sparow.sp.examples import (
 
 from pyomo.common.dependencies import attempt_import
 
-parameterized, param_available = attempt_import("parameterized")
-if not param_available:
-    raise unittest.SkipTest("Parameterized is not available.")
-parameterized = parameterized.parameterized
-
 from sparow.benders import BendersSolver
 from sparow.ef import ExtensiveFormSolver
 from or_topas.util.pyomo_utils import split_expr
@@ -25,6 +20,12 @@ from pyomo.common import unittest
 from pyomo.core.expr.compare import compare_expressions
 from pyomo.repn.standard_repn import generate_standard_repn
 from pyomo.common.collections import ComponentMap, ComponentSet
+
+parameterized, param_available = attempt_import("parameterized")
+if not param_available:
+    raise unittest.SkipTest("Parameterized is not available.")
+parameterized = parameterized.parameterized
+
 
 open_source_solver = set(pyomo.opt.check_available_solvers("highs"))
 if len(open_source_solver) == 0:
