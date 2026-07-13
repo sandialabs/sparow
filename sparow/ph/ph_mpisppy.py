@@ -1,3 +1,5 @@
+import contextlib
+import os
 import statistics
 import copy
 import sys
@@ -11,6 +13,9 @@ import pyomo.environ as pyo
 import or_topas
 
 with or_topas.util.try_import() as mpisppy_available:
+    with open(os.devnull, 'w') as _devnull:
+        with contextlib.redirect_stdout(_devnull):
+            import mpisppy
     import mpisppy.utils.sputils
     from mpisppy import MPI  # for debugging
     import numpy as np  # mpisppy depends on numpy
