@@ -52,9 +52,11 @@ class CIProblemAdapter(ABC):
     def build_stochastic_program(self, model_data: Dict[str, Any]):
         """
         Build and return a Sparow stochastic_program object from model_data.
-        NOTE: This is the standard (high-fidelity) model. 
-        If your problem supports low-fidelity models, also implement 
-        build_low_fidelity_stochastic_program(...) seperately from this method.
+
+        For single-fidelity problems, this is the only model required.
+        For multifidelity problems, subclasses may additionally support a low-fidelity
+        variant, e.g. by overriding build_stochastic_program(...) to depend on an
+        active fidelity state.
         """
         raise NotImplementedError
 
@@ -252,10 +254,6 @@ class CIProblemAdapter(ABC):
     # Optional Multifidelity ACV MRP-specific methods (default to None)
     # ======================================================================
 
-    def build_low_fidelity_stochastic_program(self, model_data):
-        """Build low-fidelity stochastic program for ACV-MRP. Returns None if not supported."""
-        return None
-
     def get_fidelity_levels(self):
         """
         Return list of supported fidelity levels. Default is ['standard'] 
@@ -271,5 +269,18 @@ class CIProblemAdapter(ABC):
     def supports_acv(self):
         """Whether this adapter supports ACV-MRP."""
         return False
+    
+    # Methods below are for maintaining "active fidelity state" when running
+    # the ACV algorithm code.
+    # Ensures functions solve_extensive_form and evaluate_first_stage_solution are
+    # operating on correct model
+
+    def set_active_fidelity(self, fidelity):
+        if fidelity not in ("high", "low"):
+            raise ValueError(f"Unknown fidelity level: {fidelity}")
+        self._active_fidelity = fidelity
+    
+    def get_active_fidelity(self):
+        return self._active_fidelity
 
     

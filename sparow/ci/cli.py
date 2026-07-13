@@ -1,4 +1,4 @@
-
+import os
 import argparse
 import csv
 from html import parser
@@ -45,10 +45,10 @@ def parse_args():
     parser.add_argument("--m", type=int, default=None)
     parser.add_argument("--M", type=int, default=0)  # Additional LF-only replications for ACV-MRP
     parser.add_argument("--compute-true-gap", action="store_true")
+    parser.add_argument("--candidate-scen-count", type=int, default=None)
 
     # Grid-experiment mode arguments
     parser.add_argument("--grid-experiment", action="store_true")
-    parser.add_argument("--candidate-scen-count", type=int, default=None)
     parser.add_argument("--candidate-seed", type=int, default=12345)
     parser.add_argument("--mrp-seed", type=int, default=54321)
     parser.add_argument("--m-values", type=str, default=None)
@@ -464,11 +464,37 @@ def main():
     adapter.validate_scenario_population(scenarios)
     print(f"Loaded {len(scenarios)} scenarios from {args.scenario_file}.")
 
-    xhat = load_xhat(args.xhat_file)
-    if "ROOT" in xhat:
-        xhat = xhat["ROOT"]
-    print(f"Loaded candidate solution xhat from {args.xhat_file}:")
-    print(f"xhat: {xhat}")
+    if os.path.exists(args.xhat_file):
+        xhat = load_xhat(args.xhat_file)
+        if "ROOT" in xhat:
+            xhat = xhat["ROOT"]
+        print(f"Loaded candidate solution xhat from {args.xhat_file}:")
+        print(f"xhat: {xhat}")
+    else:
+        if args.candidate_scen_count is None:
+            raise ValueError(
+                "--candidate-scen-count is required in single-run mode when xhat file does not already exist."
+            )
+
+        print(f"No existing xhat file found at {args.xhat_file}. Generating candidate solution...")
+        print(f"Candidate sample size: {args.candidate_scen_count}")
+        print(f"Candidate seed: {args.candidate_seed}")
+        print(f"Candidate sampling with replacement: {candidate_with_replacement}")
+
+        xhat, candidate_obj = build_candidate_solution(
+            problem_adapter=adapter,
+            full_scenarios=scenarios,
+            candidate_scen_count=args.candidate_scen_count,
+            candidate_seed=args.candidate_seed,
+            with_replacement=candidate_with_replacement,
+            solver_name=args.solver_name,
+        )
+
+        save_xhat(xhat, args.xhat_file)
+
+        print(f"Generated candidate solution xhat and wrote it to {args.xhat_file}:")
+        print(f"xhat: {xhat}")
+        print(f"Candidate EF objective: {candidate_obj}")
 
     if args.acv_mrp:
 
@@ -498,8 +524,8 @@ def main():
 
         print(f"Sample variance (paired LF): {results['sample_variance_G_paired']}")
         print(f"Sample covariance (F,G): {results['sample_covariance_FG']}")
-        print(f"Estimated sample correlation (rho): {results['rho_hat']}")
-        print(f"Estimated control variate coefficient (alpha): {results['alpha_hat']}")
+        print(f"Estimated sample correlation (rho): {results['sample_correlation']}")
+        print(f"Estimated control variate coefficient (alpha): {results['control_variate_coefficient']}")
         print(f"z_statistic: {results['z_statistic']}")
         print(f"Half-width: {results['half_width']}")
         print(f"CI: [{results['ci_lower']}, {results['ci_upper']}]")

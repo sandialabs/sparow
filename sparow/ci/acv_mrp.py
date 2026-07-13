@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import stats
 
-from .standard_mrp import StandardMRP
+# from .standard_mrp import StandardMRP
 from .scenario_sampler import ScenarioSampler
 
 class ACVMRP:
@@ -33,6 +33,9 @@ class ACVMRP:
             raise ValueError("Problem adapter does not support ACV-MRP")
         
     def run(self, xhat):
+
+        if self.options.m < 2:
+            raise ValueError("ACV-MRP requires m >= 2 to estimate sample variance/covariance.")
           
         if self.options.verbose:
             print(f"Running ACV-MRP with m={self.options.m}, M={self.options.M}, n={self.options.n}")
@@ -45,6 +48,9 @@ class ACVMRP:
 
         # Step 3: Compute ACV statistics
         results = self._compute_acv_statistics(paired_replications, lf_only_replications)
+
+        # reset program state at the end of run for safety
+        self.problem_adapter.set_active_fidelity("high")
 
         return results
 
@@ -71,6 +77,10 @@ class ACVMRP:
             # Evaluate both HF and LF models on same batch of scenarios
             hf_result = self._evaluate_fidelity(xhat, model_data_k, "high")
             lf_result = self._evaluate_fidelity(xhat, model_data_k, "low")
+
+            if opts.verbose:
+                print(f"Gap estimate for high-fidelity paired replication {rep_id + 1}: F_nk = {hf_result["gap_estimate"]}")
+                print(f"Gap estimate for low-fidelity paired replication {rep_id + 1} : G_nk = {lf_result["gap_estimate"]}")
 
             paired.append({
                     "F_nk": hf_result["gap_estimate"],
@@ -107,6 +117,8 @@ class ACVMRP:
             # Evaluate only the LF model on this batch of scenarios
             lf_result = self._evaluate_fidelity(xhat, model_data_k, "low")
 
+            print(f"Gap estimate for low-fidelity additional replication {rep_id + 1} : G_nk = {lf_result["gap_estimate"]}")
+
             lf_only.append({
                 "G_nk": lf_result["gap_estimate"],
                 "sampled_indices": [s["Population_Index"] for s in sampled_scenarios],
@@ -118,19 +130,14 @@ class ACVMRP:
     def _evaluate_fidelity(self, xhat, model_data, fidelity):
         """Wrapper that handles both standard and ACV adapters."""
 
+        # Tell the adapter which fidelity to use
+        self.problem_adapter.set_active_fidelity(fidelity)
+
         # STEP 1 - draw a batch of n iid scenarios
         # This is done in _run_paired_replications and was used to create model_data argument
 
-        # Use standard evaluation if model fidelity not specified
-        if fidelity == "high" or not self.problem_adapter.supports_acv():
-            sp = self.problem_adapter.build_stochastic_program(model_data)
-        else:
-            # Use LF evaluation
-            sp = self.problem_adapter.build_low_fidelity_stochastic_program(model_data)
-        if sp is None:
-            raise RuntimeError(f"Adapter returned None for {fidelity}-fidelity model")
-
         # STEP 2 - solve SAA problem on this replication sample
+        # This calls build_stochastic_program internally with the correct model fidelity
         solved_saa = self.problem_adapter.solve_extensive_form(
             model_data=model_data,
             solver_name=self.options.solver_name,
@@ -140,6 +147,7 @@ class ACVMRP:
         saa_optimal_value = self.problem_adapter.get_objective_value(solved_saa)
 
         # STEP 3 - evaluate fixed candidate xhat on same set of scenarios
+        # This calls build_stochastic_program internally with the correct model fidelity
         xhat_value = self.problem_adapter.evaluate_first_stage_solution(
             xhat=xhat,
             model_data=model_data,
@@ -153,7 +161,7 @@ class ACVMRP:
             "gap_estimate": gap_estimate,
             "xhat_value": xhat_value,
             "saa_optimal_value": saa_optimal_value,
-            "sp": sp
+            "fidelity": fidelity
         }
     
     def _compute_acv_statistics(self, paired_reps, lf_only_reps):
@@ -186,17 +194,20 @@ class ACVMRP:
         F_acv = F_bar + alpha_hat * (G_bar_all - G_bar_paired)
 
         # Compute the plug-in variance estimate for ACV estimator
+        constant = opts.M / (opts.m * (opts.m + opts.M)) # M / m(m+M)
         expr1 = s_F_sq / opts.m
-        expr2 = (alpha_hat**2)*(opts.M / (opts.m*(opts.m+opts.M)))*s_G_sq_paired
-        expr3 = -2*alpha_hat*(s_FG / (opts.M / (opts.m*(opts.m+opts.M))))
+        expr2 = (alpha_hat ** 2) * s_G_sq_paired * constant
+        expr3 = -2.0 * alpha_hat * s_FG * constant
+
         var_acv = expr1 + expr2 + expr3
+        var_acv = max(float(var_acv), 0.0)
 
         standard_error_acv = float(np.sqrt(var_acv))
         z_statistic = float(stats.norm.ppf(1.0 - opts.alpha))
         half_width = z_statistic * standard_error_acv
 
         ci_lower = 0.0 # we know the optimality gap is non-negative
-        ci_upper = F_acv + half_width
+        ci_upper = max(0.0, F_acv + half_width)
 
         # Compute variance reduction factor for comparison
         variance_reduction = s_F_sq / var_acv if var_acv > 0 else float('inf')
