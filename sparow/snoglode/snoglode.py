@@ -24,7 +24,7 @@ if True:
     from or_topas.solnpool.solution import ObjectiveInfo, VariableInfo
 
     alt_sol_available = True
-    print("Alternative solutions package from or_topas is available.")
+    #print("Alternative solutions package from or_topas is available.")
 else:
     PoolCounter, SolutionPool_KeepBest, Solution = None, None, None
     alt_sol_available = False
