@@ -386,6 +386,154 @@ def run_mrp_grid_experiment(
     }
 
 
+def run_acvmrp_grid_experiment(
+    model_module_name,
+    model_name,
+    solver_name,
+    candidate_scen_count,
+    candidate_seed,
+    candidate_with_replacement,
+    alpha,
+    mrp_seed,
+    mrp_with_replacement,
+    m_values,
+    n_values,
+    M_values,
+    xhat_file,
+    use_existing_xhat,
+    output_csv,
+    use_integer=False,
+):
+    """
+    Run a full ACV-MRP grid experiment over (m, n, M) for one fixed candidate xhat.
+
+    This function:
+      1. loads the adapter and full scenario population,
+      2. optionally builds or loads xhat,
+      3. computes the exact true optimality gap,
+      4. runs ACV-MRP for all (m, n, M) parameter combinations,
+      5. writes the results to a CSV file.
+
+    NOTE: we use one fixed candidate xhat
+    across all configurations for fair comparison.
+    """
+    problem_adapter = load_problem_adapter(
+        model_module_name=model_module_name,
+        model_name=model_name,
+        use_integer=use_integer,
+    )
+
+    full_scenarios = problem_adapter.get_scenario_population()
+    problem_adapter.validate_scenario_population(full_scenarios)
+
+    # ------------------------------------------------------
+    # Candidate xhat
+    # ------------------------------------------------------
+    if use_existing_xhat:
+        xhat = load_xhat(xhat_file)
+        candidate_ef_objective = np.nan
+    else:
+        xhat, candidate_ef_objective = build_candidate_solution(
+            problem_adapter=problem_adapter,
+            full_scenarios=full_scenarios,
+            candidate_scen_count=candidate_scen_count,
+            candidate_seed=candidate_seed,
+            with_replacement=candidate_with_replacement,
+            solver_name=solver_name,
+        )
+        save_xhat(xhat, xhat_file)
+
+    # ------------------------------------------------------
+    # Exact true gap
+    # ------------------------------------------------------
+    true_gap_evaluator = TrueOptimalityGapEvaluator(
+        problem_adapter=problem_adapter,
+        scenarios=full_scenarios,
+        solver_name=solver_name,
+    )
+
+    true_gap_results = true_gap_evaluator.compute_true_gap(xhat=xhat)
+
+    true_optimal_value = true_gap_results["true_optimal_value"]
+    candidate_true_objective = true_gap_results["xhat_true_value"]
+    true_gap = true_gap_results["true_gap"]
+
+    print("\n=== True finite-population gap ===\n")
+    print(f"True optimal value: {true_optimal_value}")
+    print(f"Candidate true objective: {candidate_true_objective}")
+    print(f"True gap: {true_gap}")
+    print("\n==================================\n")
+
+    rows = []
+
+    # ------------------------------------------------------
+    # Run ACV-MRP for each fixed value of (m, n, M)
+    # ------------------------------------------------------
+    for m in m_values:
+        for n in n_values:
+            for M in M_values:
+                print(f"\n=== Running ACV-MRP for m={m}, n={n}, M={M} ===")
+
+                acv_results = run_single_acvmrp_experiment(
+                    problem_adapter=problem_adapter,
+                    scenarios=full_scenarios,
+                    xhat=xhat,
+                    n=n,
+                    m=m,
+                    M=M,
+                    alpha=alpha,
+                    seed=mrp_seed,
+                    with_replacement=mrp_with_replacement,
+                    solver_name=solver_name,
+                )
+
+                row = {
+                    "model_module": model_module_name,
+                    "model_name": model_name,
+                    "m": m,
+                    "n": n,
+                    "M": M,
+                    "true_optimal_value": true_optimal_value,
+                    "candidate_ef_objective": candidate_ef_objective,
+                    "candidate_true_objective": candidate_true_objective,
+                    "true_gap": true_gap,
+
+                    "point_estimate": acv_results["point_estimate"],
+                    "point_estimate_hf_only": acv_results["point_estimate_hf_only"],
+                    "ci_lower": acv_results["ci_lower"],
+                    "ci_upper": acv_results["ci_upper"],
+                    "half_width": acv_results["half_width"],
+
+                    "sample_variance_F": acv_results["sample_variance_F"],
+                    "sample_variance_G_paired": acv_results["sample_variance_G_paired"],
+                    "sample_covariance_FG": acv_results["sample_covariance_FG"],
+                    "variance_acv_estimator": acv_results["variance_acv_estimator"],
+                    "standard_error_acv": acv_results["standard_error_acv"],
+                    "sample_correlation": acv_results["sample_correlation"],
+                    "control_variate_coefficient": acv_results["control_variate_coefficient"],
+                    "z_statistic": acv_results["z_statistic"],
+                    "variance_reduction_factor": acv_results["variance_reduction_factor"],
+                }
+
+                rows.append(row)
+
+    fieldnames = list(rows[0].keys())
+
+    with open(output_csv, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    return {
+        "xhat": xhat,
+        "candidate_ef_objective": candidate_ef_objective,
+        "true_optimal_value": true_optimal_value,
+        "candidate_true_objective": candidate_true_objective,
+        "true_gap": true_gap,
+        "rows": rows,
+    }
+
+
 # ============================================================================
 # Main entry point
 # ============================================================================
@@ -423,23 +571,46 @@ def main():
         if args.output_csv is None:
             raise ValueError("--output-csv is required in --grid-experiment mode.")
 
-        results = run_mrp_grid_experiment(
-            model_module_name=args.model_module,
-            model_name=args.model_name,
-            solver_name=args.solver_name,
-            candidate_scen_count=args.candidate_scen_count,
-            candidate_seed=args.candidate_seed,
-            candidate_with_replacement=candidate_with_replacement,
-            alpha=args.alpha,
-            mrp_seed=args.mrp_seed,
-            mrp_with_replacement=mrp_with_replacement,
-            m_values=parse_int_list(args.m_values),
-            n_values=parse_int_list(args.n_values),
-            xhat_file=args.xhat_file,
-            use_existing_xhat=args.use_existing_xhat,
-            output_csv=args.output_csv,
-            use_integer=args.use_integer,
-        )
+        if args.acv_mrp:
+            if args.M_values is None:
+                raise ValueError("--M-values is required for ACV-MRP grid experiments.")
+
+            results = run_acvmrp_grid_experiment(
+                model_module_name=args.model_module,
+                model_name=args.model_name,
+                solver_name=args.solver_name,
+                candidate_scen_count=args.candidate_scen_count,
+                candidate_seed=args.candidate_seed,
+                candidate_with_replacement=candidate_with_replacement,
+                alpha=args.alpha,
+                mrp_seed=args.mrp_seed,
+                mrp_with_replacement=mrp_with_replacement,
+                m_values=parse_int_list(args.m_values),
+                n_values=parse_int_list(args.n_values),
+                M_values=parse_int_list(args.M_values),
+                xhat_file=args.xhat_file,
+                use_existing_xhat=args.use_existing_xhat,
+                output_csv=args.output_csv,
+                use_integer=args.use_integer,
+            )
+        else:
+            results = run_mrp_grid_experiment(
+                model_module_name=args.model_module,
+                model_name=args.model_name,
+                solver_name=args.solver_name,
+                candidate_scen_count=args.candidate_scen_count,
+                candidate_seed=args.candidate_seed,
+                candidate_with_replacement=candidate_with_replacement,
+                alpha=args.alpha,
+                mrp_seed=args.mrp_seed,
+                mrp_with_replacement=mrp_with_replacement,
+                m_values=parse_int_list(args.m_values),
+                n_values=parse_int_list(args.n_values),
+                xhat_file=args.xhat_file,
+                use_existing_xhat=args.use_existing_xhat,
+                output_csv=args.output_csv,
+                use_integer=args.use_integer,
+            )
 
         print("\nGrid experiment complete.")
         print(f"Wrote CSV: {args.output_csv}")
