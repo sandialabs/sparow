@@ -79,8 +79,8 @@ class ACVMRP:
             lf_result = self._evaluate_fidelity(xhat, model_data_k, "low")
 
             if opts.verbose:
-                print(f"Gap estimate for high-fidelity paired replication {rep_id + 1}: F_nk = {hf_result["gap_estimate"]}")
-                print(f"Gap estimate for low-fidelity paired replication {rep_id + 1} : G_nk = {lf_result["gap_estimate"]}")
+                print(f"Gap estimate for high-fidelity paired replication {rep_id + 1}: F_nk = {hf_result['gap_estimate']}")
+                print(f"Gap estimate for low-fidelity paired replication {rep_id + 1} : G_nk = {lf_result['gap_estimate']}")
 
             paired.append({
                     "F_nk": hf_result["gap_estimate"],
@@ -117,7 +117,7 @@ class ACVMRP:
             # Evaluate only the LF model on this batch of scenarios
             lf_result = self._evaluate_fidelity(xhat, model_data_k, "low")
 
-            print(f"Gap estimate for low-fidelity additional replication {rep_id + 1} : G_nk = {lf_result["gap_estimate"]}")
+            print(f"Gap estimate for low-fidelity additional replication {rep_id + 1} : G_nk = {lf_result['gap_estimate']}")
 
             lf_only.append({
                 "G_nk": lf_result["gap_estimate"],

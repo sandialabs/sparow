@@ -5,9 +5,9 @@ set -euo pipefail
 # User settings
 # ==========================================================
 
-MODEL_MODULE="sparow_examples.farmers.MRPfarmers"
-MODEL_NAME="Advanced"
-SOLVER="gurobi_direct"
+MODEL_MODULE="sparow_examples.mrp_facilityloc.mrp_discrete_facilityloc"
+MODEL_NAME="HF" # high fidelity adapter is the one that supports ACVMRP
+SOLVER="highs"
 
 # Candidate-solution generation
 CANDIDATE_SCEN_COUNT=5
@@ -21,7 +21,7 @@ MRP_WITH_REPLACEMENT="true"
 
 # Grid of m and n values, optionally M values
 M_VALUES="10,20,30"
-N_VALUES="625, 312, 100"
+N_VALUES="300,200,100"
 ACV_MRP="true"
 ACV_M_VALUES="5,10"
 
@@ -66,7 +66,7 @@ else
 fi
 
 
-echo "=== Running experiments for standard MRP algorithm ==="
+echo "=== Running grid experiments ==="
 echo "Candidate sampling flag: ${CANDIDATE_FLAG}"
 echo "MRP sampling flag: ${MRP_FLAG}"
 echo "ACV flag: ${ACV_FLAG}"
