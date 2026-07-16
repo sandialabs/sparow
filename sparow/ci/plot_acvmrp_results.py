@@ -39,7 +39,7 @@ for M, subM in df.groupby("M"):
             sub["n"],
             sub["point_estimate"],
             marker="o",
-            label=rf"$paired reps m={m},\, additional reps M={M}$"
+            label=rf"paired reps $m={m},\,$ additional reps $M={M}$"
         )
 
     plt.axhline(
@@ -68,7 +68,7 @@ for M, subM in df.groupby("M"):
             sub["n"],
             sub["ci_upper"],
             marker="o",
-            label=rf"$paired reps m={m},\, additional reps M={M}$"
+            label=rf"paired reps $m={m},\,$ additional reps $M={M}$"
         )
 
     plt.axhline(
@@ -97,7 +97,7 @@ for M, subM in df.groupby("M"):
             sub["n"],
             sub["variance_reduction_factor"],
             marker="o",
-            label=rf"$paired reps m={m},\, additional reps M={M}$"
+            label=rf"paired reps $m={m},\,$ additional reps $M={M}$"
         )
 
     plt.grid()

@@ -155,7 +155,19 @@ class ACVMRP:
             solver_options=self.options.solver_options,
         )
 
-        gap_estimate = xhat_value - saa_optimal_value
+        gap_raw = xhat_value - saa_optimal_value
+
+        # Allow small absolute or relative numerical error based on the scale of 
+        # the objective values
+        tol = max(1e-10, 1e-12 * max(1.0, abs(xhat_value), abs(saa_optimal_value)))
+
+        if gap_raw < -tol:
+            raise RuntimeError(
+                f"Gap estimate is significantly negative: {gap_raw}. "
+                f"xhat_value={xhat_value}, saa_optimal_value={saa_optimal_value}"
+            )
+        
+        gap_estimate = max(0.0, gap_raw)
 
         return {
             "gap_estimate": gap_estimate,

@@ -59,6 +59,12 @@ def parse_args():
     # ACV-MRP specific arguments
     parser.add_argument("--acv-mrp", action="store_true", help="Run ACV-MRP instead of standard MRP")
     parser.add_argument("--M-values", type=str, default=None, help="M values for ACV-MRP grid experiment")
+    parser.add_argument(
+        "--lf-model-type",
+        choices=["classic", "stochastic"],
+        default="classic",
+        help="Select which concrete low-fidelity model to use when ACV-MRP requests low fidelity",
+    )
 
     return parser.parse_args()
 
@@ -91,7 +97,7 @@ def load_xhat(path):
 def save_xhat(xhat, path):
     np.save(path, xhat, allow_pickle=True)
 
-def load_problem_adapter(model_module_name, model_name=None, use_integer=False):
+def load_problem_adapter(model_module_name, model_name=None, use_integer=False, lf_model_type="classic"):
     """
     This function helps keep the core CI code model-agnostic:
     each model module (farmer, newsvendor, OPF, etc.) is responsible for
@@ -110,12 +116,16 @@ def load_problem_adapter(model_module_name, model_name=None, use_integer=False):
     use_integer : bool, optional
         Whether the requested model instance should use integer first-stage
         variables, if supported by the model module.
+    lf_model_type: str, optional
+        Which formulation to select for the low-fidelity model.
+        This depends on a script-specific selector for that particular problem
+        instance, if its CIProblemAdapter supports ACV-MRP
 
     Returns
     -------
     CIProblemAdapter
         An instantiated problem adapter compatible with the generic
-        Sparow confidence-interval / MRP code.
+        Sparow confidence-interval code.
     """
 
     model_module = importlib.import_module(model_module_name)
@@ -124,11 +134,15 @@ def load_problem_adapter(model_module_name, model_name=None, use_integer=False):
         raise RuntimeError(f"Model module {model_module_name} must define get_ci_problem_adapter().")
 
     if model_name is None:
-        return model_module.get_ci_problem_adapter(use_integer=use_integer)
+        return model_module.get_ci_problem_adapter(
+            use_integer=use_integer,
+            lf_model_type=lf_model_type
+        )
 
     return model_module.get_ci_problem_adapter(
         model_name=model_name,
         use_integer=use_integer,
+        lf_model_type=lf_model_type,
     )
 
 def build_candidate_solution(
@@ -230,6 +244,7 @@ def run_mrp_grid_experiment(
     use_existing_xhat,
     output_csv,
     use_integer=False,
+    lf_model_type="classic",
 ):
     """
     Run a full grid experiment over (m, n) for one fixed candidate xhat.
@@ -253,6 +268,7 @@ def run_mrp_grid_experiment(
         model_module_name=model_module_name,
         model_name=model_name,
         use_integer=use_integer,
+        lf_model_type=lf_model_type,
     )
 
     full_scenarios = problem_adapter.get_scenario_population()
@@ -352,6 +368,7 @@ def run_mrp_grid_experiment(
             row = {
                 "model_module": model_module_name,
                 "model_name": model_name,
+                "lf_model_type": lf_model_type,
                 "m": m,
                 "n": n,
                 "true_optimal_value": true_optimal_value,
@@ -403,6 +420,7 @@ def run_acvmrp_grid_experiment(
     use_existing_xhat,
     output_csv,
     use_integer=False,
+    lf_model_type="classic",
 ):
     """
     Run a full ACV-MRP grid experiment over (m, n, M) for one fixed candidate xhat.
@@ -421,6 +439,7 @@ def run_acvmrp_grid_experiment(
         model_module_name=model_module_name,
         model_name=model_name,
         use_integer=use_integer,
+        lf_model_type=lf_model_type,
     )
 
     full_scenarios = problem_adapter.get_scenario_population()
@@ -490,6 +509,7 @@ def run_acvmrp_grid_experiment(
                 row = {
                     "model_module": model_module_name,
                     "model_name": model_name,
+                    "lf_model_type": lf_model_type,
                     "m": m,
                     "n": n,
                     "M": M,
@@ -592,6 +612,7 @@ def main():
                 use_existing_xhat=args.use_existing_xhat,
                 output_csv=args.output_csv,
                 use_integer=args.use_integer,
+                lf_model_type=args.lf_model_type,
             )
         else:
             results = run_mrp_grid_experiment(
@@ -610,6 +631,7 @@ def main():
                 use_existing_xhat=args.use_existing_xhat,
                 output_csv=args.output_csv,
                 use_integer=args.use_integer,
+                lf_model_type=args.lf_model_type,
             )
 
         print("\nGrid experiment complete.")
@@ -629,6 +651,7 @@ def main():
         model_module_name=args.model_module,
         model_name=args.model_name,
         use_integer=args.use_integer,
+        lf_model_type=args.lf_model_type,
     )
 
     scenarios = load_scenarios(args.scenario_file)

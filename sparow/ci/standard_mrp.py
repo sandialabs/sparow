@@ -95,7 +95,20 @@ class StandardMRP:
             # This is the replication's estimate of the optimality gap upper bound
             # For minimization:
             # F_{n,k}(xhat) = f_n(xhat) - f_n(x_n^{k*})
-            F_nk = xhat_value - saa_optimal_value
+
+            gap_raw = xhat_value - saa_optimal_value
+
+            # Allow small absolute or relative numerical error based on the scale of 
+            # the objective values
+            tol = max(1e-10, 1e-12 * max(1.0, abs(xhat_value), abs(saa_optimal_value)))
+
+            if gap_raw < -tol:
+                raise RuntimeError(
+                    f"Gap estimate is significantly negative: {gap_raw}. "
+                    f"xhat_value={xhat_value}, saa_optimal_value={saa_optimal_value}"
+                )
+            
+            F_nk = max(0.0, gap_raw)
             replication_values.append(F_nk)
 
             if opts.verbose:

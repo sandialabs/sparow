@@ -5,7 +5,7 @@ set -euo pipefail
 # User settings
 # ==========================================================
 
-MODEL_MODULE="sparow_examples.mrp_facilityloc.mrp_discrete_facilityloc"
+MODEL_MODULE="sparow_examples.mrp_facilityloc.mrp_reliable_pcenter"
 MODEL_NAME="HF"
 SOLVER="gurobi_direct"
 
@@ -20,9 +20,9 @@ MRP_SEED=678
 MRP_WITH_REPLACEMENT="false"
 
 # Single-run settings
-SCENARIO_FILE="../../../sparow_examples/sparow_examples/mrp_facilityloc/facilityloc_625_scenarios.npy"
-XHAT_FILE="ACVMRP_candidate_xhat_cand${CANDIDATE_SCEN_COUNT}_seed${CANDIDATE_SEED}.npy"
-N=625
+SCENARIO_FILE="../../../sparow_examples/sparow_examples/mrp_facilityloc/reliable_pcenter_scenarios_1875.npy"
+XHAT_FILE="shared_candidate_xhat_cand${CANDIDATE_SCEN_COUNT}_seed${CANDIDATE_SEED}.npy"
+N=900
 M_PAIRED=10
 M_LF_ONLY=5
 COMPUTE_TRUE_GAP="true"

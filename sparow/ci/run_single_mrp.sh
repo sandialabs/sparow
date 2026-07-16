@@ -7,6 +7,7 @@ set -euo pipefail
 
 MODEL_MODULE="sparow_examples.farmers.MRPfarmers"
 MODEL_NAME="Advanced"
+LF_MODEL_TYPE="classic"
 SOLVER="gurobi_direct"
 
 # Candidate-solution generation
@@ -21,8 +22,8 @@ MRP_WITH_REPLACEMENT="false"
 
 # Single-run settings
 SCENARIO_FILE="../../../sparow_examples/sparow_examples/farmers/advanced_farmers_1000_scenarios.npy"
-XHAT_FILE="MRP_candidate_xhat_cand${CANDIDATE_SCEN_COUNT}_seed${CANDIDATE_SEED}.npy"
-N=1000
+XHAT_FILE="shared_candidate_xhat_cand${CANDIDATE_SCEN_COUNT}_seed${CANDIDATE_SEED}.npy"
+N=500
 M=10
 COMPUTE_TRUE_GAP="true"
 
@@ -72,6 +73,7 @@ echo "m: ${M}"
 python -m sparow.ci.cli \
     --model-module "${MODEL_MODULE}" \
     --model-name "${MODEL_NAME}" \
+    --lf-model-type "${LF_MODEL_TYPE}" \
     --solver-name "${SOLVER}" \
     --candidate-scen-count "${CANDIDATE_SCEN_COUNT}" \
     --candidate-seed "${CANDIDATE_SEED}" \

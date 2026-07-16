@@ -48,7 +48,24 @@ class TrueOptimalityGapEvaluator:
     def compute_true_gap(self, xhat):
         true_optimal_value = self.compute_true_optimal_value()
         xhat_true_value = self.evaluate_xhat(xhat)
-        true_gap = xhat_true_value - true_optimal_value
+        
+        true_gap_raw = xhat_true_value - true_optimal_value
+
+        # Allow small absolute or relative numerical error based on the scale of 
+        # the objective values
+        tol = max(1e-10, 1e-12 * max(1.0, abs(xhat_true_value), abs(true_optimal_value)))  
+
+        if true_gap_raw < -tol:
+            raise RuntimeError(
+                "Computed true optimality gap is significantly negative, which suggests "
+                "more than floating-point error.\n"
+                f"xhat_true_value = {xhat_true_value}\n"
+                f"true_optimal_value = {true_optimal_value}\n"
+                f"true_gap_raw = {true_gap_raw}\n"
+                f"tolerance = {tol}"
+            )
+
+        true_gap = max(0.0, true_gap_raw)
 
         return {
             "true_optimal_value": true_optimal_value,
