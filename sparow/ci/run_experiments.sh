@@ -6,7 +6,7 @@ set -euo pipefail
 # ==========================================================
 
 MODEL_MODULE="sparow_examples.mrp_facilityloc.mrp_discrete_facilityloc"
-MODEL_NAME="HF" 
+MODEL_NAME="HF" # HF is what supports ACV MRP
 LF_MODEL_TYPE="classic"
 SOLVER="gurobi_direct"
 
@@ -26,8 +26,8 @@ MRP_WITH_REPLACEMENT="true"
 # Grid of m and n values, optionally M values
 M_VALUES="10,15,20"
 N_VALUES="100,200,300,400,500,600"
-ACV_MRP="false"
-ACV_M_VALUES=""
+ACV_MRP="true"
+ACV_M_VALUES="5,10"
 
 # Files
 XHAT_FILE="manually_created_suboptimal_xhat.npy"
@@ -85,8 +85,10 @@ echo "MRP sampling flag: ${MRP_FLAG}"
 echo "ACV flag: ${ACV_FLAG}"
 echo "Use existing xhat flag: ${USE_EXISTING_XHAT_FLAG}"
 
-# Note that for standard MRP, grid-experiment will always do nested sampling of the 
+# Note that as of now, grid-experiment will always do nested sampling of the 
 # scenarios, so no additional flag for --nested-sampling is needed.
+# .... but may change this in future refactor
+
 if [ "${ACV_MRP}" = "true" ]; then
     python -m sparow.ci.cli \
         --grid-experiment \

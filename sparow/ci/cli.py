@@ -496,6 +496,36 @@ def run_acvmrp_grid_experiment(
     rows = []
 
     # ------------------------------------------------------
+    # Precompute superset of sampled scenarios once
+    # ------------------------------------------------------
+    n_values = sorted(n_values, reverse=True)
+    n_max = max(n_values)
+    m_max = max(m_values)
+    M_max = max(M_values)
+
+    sampler = ScenarioSampler(
+        scenarios=full_scenarios,
+        seed=mrp_seed,
+        with_replacement=mrp_with_replacement,
+    )
+
+    # Need enough supersets for paired replications and 
+    # additional LF-only replications
+    total_replications_needed = m_max + M_max
+
+    # Pre-draw the superset batch for every replication up to m_max
+    # Each replication k gets one sample of size n_max, and smaller n's
+    # will use prefixes of that sample.
+    sampled_supersets = {} # key = rep_id, value = list of sampled scenarios of size n_max
+    for rep_id in range(total_replications_needed):
+        sampled_supersets[rep_id] = sampler.draw_scenarios(
+            n=n_max,
+            replication_id=rep_id,
+        )
+
+    rows = []
+
+    # ------------------------------------------------------
     # Run ACV-MRP for each fixed value of (m, n, M)
     # ------------------------------------------------------
     for m in m_values:
@@ -503,10 +533,7 @@ def run_acvmrp_grid_experiment(
             for M in M_values:
                 print(f"\n=== Running ACV-MRP for m={m}, n={n}, M={M} ===")
 
-                acv_results = run_single_acvmrp_experiment(
-                    problem_adapter=problem_adapter,
-                    scenarios=full_scenarios,
-                    xhat=xhat,
+                options = ACVMRPOptions(
                     n=n,
                     m=m,
                     M=M,
@@ -514,7 +541,18 @@ def run_acvmrp_grid_experiment(
                     seed=mrp_seed,
                     with_replacement=mrp_with_replacement,
                     solver_name=solver_name,
+                    verbose=True,
+                    nested_sampling=True,
+                    precomputed_supersets=sampled_supersets,
                 )
+
+                acvmrp = ACVMRP(
+                    problem_adapter=problem_adapter,
+                    scenarios=full_scenarios,
+                    options=options,
+                )
+
+                acv_results = acvmrp.run(xhat=xhat)
 
                 row = {
                     "model_module": model_module_name,

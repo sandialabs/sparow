@@ -202,6 +202,11 @@ for m, sub in df.groupby("m"):
         alpha=0.2,
         label=r"One-sided confidence interval"
     )
+
+    # Scale y-axis to start just below the true optimal value, end above ci_upper
+    y_axis_rescale = (max(sub["ci_upper"]) - true_gap) / 6
+    plt.ylim(true_gap - y_axis_rescale, max(sub["ci_upper"]) + y_axis_rescale)
+
     plt.grid()
     plt.xlabel(r"Sample size $n$")
     plt.ylabel(r"Gap estimate / confidence bound")
