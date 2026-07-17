@@ -278,9 +278,12 @@ def run_mrp_grid_experiment(
     # Candidate xhat
     # ------------------------------------------------------
     if use_existing_xhat:
+        print(f"Loading candidate solution stored at {xhat_file}")
         xhat = load_xhat(xhat_file)
         candidate_ef_objective = np.nan
+        print(f"xhat: {xhat}")
     else:
+        print(f"Generating new candidate solution...")
         xhat, candidate_ef_objective = build_candidate_solution(
             problem_adapter=problem_adapter,
             full_scenarios=full_scenarios,
@@ -289,6 +292,7 @@ def run_mrp_grid_experiment(
             with_replacement=candidate_with_replacement,
             solver_name=solver_name,
         )
+        print(f"xhat: {xhat}")
         save_xhat(xhat, xhat_file)
 
     # ------------------------------------------------------
@@ -307,6 +311,7 @@ def run_mrp_grid_experiment(
     true_gap = true_gap_results["true_gap"]
 
     print("\n=== True finite-population gap ===\n")
+    print(f"Total number of population scenarios: {len(full_scenarios)}")
     print(f"True optimal value: {true_optimal_value}")
     print(f"Candidate true objective: {candidate_true_objective}")
     print(f"True gap: {true_gap}")
@@ -449,9 +454,12 @@ def run_acvmrp_grid_experiment(
     # Candidate xhat
     # ------------------------------------------------------
     if use_existing_xhat:
+        print(f"Loading candidate solution stored at {xhat_file}")
         xhat = load_xhat(xhat_file)
         candidate_ef_objective = np.nan
+        print(f"xhat: {xhat}")
     else:
+        print(f"Generating new candidate solution...")
         xhat, candidate_ef_objective = build_candidate_solution(
             problem_adapter=problem_adapter,
             full_scenarios=full_scenarios,
@@ -460,6 +468,7 @@ def run_acvmrp_grid_experiment(
             with_replacement=candidate_with_replacement,
             solver_name=solver_name,
         )
+        print(f"xhat: {xhat}")
         save_xhat(xhat, xhat_file)
 
     # ------------------------------------------------------
@@ -478,6 +487,7 @@ def run_acvmrp_grid_experiment(
     true_gap = true_gap_results["true_gap"]
 
     print("\n=== True finite-population gap ===\n")
+    print(f"Total number of population scenarios: {len(full_scenarios)}")
     print(f"True optimal value: {true_optimal_value}")
     print(f"Candidate true objective: {candidate_true_objective}")
     print(f"True gap: {true_gap}")

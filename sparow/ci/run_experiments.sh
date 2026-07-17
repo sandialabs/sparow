@@ -6,14 +6,17 @@ set -euo pipefail
 # ==========================================================
 
 MODEL_MODULE="sparow_examples.mrp_facilityloc.mrp_discrete_facilityloc"
-MODEL_NAME="HF" # high fidelity adapter is the one that supports ACVMRP
+MODEL_NAME="HF" 
 LF_MODEL_TYPE="classic"
-SOLVER="highs"
+SOLVER="gurobi_direct"
 
-# Candidate-solution generation
+# Candidate-solution generation (if you don't want to use existing file)
 CANDIDATE_SCEN_COUNT=5
 CANDIDATE_SEED=12345
 CANDIDATE_WITH_REPLACEMENT="false"
+
+# If you want to use existing candidate solution, already written to file
+USE_EXISTING_XHAT="true"
 
 # Confidence interval settings
 ALPHA=0.05
@@ -21,13 +24,13 @@ MRP_SEED=678
 MRP_WITH_REPLACEMENT="true"
 
 # Grid of m and n values, optionally M values
-M_VALUES="10,20,30"
-N_VALUES="300,200,100"
-ACV_MRP="true"
-ACV_M_VALUES="5,10"
+M_VALUES="10,15,20"
+N_VALUES="100,200,300,400,500,600"
+ACV_MRP="false"
+ACV_M_VALUES=""
 
 # Files
-XHAT_FILE="GRID_candidate_xhat_cand${CANDIDATE_SCEN_COUNT}_seed${CANDIDATE_SEED}.npy"
+XHAT_FILE="manually_created_suboptimal_xhat.npy"
 RESULTS_CSV="grid_results.csv"
 PLOT_SCRIPT_STANDARD="plot_mrp_results.py"
 PLOT_SCRIPT_ACV="plot_acvmrp_results.py"
@@ -35,6 +38,16 @@ PLOT_SCRIPT_ACV="plot_acvmrp_results.py"
 # ==========================================================
 # Convert replacement choices into CLI flags
 # ==========================================================
+
+USE_EXISTING_XHAT_FLAG=""
+if [ "${USE_EXISTING_XHAT}" = "true" ]; then
+    USE_EXISTING_XHAT_FLAG="--use-existing-xhat"
+elif [ "${USE_EXISTING_XHAT}" = "false" ]; then
+    USE_EXISTING_XHAT_FLAG=""
+else
+    echo "Error: USE_EXISTING_XHAT must be 'true' or 'false'"
+    exit 1
+fi
 
 CANDIDATE_FLAG=""
 if [ "${CANDIDATE_WITH_REPLACEMENT}" = "true" ]; then
@@ -66,11 +79,11 @@ else
     exit 1
 fi
 
-
 echo "=== Running grid experiments ==="
 echo "Candidate sampling flag: ${CANDIDATE_FLAG}"
 echo "MRP sampling flag: ${MRP_FLAG}"
 echo "ACV flag: ${ACV_FLAG}"
+echo "Use existing xhat flag: ${USE_EXISTING_XHAT_FLAG}"
 
 # Note that for standard MRP, grid-experiment will always do nested sampling of the 
 # scenarios, so no additional flag for --nested-sampling is needed.
@@ -85,6 +98,7 @@ if [ "${ACV_MRP}" = "true" ]; then
         --candidate-scen-count "${CANDIDATE_SCEN_COUNT}" \
         --candidate-seed "${CANDIDATE_SEED}" \
         ${CANDIDATE_FLAG} \
+        ${USE_EXISTING_XHAT_FLAG} \
         --alpha "${ALPHA}" \
         --mrp-seed "${MRP_SEED}" \
         ${MRP_FLAG} \
@@ -109,6 +123,7 @@ else
         --candidate-scen-count "${CANDIDATE_SCEN_COUNT}" \
         --candidate-seed "${CANDIDATE_SEED}" \
         ${CANDIDATE_FLAG} \
+        ${USE_EXISTING_XHAT_FLAG} \
         --alpha "${ALPHA}" \
         --mrp-seed "${MRP_SEED}" \
         ${MRP_FLAG} \
