@@ -5,13 +5,14 @@ set -euo pipefail
 # User settings
 # ==========================================================
 
-MODEL_MODULE="sparow_examples.mrp_facilityloc.mrp_reliable_pcenter"
+MODEL_MODULE="sparow_examples.mrp_facilityloc.mrp_discrete_facilityloc"
 MODEL_NAME="HF"
+LF_MODEL_TYPE="classic"
 SOLVER="gurobi_direct"
 
 # Candidate-solution generation
 CANDIDATE_SCEN_COUNT=1
-CANDIDATE_SEED=12345
+CANDIDATE_SEED=123
 CANDIDATE_WITH_REPLACEMENT="false"
 
 # MRP confidence interval settings
@@ -20,9 +21,9 @@ MRP_SEED=678
 MRP_WITH_REPLACEMENT="false"
 
 # Single-run settings
-SCENARIO_FILE="../../../sparow_examples/sparow_examples/mrp_facilityloc/reliable_pcenter_scenarios_1875.npy"
-XHAT_FILE="shared_candidate_xhat_cand${CANDIDATE_SCEN_COUNT}_seed${CANDIDATE_SEED}.npy"
-N=900
+SCENARIO_FILE="../../../sparow_examples/sparow_examples/mrp_facilityloc/discrete_facilityloc_scenarios.npy"
+XHAT_FILE="manually_created_suboptimal_xhat.npy"
+N=100
 M_PAIRED=10
 M_LF_ONLY=5
 COMPUTE_TRUE_GAP="true"
@@ -95,6 +96,7 @@ echo "M: ${M_LF_ONLY}"
 python -m sparow.ci.cli \
     --model-module "${MODEL_MODULE}" \
     --model-name "${MODEL_NAME}" \
+    --lf-model-type "${LF_MODEL_TYPE}" \
     --solver-name "${SOLVER}" \
     --candidate-scen-count "${CANDIDATE_SCEN_COUNT}" \
     --candidate-seed "${CANDIDATE_SEED}" \

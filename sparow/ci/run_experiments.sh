@@ -7,6 +7,7 @@ set -euo pipefail
 
 MODEL_MODULE="sparow_examples.mrp_facilityloc.mrp_discrete_facilityloc"
 MODEL_NAME="HF" # high fidelity adapter is the one that supports ACVMRP
+LF_MODEL_TYPE="classic"
 SOLVER="highs"
 
 # Candidate-solution generation
@@ -79,6 +80,7 @@ if [ "${ACV_MRP}" = "true" ]; then
         --acv-mrp \
         --model-module "${MODEL_MODULE}" \
         --model-name "${MODEL_NAME}" \
+        --lf-model-type "${LF_MODEL_TYPE}" \
         --solver-name "${SOLVER}" \
         --candidate-scen-count "${CANDIDATE_SCEN_COUNT}" \
         --candidate-seed "${CANDIDATE_SEED}" \
@@ -102,6 +104,7 @@ else
         --grid-experiment \
         --model-module "${MODEL_MODULE}" \
         --model-name "${MODEL_NAME}" \
+        --lf-model-type "${LF_MODEL_TYPE}" \
         --solver-name "${SOLVER}" \
         --candidate-scen-count "${CANDIDATE_SCEN_COUNT}" \
         --candidate-seed "${CANDIDATE_SEED}" \
