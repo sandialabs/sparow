@@ -39,6 +39,7 @@ class ACVMRP:
           
         if self.options.verbose:
             print(f"Running ACV-MRP with m={self.options.m}, M={self.options.M}, n={self.options.n}")
+            print(f"Using precomputed superset of scenarios for nested sampling scheme: {self.options.nested_sampling}")
 
         # Step 1: Paired replications (k= 1...m)
         paired_replications = self._run_paired_replications(xhat)
@@ -55,7 +56,11 @@ class ACVMRP:
         return results
 
     def _run_paired_replications(self, xhat):
+        
         opts = self.options
+
+        if opts.m < 2:
+            raise ValueError("MRP requires m >= 2 to estimate sample variance.")
 
         paired = []
         
@@ -64,10 +69,24 @@ class ACVMRP:
                 print(f"Running paired ACV-MRP replication {rep_id + 1}/{opts.m}")
 
             # STEP 1 - draw a batch of n iid scenarios
-            sampled_scenarios = self.sampler.draw_scenarios(
-                    n=opts.n,
-                    replication_id=rep_id,
-                )
+            # We also have the option to draw a precomputed superset of scenarios 
+            # for each replication, and then use the first n scenarios from that superset
+            # when doing nested-sample experiments. 
+            # This is useful for comparing results across different n values.
+            if opts.nested_sampling:
+
+                if opts.precomputed_supersets is None:
+                    raise RuntimeError("nested_sampling=True requires precomputed_supersets in ACVMRPOptions.")
+                if rep_id not in opts.precomputed_supersets:
+                    raise RuntimeError(f"Missing precomputed superset for replication {rep_id}.")
+                print("Using scenarios from precomputed superset.")
+                sampled_scenarios = opts.precomputed_supersets[rep_id][:opts.n]
+            else:
+                print("Resampling fresh batch of scenarios")
+                sampled_scenarios = self.sampler.draw_scenarios(
+                        n=opts.n,
+                        replication_id=rep_id,
+                    )
             
             # Validate the format of the sampled scenarios
             self.problem_adapter.validate_scenario_population(sampled_scenarios)
@@ -104,10 +123,24 @@ class ACVMRP:
                 print(f"Running LF-only replication {rep_id + 1 - opts.m}/{opts.M}")
 
             # STEP 1 - draw a batch of n iid scenarios
-            sampled_scenarios = self.sampler.draw_scenarios(
-                n=opts.n,
-                replication_id=rep_id
-            )
+            # We also have the option to draw a precomputed superset of scenarios 
+            # for each replication, and then use the first n scenarios from that superset
+            # when doing nested-sample experiments. 
+            # This is useful for comparing results across different n values.
+            if opts.nested_sampling:
+
+                if opts.precomputed_supersets is None:
+                    raise RuntimeError("nested_sampling=True requires precomputed_supersets in ACVMRPOptions.")
+                if rep_id not in opts.precomputed_supersets:
+                    raise RuntimeError(f"Missing precomputed superset for replication {rep_id}.")
+                print("Using scenarios from precomputed superset.")
+                sampled_scenarios = opts.precomputed_supersets[rep_id][:opts.n]
+            else:
+                print("Resampling fresh batch of scenarios")
+                sampled_scenarios = self.sampler.draw_scenarios(
+                        n=opts.n,
+                        replication_id=rep_id,
+                    )
 
             # Validate the format of the sampled scenarios
             self.problem_adapter.validate_scenario_population(sampled_scenarios)

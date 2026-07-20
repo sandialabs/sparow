@@ -20,7 +20,7 @@ USE_EXISTING_XHAT="true"
 
 # Confidence interval settings
 ALPHA=0.05
-MRP_SEED=678
+MRP_SEED=54321
 MRP_WITH_REPLACEMENT="true"
 
 # Grid of m and n values, optionally M values
