@@ -5,17 +5,31 @@ from sparow.ef import ExtensiveFormSolver
 
 class CIProblemAdapter(ABC):
     """
-    Problem-specific interface required by the generic MRP code.
+    Problem-specific interface required by the confidence interval code.
 
     Each stochastic program, e.g. farmer, newsvendor, OPF, should provide
-    a subclass implementing these methods.
-
-    The user is only required to implement:
+    a subclass implementing these methods (required):
         1. get_scenario_population()
         2. build_model_data(scenarios)
         3. build_stochastic_program(model_data)
         4. first_stage_variable_order()
+
+    The remaining methods are optional
     """
+
+    def __init__(
+        self,
+        model_name,
+        scenario_data,
+        model_builder,
+        app_data=None,
+        first_stage_variables=None,
+    ):
+        self.model_name = model_name
+        self.scenario_data = scenario_data
+        self.model_builder = model_builder
+        self.app_data = {} if app_data is None else dict(app_data)
+        self.first_stage_variables = [] if first_stage_variables is None else first_stage_variables
 
     # ======================================================================
     # User-implemented abstract methods
