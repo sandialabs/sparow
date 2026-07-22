@@ -10,19 +10,22 @@ MODEL_NAME="Advanced"
 LF_MODEL_TYPE="classic"
 SOLVER="gurobi_direct"
 
-# Candidate-solution generation
+# Candidate-solution generation (if you don't want to use existing file)
 CANDIDATE_SCEN_COUNT=5
 CANDIDATE_SEED=12345
 CANDIDATE_WITH_REPLACEMENT="false"
 
+# If you want to use existing candidate solution, already written to file
+USE_EXISTING_XHAT="false"
+
 # MRP confidence interval settings
 ALPHA=0.05
 MRP_SEED=678
-MRP_WITH_REPLACEMENT="false"
+MRP_WITH_REPLACEMENT="true"
 
 # Single-run settings
 SCENARIO_FILE="../../../sparow_examples/sparow_examples/farmers/advanced_farmers_1000_scenarios.npy"
-XHAT_FILE="shared_candidate_xhat_cand${CANDIDATE_SCEN_COUNT}_seed${CANDIDATE_SEED}.npy"
+XHAT_FILE="farmer_candidate_xhat_cand${CANDIDATE_SCEN_COUNT}_seed${CANDIDATE_SEED}.npy"
 N=500
 M=10
 COMPUTE_TRUE_GAP="true"
@@ -30,6 +33,16 @@ COMPUTE_TRUE_GAP="true"
 # ==========================================================
 # Convert replacement choice into CLI flag
 # ==========================================================
+
+USE_EXISTING_XHAT_FLAG=""
+if [ "${USE_EXISTING_XHAT}" = "true" ]; then
+    USE_EXISTING_XHAT_FLAG="--use-existing-xhat"
+elif [ "${USE_EXISTING_XHAT}" = "false" ]; then
+    USE_EXISTING_XHAT_FLAG=""
+else
+    echo "Error: USE_EXISTING_XHAT must be 'true' or 'false'"
+    exit 1
+fi
 
 CANDIDATE_FLAG=""
 if [ "${CANDIDATE_WITH_REPLACEMENT}" = "true" ]; then
@@ -78,6 +91,7 @@ python -m sparow.ci.cli \
     --candidate-scen-count "${CANDIDATE_SCEN_COUNT}" \
     --candidate-seed "${CANDIDATE_SEED}" \
     ${CANDIDATE_FLAG} \
+    ${USE_EXISTING_XHAT_FLAG} \
     --alpha "${ALPHA}" \
     --mrp-seed "${MRP_SEED}" \
     ${MRP_FLAG} \

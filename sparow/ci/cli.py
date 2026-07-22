@@ -277,13 +277,17 @@ def run_mrp_grid_experiment(
     # ------------------------------------------------------
     # Candidate xhat
     # ------------------------------------------------------
-    if use_existing_xhat:
+    if os.path.exists(xhat_file) and use_existing_xhat:
         print(f"Loading candidate solution stored at {xhat_file}")
         xhat = load_xhat(xhat_file)
         candidate_ef_objective = np.nan
         print(f"xhat: {xhat}")
     else:
         print(f"Generating new candidate solution...")
+        print(f"Generating new candidate solution using subsampled scenarios...")
+        print(f"Candidate sample size: {candidate_scen_count}")
+        print(f"Candidate seed: {candidate_seed}")
+        print(f"Candidate sampling with replacement: {candidate_with_replacement}")
         xhat, candidate_ef_objective = build_candidate_solution(
             problem_adapter=problem_adapter,
             full_scenarios=full_scenarios,
@@ -453,13 +457,16 @@ def run_acvmrp_grid_experiment(
     # ------------------------------------------------------
     # Candidate xhat
     # ------------------------------------------------------
-    if use_existing_xhat:
+    if os.path.exists(xhat_file) and use_existing_xhat:
         print(f"Loading candidate solution stored at {xhat_file}")
         xhat = load_xhat(xhat_file)
         candidate_ef_objective = np.nan
         print(f"xhat: {xhat}")
     else:
-        print(f"Generating new candidate solution...")
+        print(f"Generating new candidate solution using subsampled scenarios...")
+        print(f"Candidate sample size: {candidate_scen_count}")
+        print(f"Candidate seed: {candidate_seed}")
+        print(f"Candidate sampling with replacement: {candidate_with_replacement}")
         xhat, candidate_ef_objective = build_candidate_solution(
             problem_adapter=problem_adapter,
             full_scenarios=full_scenarios,
@@ -706,7 +713,7 @@ def main():
     adapter.validate_scenario_population(scenarios)
     print(f"Loaded {len(scenarios)} scenarios from {args.scenario_file}.")
 
-    if os.path.exists(args.xhat_file):
+    if os.path.exists(args.xhat_file) and args.use_existing_xhat:
         xhat = load_xhat(args.xhat_file)
         if "ROOT" in xhat:
             xhat = xhat["ROOT"]
@@ -718,7 +725,7 @@ def main():
                 "--candidate-scen-count is required in single-run mode when xhat file does not already exist."
             )
 
-        print(f"No existing xhat file found at {args.xhat_file}. Generating candidate solution...")
+        print(f"Generating new candidate solution using subsampled scenarios...")
         print(f"Candidate sample size: {args.candidate_scen_count}")
         print(f"Candidate seed: {args.candidate_seed}")
         print(f"Candidate sampling with replacement: {candidate_with_replacement}")
