@@ -5,10 +5,11 @@ set -euo pipefail
 # User settings
 # ==========================================================
 
-MODEL_MODULE="sparow_examples.mrp_facilityloc.mrp_discrete_facilityloc"
-MODEL_NAME="HF" # HF is what supports ACV MRP
+MODEL_MODULE="sparow_examples.farmers.MRPfarmers"
+MODEL_NAME="Advanced"
 LF_MODEL_TYPE="classic"
 SOLVER="gurobi_direct"
+VERBOSE="true"
 
 # Candidate-solution generation (if you don't want to use existing file)
 CANDIDATE_SCEN_COUNT=5
@@ -16,21 +17,21 @@ CANDIDATE_SEED=12345
 CANDIDATE_WITH_REPLACEMENT="false"
 
 # If you want to use existing candidate solution, already written to file
-USE_EXISTING_XHAT="true"
+USE_EXISTING_XHAT="false"
 
 # Confidence interval settings
 ALPHA=0.05
-MRP_SEED=54321
+MRP_SEED=678
 MRP_WITH_REPLACEMENT="true"
 
 # Grid of m and n values, optionally M values
-M_VALUES="10,15,20"
-N_VALUES="100,200,300,400,500,600"
-ACV_MRP="true"
-ACV_M_VALUES="5,10"
+M_VALUES="10,20,30"
+N_VALUES="1000,950,900,850,800,750,700,650,600,550,500,450,400,350,300,250,200,150,100"
+ACV_MRP="false"
+ACV_M_VALUES=""
 
 # Files
-XHAT_FILE="manually_created_suboptimal_xhat.npy"
+XHAT_FILE="farmer_candidate_xhat_cand${CANDIDATE_SCEN_COUNT}_seed${CANDIDATE_SEED}.npy"
 RESULTS_CSV="grid_results.csv"
 PLOT_SCRIPT_STANDARD="plot_mrp_results.py"
 PLOT_SCRIPT_ACV="plot_acvmrp_results.py"
@@ -38,6 +39,16 @@ PLOT_SCRIPT_ACV="plot_acvmrp_results.py"
 # ==========================================================
 # Convert replacement choices into CLI flags
 # ==========================================================
+
+VERBOSE_FLAG=""
+if [ "${VERBOSE}" = "true" ]; then
+    VERBOSE_FLAG="--verbose"
+elif [ "${VERBOSE}" = "false" ]; then
+    VERBOSE_FLAG=""
+else
+    echo "Error: VERBOSE must be 'true' or 'false'"
+    exit 1
+fi
 
 USE_EXISTING_XHAT_FLAG=""
 if [ "${USE_EXISTING_XHAT}" = "true" ]; then
@@ -97,6 +108,7 @@ if [ "${ACV_MRP}" = "true" ]; then
         --model-name "${MODEL_NAME}" \
         --lf-model-type "${LF_MODEL_TYPE}" \
         --solver-name "${SOLVER}" \
+        ${VERBOSE_FLAG} \
         --candidate-scen-count "${CANDIDATE_SCEN_COUNT}" \
         --candidate-seed "${CANDIDATE_SEED}" \
         ${CANDIDATE_FLAG} \

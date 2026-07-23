@@ -9,6 +9,7 @@ MODEL_MODULE="sparow_examples.mrp_facilityloc.mrp_discrete_facilityloc"
 MODEL_NAME="HF"
 LF_MODEL_TYPE="classic"
 SOLVER="gurobi_direct"
+VERBOSE="true"
 
 # Candidate-solution generation (if you don't want to use existing file)
 CANDIDATE_SCEN_COUNT=1
@@ -35,6 +36,16 @@ ACV_MRP="true"
 # ==========================================================
 # Convert replacement choice into CLI flag
 # ==========================================================
+
+VERBOSE_FLAG=""
+if [ "${VERBOSE}" = "true" ]; then
+    VERBOSE_FLAG="--verbose"
+elif [ "${VERBOSE}" = "false" ]; then
+    VERBOSE_FLAG=""
+else
+    echo "Error: VERBOSE must be 'true' or 'false'"
+    exit 1
+fi
 
 USE_EXISTING_XHAT_FLAG=""
 if [ "${USE_EXISTING_XHAT}" = "true" ]; then
@@ -111,6 +122,7 @@ python -m sparow.ci.cli \
     --model-name "${MODEL_NAME}" \
     --lf-model-type "${LF_MODEL_TYPE}" \
     --solver-name "${SOLVER}" \
+    ${VERBOSE_FLAG} \
     --candidate-scen-count "${CANDIDATE_SCEN_COUNT}" \
     --candidate-seed "${CANDIDATE_SEED}" \
     ${CANDIDATE_FLAG} \

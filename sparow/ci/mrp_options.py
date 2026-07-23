@@ -13,7 +13,7 @@ class MRPOptions:
     with_replacement: bool = True       # bootstrap sampling from finite set of population scenarios
     solver_name: str = "gurobi_direct"
     solver_options: Optional[Dict[str, Any]] = None
-    verbose: bool = True
+    verbose: bool = False
 
     # Optional controls for nested-sample experiments. 
     # Default is False (each replication draws its own independent sample of size n)

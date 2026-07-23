@@ -21,7 +21,7 @@ class ACVMRPOptions:
     with_replacement: bool = True       # Bootstrap sampling from finite set of population scenarios
     solver_name: str = "gurobi_direct"  
     solver_options: Optional[Dict[str, Any]] = None
-    verbose: bool = True                
+    verbose: bool = False               
 
     # PyApprox integration
     use_pyapprox: bool = False          # Enable PyApprox group ACV

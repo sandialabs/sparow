@@ -1,5 +1,6 @@
-
-# TODO: This is specific to minimization problems. Need to adapt to model sense
+# TODO: This is specific to minimization problems. Need to adapt to model sense? Or we 
+# can just tell users to convert their maximization problems into minimization problems by 
+# multiplying objective by -1.
 
 class TrueOptimalityGapEvaluator:
     """

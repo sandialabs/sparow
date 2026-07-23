@@ -27,6 +27,8 @@ def parse_args():
     parser.add_argument("--use-integer", action="store_true")
 
     parser.add_argument("--solver-name", default="gurobi")
+    parser.add_argument("--solver-options", default=None)
+    parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--alpha", type=float, default=0.05)
 
     parser.add_argument("--xhat-file", required=True)
@@ -186,7 +188,8 @@ def build_candidate_solution(
 # ================================================================================
 
 def run_single_mrp_experiment(problem_adapter, scenarios, xhat, n, m,
-                              alpha, seed, with_replacement, solver_name,):
+                              alpha, seed, with_replacement, solver_name,
+                              solver_options, verbose):
 
     options = MRPOptions(
         n=n,
@@ -195,6 +198,8 @@ def run_single_mrp_experiment(problem_adapter, scenarios, xhat, n, m,
         seed=seed,
         with_replacement=with_replacement,
         solver_name=solver_name,
+        solver_options=solver_options,
+        verbose=verbose
     )
 
     mrp = StandardMRP(
@@ -207,7 +212,8 @@ def run_single_mrp_experiment(problem_adapter, scenarios, xhat, n, m,
 
 
 def run_single_acvmrp_experiment(problem_adapter, scenarios, xhat, n, m, M,
-                                alpha, seed, with_replacement, solver_name,):
+                                alpha, seed, with_replacement, solver_name,
+                                solver_options, verbose):
 
     options = ACVMRPOptions(
         n=n,
@@ -217,6 +223,8 @@ def run_single_acvmrp_experiment(problem_adapter, scenarios, xhat, n, m, M,
         seed=seed,
         with_replacement=with_replacement,
         solver_name=solver_name,
+        solver_options=solver_options,
+        verbose=verbose
     )
 
     acvmrp = ACVMRP(
@@ -232,6 +240,8 @@ def run_mrp_grid_experiment(
     model_module_name,
     model_name,
     solver_name,
+    solver_options,
+    verbose,
     candidate_scen_count,
     candidate_seed,
     candidate_with_replacement,
@@ -281,13 +291,14 @@ def run_mrp_grid_experiment(
         print(f"Loading candidate solution stored at {xhat_file}")
         xhat = load_xhat(xhat_file)
         candidate_ef_objective = np.nan
-        print(f"xhat: {xhat}")
+        if verbose:
+            print(f"xhat: {xhat}")
     else:
         print(f"Generating new candidate solution...")
-        print(f"Generating new candidate solution using subsampled scenarios...")
-        print(f"Candidate sample size: {candidate_scen_count}")
-        print(f"Candidate seed: {candidate_seed}")
-        print(f"Candidate sampling with replacement: {candidate_with_replacement}")
+        if verbose:
+            print(f"Candidate sample size: {candidate_scen_count}")
+            print(f"Candidate seed: {candidate_seed}")
+            print(f"Candidate sampling with replacement: {candidate_with_replacement}")
         xhat, candidate_ef_objective = build_candidate_solution(
             problem_adapter=problem_adapter,
             full_scenarios=full_scenarios,
@@ -296,7 +307,8 @@ def run_mrp_grid_experiment(
             with_replacement=candidate_with_replacement,
             solver_name=solver_name,
         )
-        print(f"xhat: {xhat}")
+        if verbose:
+            print(f"xhat: {xhat}")
         save_xhat(xhat, xhat_file)
 
     # ------------------------------------------------------
@@ -416,6 +428,8 @@ def run_acvmrp_grid_experiment(
     model_module_name,
     model_name,
     solver_name,
+    solver_options,
+    verbose,
     candidate_scen_count,
     candidate_seed,
     candidate_with_replacement,
@@ -461,12 +475,14 @@ def run_acvmrp_grid_experiment(
         print(f"Loading candidate solution stored at {xhat_file}")
         xhat = load_xhat(xhat_file)
         candidate_ef_objective = np.nan
-        print(f"xhat: {xhat}")
+        if verbose:
+            print(f"xhat: {xhat}")
     else:
-        print(f"Generating new candidate solution using subsampled scenarios...")
-        print(f"Candidate sample size: {candidate_scen_count}")
-        print(f"Candidate seed: {candidate_seed}")
-        print(f"Candidate sampling with replacement: {candidate_with_replacement}")
+        print(f"Generating new candidate solution...")
+        if verbose:
+            print(f"Candidate sample size: {candidate_scen_count}")
+            print(f"Candidate seed: {candidate_seed}")
+            print(f"Candidate sampling with replacement: {candidate_with_replacement}")
         xhat, candidate_ef_objective = build_candidate_solution(
             problem_adapter=problem_adapter,
             full_scenarios=full_scenarios,
@@ -475,7 +491,8 @@ def run_acvmrp_grid_experiment(
             with_replacement=candidate_with_replacement,
             solver_name=solver_name,
         )
-        print(f"xhat: {xhat}")
+        if verbose:
+            print(f"xhat: {xhat}")
         save_xhat(xhat, xhat_file)
 
     # ------------------------------------------------------
@@ -615,9 +632,11 @@ def run_acvmrp_grid_experiment(
 
 def main():
     args = parse_args()
-    print("Parsed CLI arguments:")
-    print("ARGS:", args)
-    print("\n==================================\n")
+
+    if args.verbose:
+        print("Parsed CLI arguments:")
+        print("ARGS:", args)
+        print("\n==================================\n")
 
     # Candidate-solution generation replacement rule
     if args.candidate_with_replacement and args.candidate_without_replacement:
@@ -654,6 +673,8 @@ def main():
                 model_module_name=args.model_module,
                 model_name=args.model_name,
                 solver_name=args.solver_name,
+                solver_options=args.solver_options, 
+                verbose=args.verbose,
                 candidate_scen_count=args.candidate_scen_count,
                 candidate_seed=args.candidate_seed,
                 candidate_with_replacement=candidate_with_replacement,
@@ -674,6 +695,8 @@ def main():
                 model_module_name=args.model_module,
                 model_name=args.model_name,
                 solver_name=args.solver_name,
+                solver_options=args.solver_options, 
+                verbose=args.verbose,
                 candidate_scen_count=args.candidate_scen_count,
                 candidate_seed=args.candidate_seed,
                 candidate_with_replacement=candidate_with_replacement,
@@ -689,9 +712,10 @@ def main():
                 lf_model_type=args.lf_model_type,
             )
 
-        print("\nGrid experiment complete.")
-        print(f"Wrote CSV: {args.output_csv}")
-        print(f"Wrote xhat: {args.xhat_file}")
+        if args.verbose:
+            print("\nGrid experiment complete.")
+            print(f"Wrote CSV: {args.output_csv}")
+            print(f"Wrote xhat: {args.xhat_file}")
         return
 
     # ----------------------------------------------------------------------
@@ -711,24 +735,26 @@ def main():
 
     scenarios = load_scenarios(args.scenario_file)
     adapter.validate_scenario_population(scenarios)
-    print(f"Loaded {len(scenarios)} scenarios from {args.scenario_file}.")
+    if args.verbose:
+        print(f"Loaded {len(scenarios)} scenarios from {args.scenario_file}.")
 
     if os.path.exists(args.xhat_file) and args.use_existing_xhat:
         xhat = load_xhat(args.xhat_file)
         if "ROOT" in xhat:
             xhat = xhat["ROOT"]
-        print(f"Loaded candidate solution xhat from {args.xhat_file}:")
-        print(f"xhat: {xhat}")
+        if args.verbose:
+            print(f"Loaded candidate solution xhat from {args.xhat_file}:")
+            print(f"xhat: {xhat}")
     else:
         if args.candidate_scen_count is None:
             raise ValueError(
                 "--candidate-scen-count is required in single-run mode when xhat file does not already exist."
             )
-
-        print(f"Generating new candidate solution using subsampled scenarios...")
-        print(f"Candidate sample size: {args.candidate_scen_count}")
-        print(f"Candidate seed: {args.candidate_seed}")
-        print(f"Candidate sampling with replacement: {candidate_with_replacement}")
+        if args.verbose:
+            print(f"Generating new candidate solution using subsampled scenarios...")
+            print(f"Candidate sample size: {args.candidate_scen_count}")
+            print(f"Candidate seed: {args.candidate_seed}")
+            print(f"Candidate sampling with replacement: {candidate_with_replacement}")
 
         xhat, candidate_obj = build_candidate_solution(
             problem_adapter=adapter,
@@ -748,7 +774,7 @@ def main():
     if args.acv_mrp:
 
         # Run ACV-MRP
-        print("\n=== Running ACV-MRP ===")
+        print("\n=== Running ACV-MRP ===\n")
         results = run_single_acvmrp_experiment(
             problem_adapter=adapter,
             scenarios=scenarios,
@@ -760,9 +786,11 @@ def main():
             seed=args.mrp_seed,
             with_replacement=mrp_with_replacement,
             solver_name=args.solver_name,
+            solver_options=args.solver_options, 
+            verbose=args.verbose
         )
 
-        print("\nACV-MRPResults:\n")
+        print("\nACV-MRP Results:\n")
 
         print(f"ACV Point Estimator: {results['point_estimate']}")
         print(f"Sample variance (HF): {results['sample_variance_F']}")
@@ -782,7 +810,7 @@ def main():
     else:
 
         # Run standard MRP
-        print("\n=== Running Standard MRP ===")
+        print("\n=== Running Standard MRP ===\n")
         results = run_single_mrp_experiment(
             problem_adapter=adapter,
             scenarios=scenarios,
@@ -793,9 +821,11 @@ def main():
             seed=args.mrp_seed,
             with_replacement=mrp_with_replacement,
             solver_name=args.solver_name,
+            solver_options=args.solver_options, 
+            verbose=args.verbose
         )
 
-        print("\nStandard MRP Results:")
+        print("\nStandard MRP Results:\n")
         print(f"Point estimate: {results['point_estimate']}")
         print(f"Sample variance: {results['sample_variance']}")
         print(f"Sample std dev: {results['sample_std']}")
@@ -803,10 +833,11 @@ def main():
         print(f"Half-width: {results['half_width']}")
         print(f"CI: [{results['ci_lower']}, {results['ci_upper']}]")
 
-        print("\n==================================\n")
-        print("REFERENCE VALUES FOR COMPARISON AGAINST BOOT SP OUTPUTS:")
-        print(f"Reference CI (two-sided normal): [{results['reference_ci_lower_two_sided_normal']}, {results['reference_ci_upper_two_sided_normal']}]")
-        print("\n==================================\n")
+        if args.verbose:
+            print("\n==================================\n")
+            print("REFERENCE VALUES FOR COMPARISON AGAINST BOOT SP OUTPUTS:")
+            print(f"Reference CI (two-sided normal): [{results['reference_ci_lower_two_sided_normal']}, {results['reference_ci_upper_two_sided_normal']}]")
+            print("\n==================================\n")
 
     if args.compute_true_gap:
         true_gap_evaluator = TrueOptimalityGapEvaluator(
@@ -816,7 +847,7 @@ def main():
         )
         true_gap = true_gap_evaluator.compute_true_gap(xhat=xhat)
 
-        print("\nTrue finite-population gap:")
+        print("\nTrue finite-population gap:\n")
         print(f"True optimal value: {true_gap['true_optimal_value']}")
         print(f"xhat true value: {true_gap['xhat_true_value']}")
         print(f"True gap: {true_gap['true_gap']}")

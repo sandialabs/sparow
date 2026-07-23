@@ -65,6 +65,7 @@ class ACVMRP:
         paired = []
         
         for rep_id in range(opts.m):
+            
             if opts.verbose:
                 print(f"Running paired ACV-MRP replication {rep_id + 1}/{opts.m}")
 
@@ -79,10 +80,13 @@ class ACVMRP:
                     raise RuntimeError("nested_sampling=True requires precomputed_supersets in ACVMRPOptions.")
                 if rep_id not in opts.precomputed_supersets:
                     raise RuntimeError(f"Missing precomputed superset for replication {rep_id}.")
-                print("Using scenarios from precomputed superset.")
+                if opts.verbose:
+                    print("Using scenarios from precomputed superset.")
                 sampled_scenarios = opts.precomputed_supersets[rep_id][:opts.n]
             else:
-                print("Resampling fresh batch of scenarios")
+                if opts.verbose:
+                    print("Resampling fresh batch of scenarios")
+
                 sampled_scenarios = self.sampler.draw_scenarios(
                         n=opts.n,
                         replication_id=rep_id,
@@ -119,6 +123,7 @@ class ACVMRP:
         lf_only = []
 
         for rep_id in range(opts.m, opts.m + opts.M):
+
             if opts.verbose:
                 print(f"Running LF-only replication {rep_id + 1 - opts.m}/{opts.M}")
 
@@ -133,10 +138,14 @@ class ACVMRP:
                     raise RuntimeError("nested_sampling=True requires precomputed_supersets in ACVMRPOptions.")
                 if rep_id not in opts.precomputed_supersets:
                     raise RuntimeError(f"Missing precomputed superset for replication {rep_id}.")
-                print("Using scenarios from precomputed superset.")
+                if opts.verbose:
+                    print("Using scenarios from precomputed superset.")
+
                 sampled_scenarios = opts.precomputed_supersets[rep_id][:opts.n]
             else:
-                print("Resampling fresh batch of scenarios")
+                if opts.verbose:
+                    print("Resampling fresh batch of scenarios")
+
                 sampled_scenarios = self.sampler.draw_scenarios(
                         n=opts.n,
                         replication_id=rep_id,
@@ -150,7 +159,8 @@ class ACVMRP:
             # Evaluate only the LF model on this batch of scenarios
             lf_result = self._evaluate_fidelity(xhat, model_data_k, "low")
 
-            print(f"Gap estimate for low-fidelity additional replication {rep_id + 1} : G_nk = {lf_result['gap_estimate']}")
+            if opts.verbose:
+                print(f"Gap estimate for low-fidelity additional replication {rep_id + 1} : G_nk = {lf_result['gap_estimate']}")
 
             lf_only.append({
                 "G_nk": lf_result["gap_estimate"],

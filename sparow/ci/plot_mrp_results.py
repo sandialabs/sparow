@@ -114,36 +114,36 @@ df_sorted["normalized_margin_of_error"] = df_sorted["half_width"] / df_sorted["p
 ref_scale = df_sorted["normalized_margin_of_error"].iloc[0] * np.sqrt(df_sorted["n"].iloc[0])
 ref_line = ref_scale / np.sqrt(n_ref)
 
-ax.plot(
-    n_ref,
-    ref_line,
-    linestyle=":",
-    color="black",
-    linewidth=1.8,
-    label=r"Reference $\propto 1/\sqrt{n}$"
-)
+# ax.plot(
+#     n_ref,
+#     ref_line,
+#     linestyle=":",
+#     color="black",
+#     linewidth=1.8,
+#     label=r"Reference $\propto 1/\sqrt{n}$"
+# )
 
 ax.grid()
-ax.set_xlabel(r"Sample size $n$")
-ax.set_ylabel("Normalized margin of error")
-ax.set_title(r"Normalized one-sided CI margin of error vs sample size $n$")
+ax.set_xlabel(r"Number of sampled scenarios per replication, $n$")
+ax.set_ylabel(r"Normalized margin of error")
+ax.set_title("Normalized margin of error for one-sided confidence interval\nvs sample size $n$")
 ax.legend()
 
-# Leave room at bottom for annotation
-fig.subplots_adjust(bottom=0.22)
+fig.subplots_adjust(bottom=0.375)
 
-# Bottom annotation with formula, using normal division instead of \frac
 fig.text(
     0.5,
-    0.04,
-    r"normalized margin of error = $\epsilon_f \,/\, \bar{F}_n^m(\hat{x})$",
+    0.02,
+    "NOTE: $\\epsilon_f$ = uncertainty margin\n"
+    "$\\bar{F}_n^m(\\hat{x})$ = point estimate of optimality gap\n"
+    "$\\frac{\\epsilon_f}{\\bar{F}_n^m(\\hat{x})}$ = normalized margin of error.",
     ha="center",
     va="bottom",
-    fontsize=10
+    fontsize=9
 )
 
 fig.tight_layout(rect=[0, 0.08, 1, 1])
-fig.savefig(output_dir / "normalized_halfwidth_vs_n.png", dpi=200)
+fig.savefig(output_dir / "normalized_margin_of_error_vs_n.png", dpi=200)
 plt.close(fig)
 
 # --------------------------------------------------------------
