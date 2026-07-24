@@ -124,25 +124,28 @@ ref_line = ref_scale / np.sqrt(n_ref)
 # )
 
 ax.grid()
-ax.set_xlabel(r"Number of sampled scenarios per replication, $n$")
-ax.set_ylabel(r"Normalized margin of error")
-ax.set_title("Normalized margin of error for one-sided confidence interval\nvs sample size $n$")
+# ax.set_xlabel(r"Number of sampled scenarios per replication, $n$")
+ax.set_ylabel(r"Relative margin of error")
+ax.set_title("Relative margin of error for one-sided confidence interval\nvs sample size $n$")
 ax.legend()
 
-fig.subplots_adjust(bottom=0.375)
+ax.set_xlabel(r"Number of sampled scenarios per replication, $n$", labelpad=12)
+
+fig.subplots_adjust(bottom=0.42)
 
 fig.text(
     0.5,
-    0.02,
+    0.01,
     "NOTE: $\\epsilon_f$ = uncertainty margin\n"
     "$\\bar{F}_n^m(\\hat{x})$ = point estimate of optimality gap\n"
-    "$\\frac{\\epsilon_f}{\\bar{F}_n^m(\\hat{x})}$ = normalized margin of error.",
+    "$\\frac{\\epsilon_f}{\\bar{F}_n^m(\\hat{x})}$ = relative margin of error.",
     ha="center",
     va="bottom",
     fontsize=9
 )
 
-fig.tight_layout(rect=[0, 0.08, 1, 1])
+fig.tight_layout(rect=[0, 0.16, 1, 1])
+
 fig.savefig(output_dir / "normalized_margin_of_error_vs_n.png", dpi=200)
 plt.close(fig)
 
