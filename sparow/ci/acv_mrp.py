@@ -4,6 +4,7 @@ from scipy import stats
 # from .standard_mrp import StandardMRP
 from .scenario_sampler import ScenarioSampler
 
+
 class ACVMRP:
     """
     Approximate Control Variate Multiple Replications Procedure (ACV-MRP).
@@ -31,15 +32,21 @@ class ACVMRP:
     def _validate_acv_support(self):
         if not self.problem_adapter.supports_acv():
             raise ValueError("Problem adapter does not support ACV-MRP")
-        
+
     def run(self, xhat):
 
         if self.options.m < 2:
-            raise ValueError("ACV-MRP requires m >= 2 to estimate sample variance/covariance.")
-          
+            raise ValueError(
+                "ACV-MRP requires m >= 2 to estimate sample variance/covariance."
+            )
+
         if self.options.verbose:
-            print(f"Running ACV-MRP with m={self.options.m}, M={self.options.M}, n={self.options.n}")
-            print(f"Using precomputed superset of scenarios for nested sampling scheme: {self.options.nested_sampling}")
+            print(
+                f"Running ACV-MRP with m={self.options.m}, M={self.options.M}, n={self.options.n}"
+            )
+            print(
+                f"Using precomputed superset of scenarios for nested sampling scheme: {self.options.nested_sampling}"
+            )
 
         # Step 1: Paired replications (k= 1...m)
         paired_replications = self._run_paired_replications(xhat)
@@ -48,7 +55,9 @@ class ACVMRP:
         lf_only_replications = self._run_lf_only_replications(xhat)
 
         # Step 3: Compute ACV statistics
-        results = self._compute_acv_statistics(paired_replications, lf_only_replications)
+        results = self._compute_acv_statistics(
+            paired_replications, lf_only_replications
+        )
 
         # reset program state at the end of run for safety
         self.problem_adapter.set_active_fidelity("high")
@@ -56,42 +65,46 @@ class ACVMRP:
         return results
 
     def _run_paired_replications(self, xhat):
-        
+
         opts = self.options
 
         if opts.m < 2:
             raise ValueError("MRP requires m >= 2 to estimate sample variance.")
 
         paired = []
-        
+
         for rep_id in range(opts.m):
-            
+
             if opts.verbose:
                 print(f"Running paired ACV-MRP replication {rep_id + 1}/{opts.m}")
 
             # STEP 1 - draw a batch of n iid scenarios
-            # We also have the option to draw a precomputed superset of scenarios 
+            # We also have the option to draw a precomputed superset of scenarios
             # for each replication, and then use the first n scenarios from that superset
-            # when doing nested-sample experiments. 
+            # when doing nested-sample experiments.
             # This is useful for comparing results across different n values.
             if opts.nested_sampling:
 
                 if opts.precomputed_supersets is None:
-                    raise RuntimeError("nested_sampling=True requires precomputed_supersets in ACVMRPOptions.")
+                    raise RuntimeError(
+                        "nested_sampling=True requires precomputed_supersets in ACVMRPOptions."
+                    )
                 if rep_id not in opts.precomputed_supersets:
-                    raise RuntimeError(f"Missing precomputed superset for replication {rep_id}.")
+                    raise RuntimeError(
+                        f"Missing precomputed superset for replication {rep_id}."
+                    )
                 if opts.verbose:
                     print("Using scenarios from precomputed superset.")
-                sampled_scenarios = opts.precomputed_supersets[rep_id][:opts.n]
+                sampled_scenarios = opts.precomputed_supersets[rep_id][: opts.n]
             else:
                 if opts.verbose:
                     print("Resampling fresh batch of scenarios")
 
                 sampled_scenarios = self.sampler.draw_scenarios(
-                        n=opts.n,
-                        replication_id=rep_id,
-                    )
-            
+                    n=opts.n,
+                    replication_id=rep_id,
+                )
+
             # Validate the format of the sampled scenarios
             self.problem_adapter.validate_scenario_population(sampled_scenarios)
 
@@ -102,22 +115,30 @@ class ACVMRP:
             lf_result = self._evaluate_fidelity(xhat, model_data_k, "low")
 
             if opts.verbose:
-                print(f"Gap estimate for high-fidelity paired replication {rep_id + 1}: F_nk = {hf_result['gap_estimate']}")
-                print(f"Gap estimate for low-fidelity paired replication {rep_id + 1} : G_nk = {lf_result['gap_estimate']}")
+                print(
+                    f"Gap estimate for high-fidelity paired replication {rep_id + 1}: F_nk = {hf_result['gap_estimate']}"
+                )
+                print(
+                    f"Gap estimate for low-fidelity paired replication {rep_id + 1} : G_nk = {lf_result['gap_estimate']}"
+                )
 
-            paired.append({
+            paired.append(
+                {
                     "F_nk": hf_result["gap_estimate"],
                     "G_nk": lf_result["gap_estimate"],
-                    "sampled_indices": [s["Population_Index"] for s in sampled_scenarios],
-                    "scenarios": sampled_scenarios
-                })
+                    "sampled_indices": [
+                        s["Population_Index"] for s in sampled_scenarios
+                    ],
+                    "scenarios": sampled_scenarios,
+                }
+            )
         return paired
-    
+
     def _run_lf_only_replications(self, xhat):
         """Run M additional LF-only replications."""
         if self.options.M == 0:
             return []
-        
+
         opts = self.options
 
         lf_only = []
@@ -128,28 +149,32 @@ class ACVMRP:
                 print(f"Running LF-only replication {rep_id + 1 - opts.m}/{opts.M}")
 
             # STEP 1 - draw a batch of n iid scenarios
-            # We also have the option to draw a precomputed superset of scenarios 
+            # We also have the option to draw a precomputed superset of scenarios
             # for each replication, and then use the first n scenarios from that superset
-            # when doing nested-sample experiments. 
+            # when doing nested-sample experiments.
             # This is useful for comparing results across different n values.
             if opts.nested_sampling:
 
                 if opts.precomputed_supersets is None:
-                    raise RuntimeError("nested_sampling=True requires precomputed_supersets in ACVMRPOptions.")
+                    raise RuntimeError(
+                        "nested_sampling=True requires precomputed_supersets in ACVMRPOptions."
+                    )
                 if rep_id not in opts.precomputed_supersets:
-                    raise RuntimeError(f"Missing precomputed superset for replication {rep_id}.")
+                    raise RuntimeError(
+                        f"Missing precomputed superset for replication {rep_id}."
+                    )
                 if opts.verbose:
                     print("Using scenarios from precomputed superset.")
 
-                sampled_scenarios = opts.precomputed_supersets[rep_id][:opts.n]
+                sampled_scenarios = opts.precomputed_supersets[rep_id][: opts.n]
             else:
                 if opts.verbose:
                     print("Resampling fresh batch of scenarios")
 
                 sampled_scenarios = self.sampler.draw_scenarios(
-                        n=opts.n,
-                        replication_id=rep_id,
-                    )
+                    n=opts.n,
+                    replication_id=rep_id,
+                )
 
             # Validate the format of the sampled scenarios
             self.problem_adapter.validate_scenario_population(sampled_scenarios)
@@ -160,16 +185,22 @@ class ACVMRP:
             lf_result = self._evaluate_fidelity(xhat, model_data_k, "low")
 
             if opts.verbose:
-                print(f"Gap estimate for low-fidelity additional replication {rep_id + 1} : G_nk = {lf_result['gap_estimate']}")
+                print(
+                    f"Gap estimate for low-fidelity additional replication {rep_id + 1} : G_nk = {lf_result['gap_estimate']}"
+                )
 
-            lf_only.append({
-                "G_nk": lf_result["gap_estimate"],
-                "sampled_indices": [s["Population_Index"] for s in sampled_scenarios],
-                "scenarios": sampled_scenarios
-            })
+            lf_only.append(
+                {
+                    "G_nk": lf_result["gap_estimate"],
+                    "sampled_indices": [
+                        s["Population_Index"] for s in sampled_scenarios
+                    ],
+                    "scenarios": sampled_scenarios,
+                }
+            )
 
         return lf_only
-    
+
     def _evaluate_fidelity(self, xhat, model_data, fidelity):
         """Wrapper that handles both standard and ACV adapters."""
 
@@ -200,7 +231,7 @@ class ACVMRP:
 
         gap_raw = xhat_value - saa_optimal_value
 
-        # Allow small absolute or relative numerical error based on the scale of 
+        # Allow small absolute or relative numerical error based on the scale of
         # the objective values
         tol = max(1e-10, 1e-12 * max(1.0, abs(xhat_value), abs(saa_optimal_value)))
 
@@ -209,16 +240,16 @@ class ACVMRP:
                 f"Gap estimate is significantly negative: {gap_raw}. "
                 f"xhat_value={xhat_value}, saa_optimal_value={saa_optimal_value}"
             )
-        
+
         gap_estimate = max(0.0, gap_raw)
 
         return {
             "gap_estimate": gap_estimate,
             "xhat_value": xhat_value,
             "saa_optimal_value": saa_optimal_value,
-            "fidelity": fidelity
+            "fidelity": fidelity,
         }
-    
+
     def _compute_acv_statistics(self, paired_reps, lf_only_reps):
         """Compute ACV estimator and confidence interval from replication results."""
         opts = self.options
@@ -226,10 +257,16 @@ class ACVMRP:
         # Extract optimality gap estimates from paired and LF-only replications
         F_values = np.array([rep["F_nk"] for rep in paired_reps], dtype=float)
         G_paired_values = np.array([rep["G_nk"] for rep in paired_reps], dtype=float)
-        G_all_values = np.concatenate([
-            G_paired_values,
-            np.array([rep["G_nk"] for rep in lf_only_reps], dtype=float)
-        ]) if lf_only_reps else G_paired_values
+        G_all_values = (
+            np.concatenate(
+                [
+                    G_paired_values,
+                    np.array([rep["G_nk"] for rep in lf_only_reps], dtype=float),
+                ]
+            )
+            if lf_only_reps
+            else G_paired_values
+        )
 
         # Compute sample means
         F_bar = float(np.mean(F_values))
@@ -239,19 +276,25 @@ class ACVMRP:
         # Compute the paired sample variance and covariance estimates
         s_F_sq = float(np.var(F_values, ddof=1))
         s_G_sq_paired = float(np.var(G_paired_values, ddof=1))
-        s_FG = float(np.cov(F_values, G_paired_values, ddof=1)[0, 1]) # [0,1] because np.cov returns a 2x2 matrix
+        s_FG = float(
+            np.cov(F_values, G_paired_values, ddof=1)[0, 1]
+        )  # [0,1] because np.cov returns a 2x2 matrix
 
         # Estimate the sample correlation (rho) and control variate coefficient (alpha)
-        rho_hat = s_FG / (np.sqrt(s_F_sq) * np.sqrt(s_G_sq_paired)) if s_G_sq_paired > 0 else 0.0
+        rho_hat = (
+            s_FG / (np.sqrt(s_F_sq) * np.sqrt(s_G_sq_paired))
+            if s_G_sq_paired > 0
+            else 0.0
+        )
         alpha_hat = s_FG / s_G_sq_paired if s_G_sq_paired > 0 else 0.0
 
-        # Form ACV point estimator: 
+        # Form ACV point estimator:
         F_acv = F_bar + alpha_hat * (G_bar_all - G_bar_paired)
 
         # Compute the plug-in variance estimate for ACV estimator
-        constant = opts.M / (opts.m * (opts.m + opts.M)) # M / m(m+M)
+        constant = opts.M / (opts.m * (opts.m + opts.M))  # M / m(m+M)
         expr1 = s_F_sq / opts.m
-        expr2 = (alpha_hat ** 2) * s_G_sq_paired * constant
+        expr2 = (alpha_hat**2) * s_G_sq_paired * constant
         expr3 = -2.0 * alpha_hat * s_FG * constant
 
         var_acv = expr1 + expr2 + expr3
@@ -261,11 +304,11 @@ class ACVMRP:
         z_statistic = float(stats.norm.ppf(1.0 - opts.alpha))
         half_width = z_statistic * standard_error_acv
 
-        ci_lower = 0.0 # we know the optimality gap is non-negative
+        ci_lower = 0.0  # we know the optimality gap is non-negative
         ci_upper = max(0.0, F_acv + half_width)
 
         # Compute variance reduction factor for comparison
-        variance_reduction = s_F_sq / var_acv if var_acv > 0 else float('inf')
+        variance_reduction = s_F_sq / var_acv if var_acv > 0 else float("inf")
 
         return {
             "point_estimate": F_acv,
@@ -273,7 +316,6 @@ class ACVMRP:
             "ci_lower": ci_lower,
             "ci_upper": ci_upper,
             "half_width": half_width,
-
             "control_variate_coefficient": alpha_hat,
             "sample_correlation": rho_hat,
             "sample_variance_F": s_F_sq,
@@ -283,14 +325,12 @@ class ACVMRP:
             "standard_error_acv": standard_error_acv,
             "z_statistic": z_statistic,
             "variance_reduction_factor": variance_reduction,
-
             # Replication data
             "F_values": F_values,
             "G_paired_values": G_paired_values,
             "G_all_values": G_all_values,
             "paired_replications": paired_reps,
             "lf_only_replications": lf_only_reps,
-
             # Configuration
             "n": opts.n,
             "m": opts.m,
@@ -299,4 +339,3 @@ class ACVMRP:
             "with_replacement": opts.with_replacement,
             "seed": opts.seed,
         }
-

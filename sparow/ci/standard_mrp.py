@@ -5,6 +5,7 @@ from sparow.ci.scenario_sampler import ScenarioSampler
 
 # TODO: This is specific to minimization problems... Need to adapt to model sense
 
+
 class StandardMRP:
     """
     Standard Multiple Replications Procedure for estimating the upper bound on
@@ -45,19 +46,23 @@ class StandardMRP:
                 print(f"Running MRP replication {rep_id + 1}/{opts.m}")
 
             # STEP 1 - draw a batch of n iid scenarios
-            # We also have the option to draw a precomputed superset of scenarios 
+            # We also have the option to draw a precomputed superset of scenarios
             # for each replication, and then use the first n scenarios from that superset
-            # when doing nested-sample experiments. 
+            # when doing nested-sample experiments.
             # This is useful for comparing results across different n values.
 
             if opts.nested_sampling:
 
                 if opts.precomputed_supersets is None:
-                    raise RuntimeError("nested_sampling=True requires precomputed_supersets in MRPOptions.")
+                    raise RuntimeError(
+                        "nested_sampling=True requires precomputed_supersets in MRPOptions."
+                    )
                 if rep_id not in opts.precomputed_supersets:
-                    raise RuntimeError(f"Missing precomputed superset for replication {rep_id}.")
+                    raise RuntimeError(
+                        f"Missing precomputed superset for replication {rep_id}."
+                    )
 
-                sampled_scenarios = opts.precomputed_supersets[rep_id][:opts.n]
+                sampled_scenarios = opts.precomputed_supersets[rep_id][: opts.n]
             else:
                 sampled_scenarios = self.sampler.draw_scenarios(
                     n=opts.n,
@@ -67,10 +72,12 @@ class StandardMRP:
             # Validate the format of the sampled scenarios
             self.problem_adapter.validate_scenario_population(sampled_scenarios)
 
-            # We only use the population index to keep track of 
+            # We only use the population index to keep track of
             # which scenarios were sampled in each replication.... this is NOT
             # part of the sampling mechanism
-            sampled_population_indices_by_replication.append([s["Population_Index"] for s in sampled_scenarios])
+            sampled_population_indices_by_replication.append(
+                [s["Population_Index"] for s in sampled_scenarios]
+            )
 
             model_data_k = self.problem_adapter.build_model_data(sampled_scenarios)
 
@@ -98,7 +105,7 @@ class StandardMRP:
 
             gap_raw = xhat_value - saa_optimal_value
 
-            # Allow small absolute or relative numerical error based on the scale of 
+            # Allow small absolute or relative numerical error based on the scale of
             # the objective values
             tol = max(1e-10, 1e-12 * max(1.0, abs(xhat_value), abs(saa_optimal_value)))
 
@@ -107,7 +114,7 @@ class StandardMRP:
                     f"Gap estimate is significantly negative: {gap_raw}. "
                     f"xhat_value={xhat_value}, saa_optimal_value={saa_optimal_value}"
                 )
-            
+
             F_nk = max(0.0, gap_raw)
             replication_values.append(F_nk)
 
@@ -116,7 +123,7 @@ class StandardMRP:
 
         F = np.array(replication_values, dtype=float)
 
-        point_estimate = float(np.mean(F)) 
+        point_estimate = float(np.mean(F))
         sample_variance = float(np.var(F, ddof=1))
         sample_std = float(np.std(F, ddof=1))
 
@@ -124,7 +131,7 @@ class StandardMRP:
         standard_error = float(sample_std / np.sqrt(opts.m))
         half_width = float(t_statistic * standard_error)
 
-        ci_lower = 0.0 # we know the optimality gap is non-negative
+        ci_lower = 0.0  # we know the optimality gap is non-negative
         ci_upper = point_estimate + half_width
 
         # =================================================================
@@ -136,8 +143,12 @@ class StandardMRP:
         # I think this is because they are assuming the sample is actually just the full
         # population distribution....
         half_width_two_sided_normal = float(z_statistic_two_sided * sample_std)
-        reference_ci_lower_two_sided_normal = float(point_estimate - half_width_two_sided_normal)
-        reference_ci_upper_two_sided_normal = float(point_estimate + half_width_two_sided_normal)
+        reference_ci_lower_two_sided_normal = float(
+            point_estimate - half_width_two_sided_normal
+        )
+        reference_ci_upper_two_sided_normal = float(
+            point_estimate + half_width_two_sided_normal
+        )
         # ==================================================================
 
         return {

@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 
 from sparow.ef import ExtensiveFormSolver
 
+
 class CIProblemAdapter(ABC):
     """
     Problem-specific interface required by the confidence interval code.
@@ -29,7 +30,9 @@ class CIProblemAdapter(ABC):
         self.scenario_data = scenario_data
         self.model_builder = model_builder
         self.app_data = {} if app_data is None else dict(app_data)
-        self.first_stage_variables = [] if first_stage_variables is None else first_stage_variables
+        self.first_stage_variables = (
+            [] if first_stage_variables is None else first_stage_variables
+        )
 
     # ======================================================================
     # User-implemented abstract methods
@@ -38,7 +41,7 @@ class CIProblemAdapter(ABC):
     @abstractmethod
     def get_scenario_population(self) -> List[Dict[str, Any]]:
         """
-        Return the full finite / historical scenario population as a 
+        Return the full finite / historical scenario population as a
         list of scenario dictionaries.
         """
         raise NotImplementedError
@@ -109,7 +112,9 @@ class CIProblemAdapter(ABC):
     # Core validation logic
     # ======================================================================
 
-    def validate_scenario_population(self, scenarios: Optional[List[Dict[str, Any]]] = None) -> None:
+    def validate_scenario_population(
+        self, scenarios: Optional[List[Dict[str, Any]]] = None
+    ) -> None:
         """
         Validate the format of a scenario population.
 
@@ -127,7 +132,9 @@ class CIProblemAdapter(ABC):
             scenarios = self.get_scenario_population()
 
         if not isinstance(scenarios, list):
-            raise RuntimeError("Scenario population must be a list of scenario dictionaries.")
+            raise RuntimeError(
+                "Scenario population must be a list of scenario dictionaries."
+            )
 
         required = ["ID", "Probability"] + self.required_scenario_keys()
 
@@ -137,7 +144,9 @@ class CIProblemAdapter(ABC):
 
             missing = [key for key in required if key not in scen]
             if missing:
-                raise RuntimeError(f"Scenario at index {i} is missing required key(s): {missing}")
+                raise RuntimeError(
+                    f"Scenario at index {i} is missing required key(s): {missing}"
+                )
 
     # ======================================================================
     # Generic solver logic
@@ -148,7 +157,7 @@ class CIProblemAdapter(ABC):
         model_data: Dict[str, Any],
         solver_name: str,
         solver_options: Optional[Dict[str, Any]] = None,
-        loglevel: str = "INFO", # can replace with DEBUG, VERBOSE, etc.
+        loglevel: str = "INFO",  # can replace with DEBUG, VERBOSE, etc.
     ) -> Dict[str, Any]:
         """
         Solve the extensive form for the supplied model_data using Sparow's
@@ -185,9 +194,13 @@ class CIProblemAdapter(ABC):
         try:
             return solved_object["pool_config"]["best_value"]
         except Exception as e:
-            raise RuntimeError("Could not extract objective value from solved_object['pool_config']['best_value'].") from e
+            raise RuntimeError(
+                "Could not extract objective value from solved_object['pool_config']['best_value']."
+            ) from e
 
-    def get_first_stage_solution(self, solved_object: Dict[str, Any]) -> Dict[str, float]:
+    def get_first_stage_solution(
+        self, solved_object: Dict[str, Any]
+    ) -> Dict[str, float]:
         """
         Extract the first-stage candidate solution xhat from a Sparow results dictionary.
 
@@ -202,7 +215,9 @@ class CIProblemAdapter(ABC):
         try:
             variables = solved_object["solutions"][0]["variables"]
         except Exception as e:
-            raise RuntimeError("Could not find solved_object['solutions'][0]['variables'].") from e
+            raise RuntimeError(
+                "Could not find solved_object['solutions'][0]['variables']."
+            ) from e
 
         order = self.first_stage_variable_order()
         xhat = {}
@@ -214,11 +229,15 @@ class CIProblemAdapter(ABC):
 
         missing = [name for name in order if name not in xhat]
         if missing:
-            raise RuntimeError(f"Could not extract all first-stage variables from solved_object. Missing: {missing}")
+            raise RuntimeError(
+                f"Could not extract all first-stage variables from solved_object. Missing: {missing}"
+            )
 
         return xhat
 
-    def first_stage_solution_dict_to_vector(self, xhat: Dict[str, float]) -> List[float]:
+    def first_stage_solution_dict_to_vector(
+        self, xhat: Dict[str, float]
+    ) -> List[float]:
         """
         Convert an xhat dictionary into the ordered list expected by
         sp.evaluate(x, ...).
@@ -227,7 +246,9 @@ class CIProblemAdapter(ABC):
         missing = [name for name in order if name not in xhat]
 
         if missing:
-            raise RuntimeError(f"xhat is missing required first-stage variable(s): {missing}")
+            raise RuntimeError(
+                f"xhat is missing required first-stage variable(s): {missing}"
+            )
 
         return [xhat[name] for name in order]
 
@@ -260,17 +281,19 @@ class CIProblemAdapter(ABC):
         )
 
         if not eval_result.feasible:
-            raise RuntimeError(f"Candidate first-stage solution evaluated infeasible on bundle/scenario {eval_result.bundle}.")
+            raise RuntimeError(
+                f"Candidate first-stage solution evaluated infeasible on bundle/scenario {eval_result.bundle}."
+            )
 
         return eval_result.objective
-    
+
     # ======================================================================
     # Optional Multifidelity ACV MRP-specific methods (default to None)
     # ======================================================================
 
     def get_fidelity_levels(self):
         """
-        Return list of supported fidelity levels. Default is ['standard'] 
+        Return list of supported fidelity levels. Default is ['standard']
         for standard MRP. Override in subclass if low-fidelity models are supported.
 
         Returns
@@ -278,12 +301,12 @@ class CIProblemAdapter(ABC):
         list of str
             Fidelity level names (e.g., ['standard'], ['LF', 'HF'])
         """
-        return ['standard']
+        return ["standard"]
 
     def supports_acv(self):
         """Whether this adapter supports ACV-MRP."""
         return False
-    
+
     # Methods below are for maintaining "active fidelity state" when running
     # the ACV algorithm code.
     # Ensures functions solve_extensive_form and evaluate_first_stage_solution are
@@ -293,8 +316,6 @@ class CIProblemAdapter(ABC):
         if fidelity not in ("high", "low"):
             raise ValueError(f"Unknown fidelity level: {fidelity}")
         self._active_fidelity = fidelity
-    
+
     def get_active_fidelity(self):
         return self._active_fidelity
-
-    

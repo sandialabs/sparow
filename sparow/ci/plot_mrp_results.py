@@ -13,12 +13,14 @@ df = pd.read_csv(csv_path)
 
 true_gap = df["true_gap"].iloc[0]
 
-plt.rcParams.update({
-    "font.size": 12,
-    "axes.titlesize": 13,
-    "axes.labelsize": 12,
-    "legend.fontsize": 10,
-})
+plt.rcParams.update(
+    {
+        "font.size": 12,
+        "axes.titlesize": 13,
+        "axes.labelsize": 12,
+        "legend.fontsize": 10,
+    }
+)
 
 # ----------------------------------------------------------------------
 # Infer output directory from the problem module path
@@ -40,13 +42,13 @@ for m, sub in df.groupby("m"):
         sub["n"],
         sub["point_estimate"],
         marker="o",
-        label=rf"Number of replications, $m={m}$"
+        label=rf"Number of replications, $m={m}$",
     )
 plt.axhline(
     true_gap,
     color="black",
     linestyle="--",
-    label=rf"True optimality gap $\Delta_f(\hat{{x}})$"
+    label=rf"True optimality gap $\Delta_f(\hat{{x}})$",
 )
 plt.grid()
 plt.xlabel(r"Sample size $n$")
@@ -64,16 +66,13 @@ plt.figure()
 for m, sub in df.groupby("m"):
     sub = sub.sort_values("n")
     plt.plot(
-        sub["n"],
-        sub["ci_upper"],
-        marker="o",
-        label=rf"Number of replications, $m={m}$"
+        sub["n"], sub["ci_upper"], marker="o", label=rf"Number of replications, $m={m}$"
     )
 plt.axhline(
     true_gap,
     color="black",
     linestyle="--",
-    label=rf"True optimality gap $\Delta_f(\hat{{x}})$"
+    label=rf"True optimality gap $\Delta_f(\hat{{x}})$",
 )
 plt.grid()
 plt.xlabel(r"Sample size $n$")
@@ -102,7 +101,7 @@ for color, (m, sub) in zip(blue_shades, grouped):
         sub["normalized_margin_of_error"],
         marker="o",
         color=color,
-        label=rf"Number of replications, $m={m}$"
+        label=rf"Number of replications, $m={m}$",
     )
 
 # Reference line proportional to 1/sqrt(n)
@@ -110,8 +109,12 @@ n_ref = np.sort(df["n"].unique())
 
 # Scale reference line to roughly match the first plotted value
 df_sorted = df.sort_values(["m", "n"]).copy()
-df_sorted["normalized_margin_of_error"] = df_sorted["half_width"] / df_sorted["point_estimate"]
-ref_scale = df_sorted["normalized_margin_of_error"].iloc[0] * np.sqrt(df_sorted["n"].iloc[0])
+df_sorted["normalized_margin_of_error"] = (
+    df_sorted["half_width"] / df_sorted["point_estimate"]
+)
+ref_scale = df_sorted["normalized_margin_of_error"].iloc[0] * np.sqrt(
+    df_sorted["n"].iloc[0]
+)
 ref_line = ref_scale / np.sqrt(n_ref)
 
 # ax.plot(
@@ -126,7 +129,9 @@ ref_line = ref_scale / np.sqrt(n_ref)
 ax.grid()
 # ax.set_xlabel(r"Number of sampled scenarios per replication, $n$")
 ax.set_ylabel(r"Relative margin of error")
-ax.set_title("Relative margin of error for one-sided confidence interval\nvs sample size $n$")
+ax.set_title(
+    "Relative margin of error for one-sided confidence interval\nvs sample size $n$"
+)
 ax.legend()
 
 ax.set_xlabel(r"Number of sampled scenarios per replication, $n$", labelpad=12)
@@ -141,7 +146,7 @@ fig.text(
     "$\\frac{\\epsilon_f}{\\bar{F}_n^m(\\hat{x})}$ = relative margin of error.",
     ha="center",
     va="bottom",
-    fontsize=9
+    fontsize=9,
 )
 
 fig.tight_layout(rect=[0, 0.16, 1, 1])
@@ -156,16 +161,13 @@ plt.figure()
 for m, sub in df.groupby("m"):
     sub = sub.sort_values("n")
     std_pct = 100.0 * sub["sample_std_dev"] / true_gap
-    plt.plot(
-        sub["n"],
-        std_pct,
-        marker="o",
-        label=rf"$m={m}$"
-    )
+    plt.plot(sub["n"], std_pct, marker="o", label=rf"$m={m}$")
 plt.grid()
 plt.xlabel(r"Sample size $n$")
 plt.ylabel(r"$100 \times \frac{s_F(\hat{x},m)}{\Delta_f(\hat{x})}$")
-plt.title(r"Relative sample standard deviation $100 \times \frac{s_F(\hat{x},m)}{\Delta_f(\hat{x})}$ versus sample size $n$")
+plt.title(
+    r"Relative sample standard deviation $100 \times \frac{s_F(\hat{x},m)}{\Delta_f(\hat{x})}$ versus sample size $n$"
+)
 plt.legend()
 plt.tight_layout()
 plt.savefig(output_dir / "sample_std_dev_vs_n.png", dpi=200)
@@ -183,19 +185,19 @@ for m, sub in df.groupby("m"):
         sub["n"],
         sub["point_estimate"],
         marker="o",
-        label=rf"Point estimator $\bar{{F}}_n^m(\hat{{x}})$"
+        label=rf"Point estimator $\bar{{F}}_n^m(\hat{{x}})$",
     )
     plt.plot(
         sub["n"],
         sub["ci_upper"],
         marker="s",
-        label=rf"Upper bound $\bar{{F}}_n^m(\hat{{x}})+\epsilon_f$"
+        label=rf"Upper bound $\bar{{F}}_n^m(\hat{{x}})+\epsilon_f$",
     )
     plt.axhline(
         true_gap,
         color="black",
         linestyle="--",
-        label=rf"True optimality gap $\Delta_f(\hat{{x}})$"
+        label=rf"True optimality gap $\Delta_f(\hat{{x}})$",
     )
 
     plt.fill_between(
@@ -203,7 +205,7 @@ for m, sub in df.groupby("m"):
         sub["ci_lower"],
         sub["ci_upper"],
         alpha=0.2,
-        label=r"One-sided confidence interval"
+        label=r"One-sided confidence interval",
     )
 
     # Scale y-axis to start just below the true optimal value, end above ci_upper
@@ -228,15 +230,16 @@ for m, sub in df.groupby("m"):
     sub = sub.sort_values("n")
     abs_error_pct = 100.0 * (sub["point_estimate"] - true_gap).abs() / true_gap
     plt.plot(
-        sub["n"],
-        abs_error_pct,
-        marker="o",
-        label=rf"Number of replications, $m={m}$"
+        sub["n"], abs_error_pct, marker="o", label=rf"Number of replications, $m={m}$"
     )
 plt.grid()
 plt.xlabel(r"Sample size $n$")
-plt.ylabel(r"$100 \times \frac{\left|\bar{F}_n^m(\hat{x}) - \Delta_f(\hat{x})\right|}{\Delta_f(\hat{x})}$")
-plt.title(r"Relative absolute error $100 \times \frac{\left|\bar{F}_n^m(\hat{x}) - \Delta_f(\hat{x})\right|}{\Delta_f(\hat{x})}$ versus sample size $n$")
+plt.ylabel(
+    r"$100 \times \frac{\left|\bar{F}_n^m(\hat{x}) - \Delta_f(\hat{x})\right|}{\Delta_f(\hat{x})}$"
+)
+plt.title(
+    r"Relative absolute error $100 \times \frac{\left|\bar{F}_n^m(\hat{x}) - \Delta_f(\hat{x})\right|}{\Delta_f(\hat{x})}$ versus sample size $n$"
+)
 plt.legend()
 plt.tight_layout()
 plt.savefig(output_dir / "absolute_error_vs_n.png", dpi=200)
@@ -251,12 +254,7 @@ for m, sub in df.groupby("m"):
     sub = sub.sort_values("n").copy()
     cv_like_pct = 100.0 * sub["sample_std_dev"] / sub["point_estimate"]
 
-    ax.plot(
-        sub["n"],
-        cv_like_pct,
-        marker="o",
-        label=rf"Replications, $m={m}$"
-    )
+    ax.plot(sub["n"], cv_like_pct, marker="o", label=rf"Replications, $m={m}$")
 
 # Reference trend line proportional to 1/sqrt(n)
 n_ref = np.sort(df["n"].unique())
@@ -270,7 +268,7 @@ ax.plot(
     ref_line,
     linestyle="--",
     color="black",
-    label=r"Reference trend $\propto 1/\sqrt{n}$"
+    label=r"Reference trend $\propto 1/\sqrt{n}$",
 )
 
 ax.grid()
@@ -294,13 +292,7 @@ wrapped_caption = "\n".join(textwrap.wrap(caption, width=110))
 fig.subplots_adjust(bottom=0.28)
 
 # Add caption inside the figure canvas
-fig.text(
-    0.5, 0.02,
-    wrapped_caption,
-    ha="center",
-    va="bottom",
-    fontsize=9
-)
+fig.text(0.5, 0.02, wrapped_caption, ha="center", va="bottom", fontsize=9)
 
 fig.savefig(output_dir / "cv_like_vs_n_percent.png", dpi=200, bbox_inches="tight")
 plt.close(fig)

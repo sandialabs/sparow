@@ -19,6 +19,7 @@ from sparow_examples.farmers.MRPfarmers import get_ci_problem_adapter
 # Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def advanced_adapter():
     return get_ci_problem_adapter(model_name="Advanced", use_integer=False)
@@ -46,6 +47,7 @@ def basic_scenarios(basic_adapter):
 # ============================================================================
 # Candidate-solution generation
 # ============================================================================
+
 
 def test_candidate_generation_reproducibility(advanced_adapter, advanced_scenarios):
     """
@@ -98,6 +100,7 @@ def test_candidate_generation_reproducibility(advanced_adapter, advanced_scenari
 # ============================================================================
 # ScenarioSampler behavior
 # ============================================================================
+
 
 def test_without_replacement_sampling(advanced_scenarios):
     """
@@ -169,13 +172,26 @@ def test_nested_sample_correctness(advanced_scenarios):
 # Scenario-format validation
 # ============================================================================
 
+
 @pytest.mark.parametrize(
     "bad_scenarios, expected_msg",
     [
-        ([{"ID": "scen_0", "Probability": 1.0}], "is missing required key"),  # missing Yield
-        ([{"Yield": {"WHEAT": 2.0}, "Probability": 1.0}], "is missing required key"), # missing ID
-        ([{"ID": "scen_2", "Yield": {"WHEAT": 2.0}}], "is missing required key"),  # missing Probability
-        ([[{"ID": "scen_0", "Probability": 1.0, "Yield": {"WHEAT": 2.0}}]], "is not a dictionary"),  # not a dictionary
+        (
+            [{"ID": "scen_0", "Probability": 1.0}],
+            "is missing required key",
+        ),  # missing Yield
+        (
+            [{"Yield": {"WHEAT": 2.0}, "Probability": 1.0}],
+            "is missing required key",
+        ),  # missing ID
+        (
+            [{"ID": "scen_2", "Yield": {"WHEAT": 2.0}}],
+            "is missing required key",
+        ),  # missing Probability
+        (
+            [[{"ID": "scen_0", "Probability": 1.0, "Yield": {"WHEAT": 2.0}}]],
+            "is not a dictionary",
+        ),  # not a dictionary
     ],
 )
 def test_scenario_format_validation(advanced_adapter, bad_scenarios, expected_msg):
@@ -185,9 +201,11 @@ def test_scenario_format_validation(advanced_adapter, bad_scenarios, expected_ms
     with pytest.raises(RuntimeError, match=expected_msg):
         advanced_adapter.validate_scenario_population(bad_scenarios)
 
+
 # ============================================================================
 # MRP reproducibility
 # ============================================================================
+
 
 def test_mrp_run_reproducibility(advanced_adapter, advanced_scenarios):
     """
@@ -235,11 +253,16 @@ def test_mrp_run_reproducibility(advanced_adapter, advanced_scenarios):
     assert results1["ci_lower"] == results2["ci_lower"]
     assert results1["ci_upper"] == results2["ci_upper"]
     assert np.allclose(results1["replication_values"], results2["replication_values"])
-    assert results1["sampled_indices_by_replication"] == results2["sampled_indices_by_replication"]
+    assert (
+        results1["sampled_indices_by_replication"]
+        == results2["sampled_indices_by_replication"]
+    )
+
 
 # ===========================================================================
 # Reproducibility of grid experiments and single runs from sparow.ci.cli
 # ===========================================================================
+
 
 def test_grid_experiment_reproducibility_same_candidate_and_mrp_seed(tmp_path):
     """
@@ -286,6 +309,7 @@ def test_grid_experiment_reproducibility_same_candidate_and_mrp_seed(tmp_path):
     assert res1["true_gap"] == res2["true_gap"]
     assert res1["rows"] == res2["rows"]
 
+
 def test_single_run_reproducibility_same_mrp_seed(advanced_adapter, advanced_scenarios):
     """
     A single MRP run should be reproducible when the MRP seed is fixed.
@@ -329,4 +353,3 @@ def test_single_run_reproducibility_same_mrp_seed(advanced_adapter, advanced_sce
     assert res1["half_width"] == res2["half_width"]
     assert res1["ci_upper"] == res2["ci_upper"]
     assert np.allclose(res1["replication_values"], res2["replication_values"])
-

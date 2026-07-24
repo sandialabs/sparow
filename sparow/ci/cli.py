@@ -19,8 +19,11 @@ from sparow.ci.scenario_sampler import ScenarioSampler
 # CLI argument parsing
 # ============================================================================
 
+
 def parse_args():
-    parser = argparse.ArgumentParser(description="Run standard MRP or ACV-MRP confidence intervals.")
+    parser = argparse.ArgumentParser(
+        description="Run standard MRP or ACV-MRP confidence intervals."
+    )
 
     parser.add_argument("--model-module", required=True)
     parser.add_argument("--model-name", default=None)
@@ -45,7 +48,9 @@ def parse_args():
     parser.add_argument("--scenario-file", default=None)
     parser.add_argument("--n", type=int, default=None)
     parser.add_argument("--m", type=int, default=None)
-    parser.add_argument("--M", type=int, default=0)  # Additional LF-only replications for ACV-MRP
+    parser.add_argument(
+        "--M", type=int, default=0
+    )  # Additional LF-only replications for ACV-MRP
     parser.add_argument("--compute-true-gap", action="store_true")
     parser.add_argument("--candidate-scen-count", type=int, default=None)
 
@@ -59,8 +64,15 @@ def parse_args():
     parser.add_argument("--use-existing-xhat", action="store_true")
 
     # ACV-MRP specific arguments
-    parser.add_argument("--acv-mrp", action="store_true", help="Run ACV-MRP instead of standard MRP")
-    parser.add_argument("--M-values", type=str, default=None, help="M values for ACV-MRP grid experiment")
+    parser.add_argument(
+        "--acv-mrp", action="store_true", help="Run ACV-MRP instead of standard MRP"
+    )
+    parser.add_argument(
+        "--M-values",
+        type=str,
+        default=None,
+        help="M values for ACV-MRP grid experiment",
+    )
     parser.add_argument(
         "--lf-model-type",
         choices=["classic", "stochastic"],
@@ -70,13 +82,16 @@ def parse_args():
 
     return parser.parse_args()
 
+
 # ============================================================================
 # Generic helpers
 # ============================================================================
 
+
 def parse_int_list(s):
     """This is for processing comma-separated lists of integers from the command line, e.g. "1,2,3" -> [1, 2, 3]"""
     return [int(x.strip()) for x in s.split(",") if x.strip()]
+
 
 def load_scenarios(path):
     if path.endswith(".json"):
@@ -96,10 +111,14 @@ def load_scenarios(path):
 def load_xhat(path):
     return np.load(path, allow_pickle=True).item()
 
+
 def save_xhat(xhat, path):
     np.save(path, xhat, allow_pickle=True)
 
-def load_problem_adapter(model_module_name, model_name=None, use_integer=False, lf_model_type="classic"):
+
+def load_problem_adapter(
+    model_module_name, model_name=None, use_integer=False, lf_model_type="classic"
+):
     """
     This function helps keep the core CI code model-agnostic:
     each model module (farmer, newsvendor, OPF, etc.) is responsible for
@@ -133,12 +152,13 @@ def load_problem_adapter(model_module_name, model_name=None, use_integer=False, 
     model_module = importlib.import_module(model_module_name)
 
     if not hasattr(model_module, "get_ci_problem_adapter"):
-        raise RuntimeError(f"Model module {model_module_name} must define get_ci_problem_adapter().")
+        raise RuntimeError(
+            f"Model module {model_module_name} must define get_ci_problem_adapter()."
+        )
 
     if model_name is None:
         return model_module.get_ci_problem_adapter(
-            use_integer=use_integer,
-            lf_model_type=lf_model_type
+            use_integer=use_integer, lf_model_type=lf_model_type
         )
 
     return model_module.get_ci_problem_adapter(
@@ -146,6 +166,7 @@ def load_problem_adapter(model_module_name, model_name=None, use_integer=False, 
         use_integer=use_integer,
         lf_model_type=lf_model_type,
     )
+
 
 def build_candidate_solution(
     problem_adapter,
@@ -156,7 +177,7 @@ def build_candidate_solution(
     solver_name,
 ):
     """
-    Build a candidate first-stage solution, xhat, by drawing a sampled batch 
+    Build a candidate first-stage solution, xhat, by drawing a sampled batch
     from the full scenario population using ScenarioSampler.
     """
     sampler = ScenarioSampler(
@@ -167,7 +188,7 @@ def build_candidate_solution(
 
     sampled_candidate_scenarios = sampler.draw_scenarios(
         n=candidate_scen_count,
-        replication_id=0, # Only one "replication" or set of samples needed to get candidate sol
+        replication_id=0,  # Only one "replication" or set of samples needed to get candidate sol
     )
 
     candidate_model_data = problem_adapter.build_model_data(sampled_candidate_scenarios)
@@ -187,9 +208,20 @@ def build_candidate_solution(
 # Core MRP runners
 # ================================================================================
 
-def run_single_mrp_experiment(problem_adapter, scenarios, xhat, n, m,
-                              alpha, seed, with_replacement, solver_name,
-                              solver_options, verbose):
+
+def run_single_mrp_experiment(
+    problem_adapter,
+    scenarios,
+    xhat,
+    n,
+    m,
+    alpha,
+    seed,
+    with_replacement,
+    solver_name,
+    solver_options,
+    verbose,
+):
 
     options = MRPOptions(
         n=n,
@@ -199,7 +231,7 @@ def run_single_mrp_experiment(problem_adapter, scenarios, xhat, n, m,
         with_replacement=with_replacement,
         solver_name=solver_name,
         solver_options=solver_options,
-        verbose=verbose
+        verbose=verbose,
     )
 
     mrp = StandardMRP(
@@ -211,9 +243,20 @@ def run_single_mrp_experiment(problem_adapter, scenarios, xhat, n, m,
     return mrp.run(xhat=xhat)
 
 
-def run_single_acvmrp_experiment(problem_adapter, scenarios, xhat, n, m, M,
-                                alpha, seed, with_replacement, solver_name,
-                                solver_options, verbose):
+def run_single_acvmrp_experiment(
+    problem_adapter,
+    scenarios,
+    xhat,
+    n,
+    m,
+    M,
+    alpha,
+    seed,
+    with_replacement,
+    solver_name,
+    solver_options,
+    verbose,
+):
 
     options = ACVMRPOptions(
         n=n,
@@ -224,7 +267,7 @@ def run_single_acvmrp_experiment(problem_adapter, scenarios, xhat, n, m, M,
         with_replacement=with_replacement,
         solver_name=solver_name,
         solver_options=solver_options,
-        verbose=verbose
+        verbose=verbose,
     )
 
     acvmrp = ACVMRP(
@@ -269,7 +312,7 @@ def run_mrp_grid_experiment(
     Note that we do the following to make result comparisons easier:
         - We use the same candidate xhat for all (m, n) combinations.
         - For each replication index k, first draw one superset sample of size
-    n_max = max(n_values) and fix its ordering. Then for smaller n value experiments, 
+    n_max = max(n_values) and fix its ordering. Then for smaller n value experiments,
     use the first n scenarios from that same sampled superset.
     This means the sampled scenarios are nested:
     n_small < n_large  ==>  sample(n_small) is a subset of sample(n_large)
@@ -336,7 +379,7 @@ def run_mrp_grid_experiment(
     # ------------------------------------------------------
     # Precompute superset of sampled scenarios once
     # ------------------------------------------------------
-    n_values = sorted(n_values, reverse=True)   # sorted in descending order
+    n_values = sorted(n_values, reverse=True)  # sorted in descending order
     n_max = max(n_values)
     m_max = max(m_values)
 
@@ -350,7 +393,9 @@ def run_mrp_grid_experiment(
     # Each replication k gets one sample of size n_max, and smaller n's
     # will use prefixes of that sample.
 
-    sampled_supersets = {} # key = rep_id, value = list of sampled scenarios of size n_max
+    sampled_supersets = (
+        {}
+    )  # key = rep_id, value = list of sampled scenarios of size n_max
     for rep_id in range(m_max):
         sampled_supersets[rep_id] = sampler.draw_scenarios(
             n=n_max,
@@ -533,14 +578,16 @@ def run_acvmrp_grid_experiment(
         with_replacement=mrp_with_replacement,
     )
 
-    # Need enough supersets for paired replications and 
+    # Need enough supersets for paired replications and
     # additional LF-only replications
     total_replications_needed = m_max + M_max
 
     # Pre-draw the superset batch for every replication up to m_max
     # Each replication k gets one sample of size n_max, and smaller n's
     # will use prefixes of that sample.
-    sampled_supersets = {} # key = rep_id, value = list of sampled scenarios of size n_max
+    sampled_supersets = (
+        {}
+    )  # key = rep_id, value = list of sampled scenarios of size n_max
     for rep_id in range(total_replications_needed):
         sampled_supersets[rep_id] = sampler.draw_scenarios(
             n=n_max,
@@ -589,22 +636,24 @@ def run_acvmrp_grid_experiment(
                     "candidate_ef_objective": candidate_ef_objective,
                     "candidate_true_objective": candidate_true_objective,
                     "true_gap": true_gap,
-
                     "point_estimate": acv_results["point_estimate"],
                     "point_estimate_hf_only": acv_results["point_estimate_hf_only"],
                     "ci_lower": acv_results["ci_lower"],
                     "ci_upper": acv_results["ci_upper"],
                     "half_width": acv_results["half_width"],
-
                     "sample_variance_F": acv_results["sample_variance_F"],
                     "sample_variance_G_paired": acv_results["sample_variance_G_paired"],
                     "sample_covariance_FG": acv_results["sample_covariance_FG"],
                     "variance_acv_estimator": acv_results["variance_acv_estimator"],
                     "standard_error_acv": acv_results["standard_error_acv"],
                     "sample_correlation": acv_results["sample_correlation"],
-                    "control_variate_coefficient": acv_results["control_variate_coefficient"],
+                    "control_variate_coefficient": acv_results[
+                        "control_variate_coefficient"
+                    ],
                     "z_statistic": acv_results["z_statistic"],
-                    "variance_reduction_factor": acv_results["variance_reduction_factor"],
+                    "variance_reduction_factor": acv_results[
+                        "variance_reduction_factor"
+                    ],
                 }
 
                 rows.append(row)
@@ -630,6 +679,7 @@ def run_acvmrp_grid_experiment(
 # Main entry point
 # ============================================================================
 
+
 def main():
     args = parse_args()
 
@@ -640,7 +690,9 @@ def main():
 
     # Candidate-solution generation replacement rule
     if args.candidate_with_replacement and args.candidate_without_replacement:
-        raise ValueError("Choose only one of --candidate-with-replacement or --candidate-without-replacement.")
+        raise ValueError(
+            "Choose only one of --candidate-with-replacement or --candidate-without-replacement."
+        )
 
     candidate_with_replacement = True
     if args.candidate_without_replacement:
@@ -648,7 +700,9 @@ def main():
 
     # MRP replication replacement rule
     if args.mrp_with_replacement and args.mrp_without_replacement:
-        raise ValueError("Choose only one of --mrp-with-replacement or --mrp-without-replacement.")
+        raise ValueError(
+            "Choose only one of --mrp-with-replacement or --mrp-without-replacement."
+        )
 
     mrp_with_replacement = True
     if args.mrp_without_replacement:
@@ -659,9 +713,13 @@ def main():
     # ----------------------------------------------------------------------
     if args.grid_experiment:
         if args.candidate_scen_count is None:
-            raise ValueError("--candidate-scen-count is required in --grid-experiment mode.")
+            raise ValueError(
+                "--candidate-scen-count is required in --grid-experiment mode."
+            )
         if args.m_values is None or args.n_values is None:
-            raise ValueError("--m-values and --n-values are required in --grid-experiment mode.")
+            raise ValueError(
+                "--m-values and --n-values are required in --grid-experiment mode."
+            )
         if args.output_csv is None:
             raise ValueError("--output-csv is required in --grid-experiment mode.")
 
@@ -673,7 +731,7 @@ def main():
                 model_module_name=args.model_module,
                 model_name=args.model_name,
                 solver_name=args.solver_name,
-                solver_options=args.solver_options, 
+                solver_options=args.solver_options,
                 verbose=args.verbose,
                 candidate_scen_count=args.candidate_scen_count,
                 candidate_seed=args.candidate_seed,
@@ -695,7 +753,7 @@ def main():
                 model_module_name=args.model_module,
                 model_name=args.model_name,
                 solver_name=args.solver_name,
-                solver_options=args.solver_options, 
+                solver_options=args.solver_options,
                 verbose=args.verbose,
                 candidate_scen_count=args.candidate_scen_count,
                 candidate_seed=args.candidate_seed,
@@ -786,15 +844,17 @@ def main():
             seed=args.mrp_seed,
             with_replacement=mrp_with_replacement,
             solver_name=args.solver_name,
-            solver_options=args.solver_options, 
-            verbose=args.verbose
+            solver_options=args.solver_options,
+            verbose=args.verbose,
         )
 
         print("\nACV-MRP Results:\n")
 
         print(f"ACV Point Estimator: {results['point_estimate']}")
         print(f"Sample variance (HF): {results['sample_variance_F']}")
-        print(f"Plug-in variance estimate for ACV estimator: {results['variance_acv_estimator']}")
+        print(
+            f"Plug-in variance estimate for ACV estimator: {results['variance_acv_estimator']}"
+        )
         print(f"Variance reduction factor: {results['variance_reduction_factor']}")
 
         print("\n")
@@ -802,7 +862,9 @@ def main():
         print(f"Sample variance (paired LF): {results['sample_variance_G_paired']}")
         print(f"Sample covariance (F,G): {results['sample_covariance_FG']}")
         print(f"Estimated sample correlation (rho): {results['sample_correlation']}")
-        print(f"Estimated control variate coefficient (alpha): {results['control_variate_coefficient']}")
+        print(
+            f"Estimated control variate coefficient (alpha): {results['control_variate_coefficient']}"
+        )
         print(f"z_statistic: {results['z_statistic']}")
         print(f"Half-width: {results['half_width']}")
         print(f"CI: [{results['ci_lower']}, {results['ci_upper']}]")
@@ -821,8 +883,8 @@ def main():
             seed=args.mrp_seed,
             with_replacement=mrp_with_replacement,
             solver_name=args.solver_name,
-            solver_options=args.solver_options, 
-            verbose=args.verbose
+            solver_options=args.solver_options,
+            verbose=args.verbose,
         )
 
         print("\nStandard MRP Results:\n")
@@ -836,7 +898,9 @@ def main():
         if args.verbose:
             print("\n==================================\n")
             print("REFERENCE VALUES FOR COMPARISON AGAINST BOOT SP OUTPUTS:")
-            print(f"Reference CI (two-sided normal): [{results['reference_ci_lower_two_sided_normal']}, {results['reference_ci_upper_two_sided_normal']}]")
+            print(
+                f"Reference CI (two-sided normal): [{results['reference_ci_lower_two_sided_normal']}, {results['reference_ci_upper_two_sided_normal']}]"
+            )
             print("\n==================================\n")
 
     if args.compute_true_gap:

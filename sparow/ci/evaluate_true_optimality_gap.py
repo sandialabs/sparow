@@ -1,6 +1,7 @@
-# TODO: This is specific to minimization problems. Need to adapt to model sense? Or we 
-# can just tell users to convert their maximization problems into minimization problems by 
+# TODO: This is specific to minimization problems. Need to adapt to model sense? Or we
+# can just tell users to convert their maximization problems into minimization problems by
 # multiplying objective by -1.
+
 
 class TrueOptimalityGapEvaluator:
     """
@@ -10,7 +11,9 @@ class TrueOptimalityGapEvaluator:
     This is useful when the user wants an exact finite-population benchmark.
     """
 
-    def __init__(self, problem_adapter, scenarios, solver_name="highs", solver_options=None):
+    def __init__(
+        self, problem_adapter, scenarios, solver_name="highs", solver_options=None
+    ):
         self.problem_adapter = problem_adapter
         self.scenarios = scenarios
         self.solver_name = solver_name
@@ -49,12 +52,14 @@ class TrueOptimalityGapEvaluator:
     def compute_true_gap(self, xhat):
         true_optimal_value = self.compute_true_optimal_value()
         xhat_true_value = self.evaluate_xhat(xhat)
-        
+
         true_gap_raw = xhat_true_value - true_optimal_value
 
-        # Allow small absolute or relative numerical error based on the scale of 
+        # Allow small absolute or relative numerical error based on the scale of
         # the objective values
-        tol = max(1e-10, 1e-12 * max(1.0, abs(xhat_true_value), abs(true_optimal_value)))  
+        tol = max(
+            1e-10, 1e-12 * max(1.0, abs(xhat_true_value), abs(true_optimal_value))
+        )
 
         if true_gap_raw < -tol:
             raise RuntimeError(

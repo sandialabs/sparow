@@ -31,8 +31,8 @@ class ScenarioSampler:
         the inputted set of population scenarios.
 
         We keep track of the scenarios we've drawn by their population ID/ index.
-        
-        For reproducibility, since each replication needs its own independent Monte 
+
+        For reproducibility, since each replication needs its own independent Monte
         Carlo sample of n scenarios:
 
             - self.seed is the base seed for the entire MRP algorithm run.
@@ -47,7 +47,7 @@ class ScenarioSampler:
             )
 
         seed_sequence = np.random.SeedSequence([self.seed, replication_id])
-        rng = np.random.default_rng(seed_sequence) # this gives one rng per replication
+        rng = np.random.default_rng(seed_sequence)  # this gives one rng per replication
 
         indices = rng.choice(
             self.num_population_scenarios,
