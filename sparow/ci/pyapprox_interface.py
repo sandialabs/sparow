@@ -3,9 +3,12 @@ import time
 from typing import Optional, Dict, Any, Tuple
 
 from pyapprox.util.backends.numpy import NumpyBkd
-from pyapprox_benchmarks.problems.multifidelity_forward_uq import MultifidelityForwardUQProblem
+from pyapprox_benchmarks.problems.multifidelity_forward_uq import (
+    MultifidelityForwardUQProblem,
+)
 
 from sparow.ci.scenario_sampler import ScenarioBatchPrior
+
 
 class PyApproxModelWrapper:
     """
@@ -49,7 +52,9 @@ class PyApproxModelWrapper:
         """
         Convert one flattened batch of scenarios into a list of scenario vectors.
         """
-        arr = np.asarray(sample_column, dtype=float).reshape(self.batch_size, self._scenario_dim)
+        arr = np.asarray(sample_column, dtype=float).reshape(
+            self.batch_size, self._scenario_dim
+        )
         return arr.tolist()
 
     def _batch_to_scenarios(self, batch_vectors):
@@ -61,7 +66,9 @@ class PyApproxModelWrapper:
         prob = 1.0 / self.batch_size
         scenarios = []
         for scen_idx_within_batch, vec in enumerate(batch_vectors):
-            scen = self.problem_adapter.decode_scenario_vector(vec, scenario_id=f"pyapprox_batch_scen_{scen_idx_within_batch}")
+            scen = self.problem_adapter.decode_scenario_vector(
+                vec, scenario_id=f"pyapprox_batch_scen_{scen_idx_within_batch}"
+            )
             scen["Probability"] = prob
             scenarios.append(scen)
         return scenarios
@@ -101,7 +108,7 @@ class PyApproxModelWrapper:
             # Build optimization problem that is parameterized by this batch of scenarios
             model_data_k = self.problem_adapter.build_model_data(sampled_scenarios)
 
-            # Tell the adapter which model fidelty should be used to 
+            # Tell the adapter which model fidelty should be used to
             # compute this replication output.
             self.problem_adapter.set_active_fidelity(self.fidelity)
 
@@ -167,12 +174,11 @@ def convert_pyapprox_allocation_to_acvmrp_params(nsamples_per_model) -> Tuple[in
     if len(nsamples) != 2:
         raise ValueError("Expected exactly 2 models for ACV-MRP translation.")
 
-    m = int(nsamples[0]) # num paired evals (for both HF and LF)
-    total_lf = int(nsamples[1]) # total number of LF evals (paired and additional)
-    M = max(0, total_lf - m) # num additional LF evals
+    m = int(nsamples[0])  # num paired evals (for both HF and LF)
+    total_lf = int(nsamples[1])  # total number of LF evals (paired and additional)
+    M = max(0, total_lf - m)  # num additional LF evals
 
     return m, M
-
 
 
 def build_pyapprox_mf_problem_from_adapter(

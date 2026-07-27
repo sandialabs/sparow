@@ -322,13 +322,13 @@ class CIProblemAdapter(ABC):
         return self._active_fidelity
 
     # ======================================================================
-    # Optional for representing scenario vector data in different ways 
+    # Optional for representing scenario vector data in different ways
     # This is for PyApprox integration/ compatibility
     # ======================================================================
 
     def scenario_vector_keys(self) -> List[str]:
         """
-        Return the dictionary key names that define the uncertain problem data 
+        Return the dictionary key names that define the uncertain problem data
         contained in a given scenario.
 
         Subclasses should override this if they want to support PyApprox.
@@ -354,7 +354,9 @@ class CIProblemAdapter(ABC):
                 vec.extend([float(v) for v in value])
         return vec
 
-    def decode_scenario_vector(self, vector: List[float], scenario_id: str) -> Dict[str, Any]:
+    def decode_scenario_vector(
+        self, vector: List[float], scenario_id: str
+    ) -> Dict[str, Any]:
         """
         Convert a flat numeric vector into a scenario dictionary.
 

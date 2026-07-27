@@ -75,7 +75,7 @@ class ScenarioBatchPrior:
     One PyApprox sample corresponds to one batch of scenarios.
     This is one replication in the MRP or ACV-MRP sense.
 
-    If the batch size is n and each scenario vector has 
+    If the batch size is n and each scenario vector has
     dimension scenario_dim, then one replication is represented by
     a flattened vector of length n * scenario_dim.
     """
@@ -124,9 +124,9 @@ class ScenarioBatchPrior:
           - each replication's batch of scenarios contains batch_size sampled scenarios,
           - the full batch data is flattened into one long column.
 
-        So nvars = batch_size * scenario_dim is the number of scalars needed to represent 
+        So nvars = batch_size * scenario_dim is the number of scalars needed to represent
         one full replication batch,
-        
+
         And nsamples is the number of independent replication batches.
         """
 
@@ -138,7 +138,9 @@ class ScenarioBatchPrior:
 
             # Choose n scenarios from the historical set of scenarios to form a batch
             # NOTE: this is currently hardcoded to be done by sampling with replacement
-            indices_of_selected_scens = self._rng.choice(len(self._scenarios), size=self._batch_size, replace=True)
+            indices_of_selected_scens = self._rng.choice(
+                len(self._scenarios), size=self._batch_size, replace=True
+            )
 
             # Encode each sampled scenario dictionary into a flat numeric vector.
             batch_vectors = [
@@ -153,5 +155,3 @@ class ScenarioBatchPrior:
             out[:, replication_idx] = batch_matrix.reshape(-1)
 
         return self._bkd.array(out)
-
-    
