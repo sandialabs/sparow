@@ -1,3 +1,4 @@
+import numpy as np
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
@@ -319,3 +320,57 @@ class CIProblemAdapter(ABC):
 
     def get_active_fidelity(self):
         return self._active_fidelity
+
+    # ======================================================================
+    # Optional for representing scenario vector data in different ways 
+    # This is for PyApprox integration/ compatibility
+    # ======================================================================
+
+    def scenario_vector_keys(self) -> List[str]:
+        """
+        Return the dictionary key names that define the uncertain problem data 
+        contained in a given scenario.
+
+        Subclasses should override this if they want to support PyApprox.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must override scenario_vector_keys()"
+            "to support scenario-vector encoding."
+        )
+
+    def encode_scenario_vector(self, scenario: Dict[str, Any]) -> List[float]:
+        """
+        Convert a scenario dictionary into a flat numeric vector (i.e. - list of floats).
+
+        This method works when the uncertain fields listed in
+        scenario_vector_keys() are either numeric scalars or flat lists.
+        """
+        vec = []
+        for key in self.scenario_vector_keys():
+            value = scenario[key]
+            if np.isscalar(value):
+                vec.append(float(value))
+            else:
+                vec.extend([float(v) for v in value])
+        return vec
+
+    def decode_scenario_vector(self, vector: List[float], scenario_id: str) -> Dict[str, Any]:
+        """
+        Convert a flat numeric vector into a scenario dictionary.
+
+        Subclasses should override this whenever the uncertain fields are not
+        simple flat lists whose lengths are known from context.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must override decode_scenario_vector()"
+            "to support generic scenario-vector decoding."
+        )
+
+    def scenario_vector_dim(self) -> int:
+        """
+        Return the dimension of a singel, encoded scenario vector.
+
+        The default implementation computes this from the first scenario.
+        """
+        scenarios = self.get_scenario_population()
+        return len(self.encode_scenario_vector(scenarios[0]))
