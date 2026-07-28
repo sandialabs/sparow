@@ -3,7 +3,9 @@ import time
 from typing import Optional, Dict, Any, Tuple
 
 from pyapprox.util.backends.numpy import NumpyBkd
-from pyapprox_benchmarks.problems.multifidelity_forward_uq import MultifidelityForwardUQProblem
+from pyapprox_benchmarks.problems.multifidelity_forward_uq import (
+    MultifidelityForwardUQProblem,
+)
 
 from sparow.ci.scenario_sampler import ScenarioBatchPrior
 
@@ -75,7 +77,7 @@ class PyApproxModelWrapper:
 
     def __call__(self, samples):
         """
-        Standard PyApprox interface for evaluating the model on one or 
+        Standard PyApprox interface for evaluating the model on one or
         more sampled scenario batches.
 
         Parameters
@@ -138,7 +140,7 @@ class PyApproxModelWrapper:
             outputs[0, col_idx] = xhat_value - saa_optimal_value
 
         return outputs
-          
+
 
 def estimate_model_cost(model, prior, ntrials: int = 10) -> float:
     """
