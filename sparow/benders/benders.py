@@ -162,6 +162,7 @@ class BendersSolver(object):
         remove_first_stage_only_cons=False,
         weight_obj_by_prob=True,
         remove_first_stage_objective_terms=False,
+        additional_transforms=None,
     ):
         """
         This method takes a sp object and one of its child single scenario models (or bundle), b,
@@ -294,6 +295,14 @@ class BendersSolver(object):
                 cons.deactivate()
         # step 4: remove any unneeded PH style variable fluff
         # this may be all handled by setting w, x_bar, rho, and cached to false
+
+        # step 5, apply transforms if given
+        if additional_transforms:
+            for tf in additional_transforms:
+                result = tf(sp_lower, subproblem_model)
+                if result is not None:
+                    subproblem_model = result
+
         return subproblem_model
 
     @staticmethod
@@ -321,6 +330,7 @@ class BendersSolver(object):
         fix_second_stage_vars=False,
         objective_sense=pyo.minimize,
         etas_ordered=False,
+        additional_transforms=None,
     ):
         """
         This method takes a sp object and one of its child single scenario models, b,
@@ -383,6 +393,9 @@ class BendersSolver(object):
             Default is minimization.
         etas_ordered : Boolean
             A boolean flag that lets the user control if the scenario set created from etas is ordered
+        additional_transforms : None or list[Functions]
+            An optional argument to apply transform functions to the model.
+            Passed Transforms must accept a stochastic program and pyomo model as arguments
         """
         assert objective_sense in (
             pyo.minimize,
@@ -498,6 +511,13 @@ class BendersSolver(object):
             sense=objective_sense,
         )
 
+        # step 5, apply transforms if given
+        if additional_transforms:
+            for tf in additional_transforms:
+                result = tf(sp, upper_model)
+                if result is not None:
+                    upper_model = result
+
         return upper_model
 
     @staticmethod
@@ -507,6 +527,7 @@ class BendersSolver(object):
         sp_upper,
         b_upper,
         remove_first_stage_objective_terms,
+        additional_transforms,
     ):
         """
         This is a wrapper method that takes a stochastic program and bundle, sp_lower and b_lower,
@@ -521,6 +542,7 @@ class BendersSolver(object):
             b_lower,
             default_domain=pyo.Reals,
             remove_first_stage_objective_terms=remove_first_stage_objective_terms,
+            additional_transforms=additional_transforms,
         )
 
         # create the complicating variable map
@@ -553,6 +575,8 @@ class BendersSolver(object):
         eta_bounds_map,
         error_on_initialized_root_vars=False,
         convergence_tol=1e-8,
+        subproblem_transforms=None,
+        master_transforms=None,
         **options,
     ):
         # steps for general solve
@@ -639,6 +663,7 @@ class BendersSolver(object):
             fix_second_stage_vars=True,
             objective_sense=pyo.minimize,
             etas_ordered=False,
+            additional_transforms=master_transforms,
         )
         # upper_model.s[None,'High'].x[0].fix(1)
         # upper_model.s[None,'High'].x[1].fix(0)
@@ -692,6 +717,7 @@ class BendersSolver(object):
             subproblem_fn_kwargs["sp_upper"] = sp_upper
             subproblem_fn_kwargs["b_upper"] = b_upper
             subproblem_fn_kwargs["remove_first_stage_objective_terms"] = True
+            subproblem_fn_kwargs["additional_transforms"] = subproblem_transforms
             if logger.isEnabledFor(logging.DEBUG):
                 print(f"Subproblem {b_lower=} debug info")
                 print(f"Subproblem setup keywords:")
