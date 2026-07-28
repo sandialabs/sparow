@@ -5,7 +5,7 @@ set -euo pipefail
 # User settings
 # ==========================================================
 
-MODEL_MODULE="sparow_examples.farmers.MRPfarmers"
+MODEL_MODULE="sparow_examples.mrp_facilityloc.mrp_discrete_facilityloc"
 MODEL_NAME="Advanced"
 LF_MODEL_TYPE="classic"
 SOLVER="gurobi_direct"

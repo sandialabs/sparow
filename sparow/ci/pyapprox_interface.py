@@ -225,8 +225,8 @@ def build_pyapprox_mf_problem_from_adapter(
         solver_options=solver_options,
     )
 
-    hf_cost = estimate_model_cost(hf_model, prior, ntrials=3)
-    lf_cost = estimate_model_cost(lf_model, prior, ntrials=3)
+    hf_cost = estimate_model_cost(hf_model, prior, ntrials=20)
+    lf_cost = estimate_model_cost(lf_model, prior, ntrials=20)
 
     costs = bkd.array([hf_cost, lf_cost])
 
