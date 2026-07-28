@@ -3,9 +3,7 @@ import time
 from typing import Optional, Dict, Any, Tuple
 
 from pyapprox.util.backends.numpy import NumpyBkd
-from pyapprox_benchmarks.problems.multifidelity_forward_uq import (
-    MultifidelityForwardUQProblem,
-)
+from pyapprox_benchmarks.problems.multifidelity_forward_uq import MultifidelityForwardUQProblem
 
 from sparow.ci.scenario_sampler import ScenarioBatchPrior
 
@@ -26,6 +24,7 @@ class PyApproxModelWrapper:
         fidelity: str,
         solver_name: str,
         solver_options: Optional[dict] = None,
+        artificial_delay_seconds: float = 0.0,
     ):
         self.problem_adapter = problem_adapter
         self.xhat = xhat
@@ -33,6 +32,7 @@ class PyApproxModelWrapper:
         self.fidelity = fidelity
         self.solver_name = solver_name
         self.solver_options = solver_options
+        self.artificial_delay_seconds = artificial_delay_seconds
         self._scenario_dim = self.problem_adapter.scenario_vector_dim()
 
     def nvars(self) -> int:
@@ -75,7 +75,8 @@ class PyApproxModelWrapper:
 
     def __call__(self, samples):
         """
-        Evaluate the model on one or more sampled scenario batches.
+        Standard PyApprox interface for evaluating the model on one or 
+        more sampled scenario batches.
 
         Parameters
         ----------
@@ -94,6 +95,10 @@ class PyApproxModelWrapper:
 
         # For each input (a batch of scenarios), store a scalar ouptut (replication's gap estimate)
         outputs = np.zeros((1, nsamples), dtype=float)
+
+        # Apply optional artificial delay once per replication sample
+        if self.artificial_delay_seconds > 0:
+            time.sleep(self.artificial_delay_seconds * nsamples)
 
         for col_idx in range(nsamples):
 
@@ -133,11 +138,14 @@ class PyApproxModelWrapper:
             outputs[0, col_idx] = xhat_value - saa_optimal_value
 
         return outputs
+          
 
-
-def estimate_model_cost(model, prior, ntrials: int = 5) -> float:
+def estimate_model_cost(model, prior, ntrials: int = 10) -> float:
     """
     Estimate average wall-clock evaluation cost for a given model.
+
+    Any artificial cost inflation already attached to the model wrapper
+    is automatically reflected in this estimate.
     """
     # Draw ntrials independent PyApprox samples from the prior.
     # Here, each PyApprox sample is a batch of scenarios for a replication.
@@ -189,6 +197,8 @@ def build_pyapprox_mf_problem_from_adapter(
     solver_name: str,
     solver_options: Optional[dict] = None,
     seed: int = 12345,
+    hf_cost_delay_seconds: float = 0.0,
+    lf_cost_delay_seconds: float = 0.0,
 ):
     """
     Build a PyApprox multifidelity problem from a Sparow adapter.
@@ -214,6 +224,7 @@ def build_pyapprox_mf_problem_from_adapter(
         fidelity="high",
         solver_name=solver_name,
         solver_options=solver_options,
+        artificial_delay_seconds=hf_cost_delay_seconds,
     )
 
     lf_model = PyApproxModelWrapper(
@@ -223,8 +234,11 @@ def build_pyapprox_mf_problem_from_adapter(
         fidelity="low",
         solver_name=solver_name,
         solver_options=solver_options,
+        artificial_delay_seconds=lf_cost_delay_seconds,
     )
 
+    # These cost estimates automatically reflect the configured delay
+    # stored in each model wrapper.
     hf_cost = estimate_model_cost(hf_model, prior, ntrials=20)
     lf_cost = estimate_model_cost(lf_model, prior, ntrials=20)
 

@@ -1,6 +1,8 @@
 import numpy as np
 from scipy import stats
 
+import time
+
 # from .standard_mrp import StandardMRP
 from .scenario_sampler import ScenarioSampler
 
@@ -209,6 +211,15 @@ class ACVMRP:
 
         # STEP 1 - draw a batch of n iid scenarios
         # This is done in _run_paired_replications and was used to create model_data argument
+
+        # # DANGER!!!! ONLY UNCOMMENT THE CODE BELOW IF RUNNING QUICK SANITY CHECK
+        # # FOR A SAMPLE ALLOCATION RECOMMENDATION OBTAINED WITH PYAPPROX
+        # # TEMP sanity-check: artificially inflate HF evaluation cost
+        # # so that each HF replication-level evaluation incurs extra time,
+        # # matching the PyApprox demo interpretation.
+        # if fidelity == "high":
+        #     print("WARNING: Artificially Adding time for a single HF replication!!!!!")
+        #     time.sleep(1.0)
 
         # STEP 2 - solve SAA problem on this replication sample
         # This calls build_stochastic_program internally with the correct model fidelity
