@@ -3,7 +3,7 @@ import pprint
 # import parallel PH solver (mpi-sppy wrapper)
 from sparow.ph.ph_mpisppy import ProgressiveHedgingSolver_MPISPPY
 
-# import newsvendor exemple from sparow
+# import newsvendor example from sparow
 from sparow.sp.examples import simple_newsvendor
 
 # SP model object
