@@ -32,6 +32,14 @@ pip install -e .
 cd ..
 ```
 
+If you want to run the optional plotting scripts that generate figures from CSV
+results, install the plotting dependencies as follows:
+
+```bash
+cd sparow
+pip install -e ".[plot]"
+cd ..
+
 ## Using SPAROW
 
 See [sparow_examples](https://github.com/sandialabs/sparow_examples) for a library of SPAROW examples.

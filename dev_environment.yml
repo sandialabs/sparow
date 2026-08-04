@@ -14,8 +14,6 @@ dependencies:
   - pytest-cov
   - rich
   - scikit-learn
-  - matplotlib
-  - pandas
   - IPython
   - pip:
     - highspy
