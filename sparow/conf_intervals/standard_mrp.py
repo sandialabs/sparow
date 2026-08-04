@@ -1,10 +1,9 @@
 import numpy as np
 from scipy import stats
 
-from sparow.ci.scenario_sampler import ScenarioSampler
+from sparow.conf_intervals.scenario_sampler import ScenarioSampler
 
 # TODO: This is specific to minimization problems... Need to adapt to model sense
-
 
 class StandardMRP:
     """

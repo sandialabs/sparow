@@ -8,12 +8,16 @@ from pprint import pprint
 import numpy as np
 from scipy import stats
 
-from sparow.ci.mrp_options import MRPOptions
-from sparow.ci.acv_mrp_options import ACVMRPOptions
-from sparow.ci.standard_mrp import StandardMRP
-from sparow.ci.acv_mrp import ACVMRP
-from sparow.ci.evaluate_true_optimality_gap import TrueOptimalityGapEvaluator
-from sparow.ci.scenario_sampler import ScenarioSampler
+from pathlib import Path
+from datetime import datetime
+import re
+
+from sparow.conf_intervals.mrp_options import MRPOptions
+from sparow.conf_intervals.acv_mrp_options import ACVMRPOptions
+from sparow.conf_intervals.standard_mrp import StandardMRP
+from sparow.conf_intervals.acv_mrp import ACVMRP
+from sparow.conf_intervals.evaluate_true_optimality_gap import TrueOptimalityGapEvaluator
+from sparow.conf_intervals.scenario_sampler import ScenarioSampler
 
 # ============================================================================
 # CLI argument parsing
@@ -202,6 +206,98 @@ def build_candidate_solution(
     xhat = problem_adapter.get_first_stage_solution(solved_candidate)
 
     return xhat, candidate_obj
+
+# ============================================================================
+# Helpers for saving experiment results to dedicated subdirectory
+# ============================================================================
+
+def _create_safe_path_name(value):
+    """Convert a value to a filesystem-friendly string."""
+    s = str(value)
+    s = s.replace(" ", "")
+    s = s.replace("/", "-")
+    s = s.replace(",", "_")
+    s = re.sub(r"[^A-Za-z0-9_.=-]+", "-", s) # Replace any other non-alphanumeric characters with hyphens
+    return s 
+
+
+def _module_basename(model_module_name):
+    """Use the last component of the module path for directory naming."""
+    return model_module_name.split(".")[-1]
+
+def get_model_module_parent_dir(model_module_name):
+    """
+    Return the parent directory containing the model module file.
+    """
+    model_module = importlib.import_module(model_module_name)
+    model_file = Path(model_module.__file__).resolve()
+    return model_file.parent
+
+
+def make_run_directory(
+    model_module_name,
+    model_name,
+    lf_model_type,
+    candidate_seed,
+    mrp_seed,
+    candidate_scen_count,
+    acv_mrp_flag=None,
+    m_values=None,
+    n_values=None,
+    M_values=None,
+    base_dir="experiment_outputs",
+):
+    """
+    Create a unique output directory for one experiment run.
+
+    The output directory is placed in a dedicated experiment_outputs folder
+    located alongside the model module file.
+    """
+    if acv_mrp_flag is None:
+        raise ValueError("acv_mrp_flag must be specified as True or False.")
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    parts = [_create_safe_path_name(_module_basename(model_module_name))]
+
+    if model_name is not None:
+        parts.append(f"model-{_create_safe_path_name(model_name)}")
+
+    parts.append(f"lf-{_create_safe_path_name(lf_model_type)}")
+    parts.append(f"candN-{_create_safe_path_name(candidate_scen_count)}")
+    parts.append(f"candSeed-{_create_safe_path_name(candidate_seed)}")
+    parts.append(f"mainSeed-{_create_safe_path_name(mrp_seed)}")
+
+    if m_values is not None:
+        parts.append(f"m-{'_'.join(map(str, m_values))}")
+    if n_values is not None:
+        parts.append(f"n-{'_'.join(map(str, n_values))}")
+    if acv_mrp_flag and M_values is not None:
+        parts.append(f"M-{'_'.join(map(str, M_values))}")
+
+    parts.append("acvmrp" if acv_mrp_flag else "mrp")
+    parts.append(timestamp)
+
+    run_name = "__".join(parts)
+
+    # Put the run directory under the model module's parent directory
+    model_parent_dir = get_model_module_parent_dir(model_module_name)
+    base_dir = model_parent_dir / base_dir
+
+    run_dir = Path(base_dir) / run_name
+    run_dir.mkdir(parents=True, exist_ok=True)
+    return run_dir
+
+
+def place_output_in_run_dir(run_dir, filename):
+    """
+    Put a filename inside run_dir unless it is already an absolute path.
+    If filename includes only a basename, place it under run_dir.
+    """
+    p = Path(filename)
+    if p.is_absolute():
+        return p
+    return run_dir / p.name
 
 
 # ================================================================================
@@ -727,6 +823,32 @@ def main():
             if args.M_values is None:
                 raise ValueError("--M-values is required for ACV-MRP grid experiments.")
 
+            parsed_m_values = parse_int_list(args.m_values)
+            parsed_n_values = parse_int_list(args.n_values)
+            parsed_M_values = parse_int_list(args.M_values)
+
+            run_dir = make_run_directory(
+                model_module_name=args.model_module,
+                model_name=args.model_name,
+                lf_model_type=args.lf_model_type,
+                candidate_seed=args.candidate_seed,
+                mrp_seed=args.mrp_seed,
+                candidate_scen_count=args.candidate_scen_count,
+                m_values=parsed_m_values,
+                n_values=parsed_n_values,
+                M_values=parsed_M_values,
+                acv_mrp_flag=args.acv_mrp,
+            )
+
+            if not args.use_existing_xhat:
+                args.xhat_file = str(place_output_in_run_dir(run_dir, args.xhat_file))
+            args.output_csv = str(place_output_in_run_dir(run_dir, args.output_csv))
+
+            if args.verbose:
+                print(f"Created run directory: {run_dir}")
+                print(f"xhat file will be written to: {args.xhat_file}")
+                print(f"CSV file will be written to: {args.output_csv}")
+
             results = run_acvmrp_grid_experiment(
                 model_module_name=args.model_module,
                 model_name=args.model_name,
@@ -749,6 +871,30 @@ def main():
                 lf_model_type=args.lf_model_type,
             )
         else:
+
+            parsed_m_values = parse_int_list(args.m_values)
+            parsed_n_values = parse_int_list(args.n_values)
+
+            run_dir = make_run_directory(
+                model_module_name=args.model_module,
+                model_name=args.model_name,
+                lf_model_type=args.lf_model_type,
+                candidate_seed=args.candidate_seed,
+                mrp_seed=args.mrp_seed,
+                candidate_scen_count=args.candidate_scen_count,
+                m_values=parsed_m_values,
+                n_values=parsed_n_values,
+                M_values=None,
+                acv_mrp_flag=args.acv_mrp,
+            )
+
+            if not args.use_existing_xhat:
+                args.xhat_file = str(place_output_in_run_dir(run_dir, args.xhat_file))
+            args.output_csv = str(place_output_in_run_dir(run_dir, args.output_csv))
+
+            if args.verbose:
+                print(f"Created run directory: {run_dir}")
+                
             results = run_mrp_grid_experiment(
                 model_module_name=args.model_module,
                 model_name=args.model_name,
@@ -772,8 +918,10 @@ def main():
 
         if args.verbose:
             print("\nGrid experiment complete.")
-            print(f"Wrote CSV: {args.output_csv}")
-            print(f"Wrote xhat: {args.xhat_file}")
+
+        print(f"Wrote CSV: {args.output_csv}")
+        print(f"Wrote xhat: {args.xhat_file}")
+
         return
 
     # ----------------------------------------------------------------------
@@ -783,6 +931,27 @@ def main():
         raise ValueError("--scenario-file is required in single-run mode.")
     if args.n is None or args.m is None:
         raise ValueError("--n and --m are required in single-run mode.")
+
+    run_dir = make_run_directory(
+        model_module_name=args.model_module,
+        model_name=args.model_name,
+        lf_model_type=args.lf_model_type,
+        candidate_seed=args.candidate_seed,
+        mrp_seed=args.mrp_seed,
+        candidate_scen_count=args.candidate_scen_count,
+        m_values=[args.m],
+        n_values=[args.n],
+        M_values=[args.M] if args.acv_mrp and args.M is not None else None,
+        acv_mrp_flag=args.acv_mrp,
+    )
+
+    # Place the xhat file in the run directory unless it is already an absolute path
+    if not args.use_existing_xhat:
+        args.xhat_file = str(place_output_in_run_dir(run_dir, args.xhat_file))
+
+    if args.verbose:
+        print(f"Created run directory: {run_dir}")
+        print(f"xhat file will be written to: {args.xhat_file}")
 
     adapter = load_problem_adapter(
         model_module_name=args.model_module,
@@ -915,7 +1084,6 @@ def main():
         print(f"True optimal value: {true_gap['true_optimal_value']}")
         print(f"xhat true value: {true_gap['xhat_true_value']}")
         print(f"True gap: {true_gap['true_gap']}")
-
 
 if __name__ == "__main__":
     main()

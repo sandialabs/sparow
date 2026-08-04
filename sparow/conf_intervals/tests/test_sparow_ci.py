@@ -3,10 +3,10 @@ import numpy as np
 import pytest
 from scipy import stats
 
-from sparow.ci.mrp_options import MRPOptions
-from sparow.ci.standard_mrp import StandardMRP
-from sparow.ci.scenario_sampler import ScenarioSampler
-from sparow.ci.cli import (
+from sparow.conf_intervals.mrp_options import MRPOptions
+from sparow.conf_intervals.standard_mrp import StandardMRP
+from sparow.conf_intervals.scenario_sampler import ScenarioSampler
+from sparow.conf_intervals.cli import (
     load_problem_adapter,
     build_candidate_solution,
     run_single_mrp_experiment,

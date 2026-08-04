@@ -7,7 +7,7 @@ from pyapprox_benchmarks.problems.multifidelity_forward_uq import (
     MultifidelityForwardUQProblem,
 )
 
-from sparow.ci.scenario_sampler import ScenarioBatchPrior
+from sparow.conf_intervals.scenario_sampler import ScenarioBatchPrior
 
 
 class PyApproxModelWrapper:

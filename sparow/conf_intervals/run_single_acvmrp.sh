@@ -5,19 +5,19 @@ set -euo pipefail
 # User settings
 # ==========================================================
 
-MODEL_MODULE="sparow_examples.farmers.MRPfarmers"
-MODEL_NAME="Advanced"
+MODEL_MODULE="sparow_examples.mrp_facilityloc.mrp_discrete_facilityloc"
+MODEL_NAME="HF"
 LF_MODEL_TYPE="classic"
 SOLVER="gurobi_direct"
 VERBOSE="true"
 
 # Candidate-solution generation (if you don't want to use existing file)
-CANDIDATE_SCEN_COUNT=5
-CANDIDATE_SEED=12345
+CANDIDATE_SCEN_COUNT=0
+CANDIDATE_SEED=123
 CANDIDATE_WITH_REPLACEMENT="false"
 
 # If you want to use existing candidate solution, already written to file
-USE_EXISTING_XHAT="false"
+USE_EXISTING_XHAT="true"
 
 # MRP confidence interval settings
 ALPHA=0.05
@@ -25,11 +25,13 @@ MRP_SEED=678
 MRP_WITH_REPLACEMENT="true"
 
 # Single-run settings
-SCENARIO_FILE="../../../sparow_examples/sparow_examples/farmers/advanced_farmers_1000_scenarios.npy"
-XHAT_FILE="farmer_candidate_xhat_cand${CANDIDATE_SCEN_COUNT}_seed${CANDIDATE_SEED}.npy"
-N=500
-M=10
+SCENARIO_FILE="../../../sparow_examples/sparow_examples/mrp_facilityloc/discrete_facilityloc_scenarios.npy"
+XHAT_FILE="../../../sparow_examples/sparow_examples/mrp_facilityloc/manually_created_suboptimal_xhat.npy"
+N=100
+M_PAIRED=10
+M_LF_ONLY=5
 COMPUTE_TRUE_GAP="true"
+ACV_MRP="true"
 
 # ==========================================================
 # Convert replacement choice into CLI flag
@@ -85,21 +87,42 @@ else
     exit 1
 fi
 
-echo "=== Running single standard MRP experiment ==="
+ACV_FLAG=""
+if [ "${ACV_MRP}" = "true" ]; then
+    ACV_FLAG="--acv-mrp"
+elif [ "${ACV_MRP}" = "false" ]; then
+    ACV_FLAG=""
+else
+    echo "Error: ACV_MRP must be 'true' or 'false'"
+    exit 1
+fi
+
+# ==========================================================
+# Basic file existence checks
+# ==========================================================
+
+if [ ! -f "${SCENARIO_FILE}" ]; then
+    echo "Error: scenario file not found: ${SCENARIO_FILE}"
+    exit 1
+fi
+
+echo "=== Running single ACV-MRP experiment ==="
+echo "ACV-MRP flag: ${ACV_FLAG}"
 echo "Candidate sampling flag: ${CANDIDATE_FLAG}"
 echo "MRP sampling flag: ${MRP_FLAG}"
 echo "Scenario file: ${SCENARIO_FILE}"
 echo "xhat file: ${XHAT_FILE}"
 echo "candidate_scen_count: ${CANDIDATE_SCEN_COUNT}"
 echo "n: ${N}"
-echo "m: ${M}"
+echo "m: ${M_PAIRED}"
+echo "M: ${M_LF_ONLY}"
 
-python -m sparow.ci.cli \
+python -m sparow.conf_intervals.cli \
     --model-module "${MODEL_MODULE}" \
     --model-name "${MODEL_NAME}" \
     --lf-model-type "${LF_MODEL_TYPE}" \
     --solver-name "${SOLVER}" \
-     ${VERBOSE_FLAG} \
+    ${VERBOSE_FLAG} \
     --candidate-scen-count "${CANDIDATE_SCEN_COUNT}" \
     --candidate-seed "${CANDIDATE_SEED}" \
     ${CANDIDATE_FLAG} \
@@ -110,7 +133,9 @@ python -m sparow.ci.cli \
     --scenario-file "${SCENARIO_FILE}" \
     --xhat-file "${XHAT_FILE}" \
     --n "${N}" \
-    --m "${M}" \
-    ${TRUE_GAP_FLAG}
+    --m "${M_PAIRED}" \
+    --M "${M_LF_ONLY}" \
+    ${TRUE_GAP_FLAG} \
+    ${ACV_FLAG}
 
-echo "Single MRP experiment complete."
+echo "Single ACV-MRP experiment complete."

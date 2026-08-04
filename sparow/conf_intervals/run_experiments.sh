@@ -12,7 +12,7 @@ SOLVER="gurobi_direct"
 VERBOSE="true"
 
 # Candidate-solution generation (if you don't want to use existing file)
-CANDIDATE_SCEN_COUNT=5
+CANDIDATE_SCEN_COUNT=0
 CANDIDATE_SEED=12345
 CANDIDATE_WITH_REPLACEMENT="false"
 
@@ -25,16 +25,17 @@ MRP_SEED=678
 MRP_WITH_REPLACEMENT="true"
 
 # Grid of m and n values, optionally M values
-M_VALUES="8,9,10"
-N_VALUES="300,200,100"
+M_VALUES="5,10"
+N_VALUES="200,100"
 ACV_MRP="true"
-ACV_M_VALUES="118,119,120"
+ACV_M_VALUES="5"
 
 # Files
-XHAT_FILE="manually_created_suboptimal_xhat.npy"
+XHAT_FILE="../../../sparow_examples/sparow_examples/mrp_facilityloc/manually_created_suboptimal_xhat.npy"
 RESULTS_CSV="grid_results.csv"
 PLOT_SCRIPT_STANDARD="plot_mrp_results.py"
 PLOT_SCRIPT_ACV="plot_acvmrp_results.py"
+CLI_LOG="cli_run.log"
 
 # ==========================================================
 # Convert replacement choices into CLI flags
@@ -101,7 +102,7 @@ echo "Use existing xhat flag: ${USE_EXISTING_XHAT_FLAG}"
 # .... but may change this in future refactor
 
 if [ "${ACV_MRP}" = "true" ]; then
-    python -m sparow.ci.cli \
+    python -m sparow.conf_intervals.cli \
         --grid-experiment \
         --acv-mrp \
         --model-module "${MODEL_MODULE}" \
@@ -120,15 +121,18 @@ if [ "${ACV_MRP}" = "true" ]; then
         --n-values "${N_VALUES}" \
         --M-values "${ACV_M_VALUES}" \
         --xhat-file "${XHAT_FILE}" \
-        --output-csv "${RESULTS_CSV}"
+        --output-csv "${RESULTS_CSV}" | tee "${CLI_LOG}" # writes terminal output to CLI_LOG
 
-    echo "Wrote ${RESULTS_CSV}"
-    echo "Wrote ${XHAT_FILE}"
+    ACTUAL_RESULTS_CSV=$(grep "Wrote CSV:" "${CLI_LOG}" | tail -n 1 | sed 's/.*Wrote CSV: //')
+    ACTUAL_XHAT_FILE=$(grep "Wrote xhat:" "${CLI_LOG}" | tail -n 1 | sed 's/.*Wrote xhat: //')
 
-    python "${PLOT_SCRIPT_ACV}" "${RESULTS_CSV}"
+    echo "Wrote ${ACTUAL_RESULTS_CSV}"
+    echo "Wrote ${ACTUAL_XHAT_FILE}"
+
+    python "${PLOT_SCRIPT_ACV}" "${ACTUAL_RESULTS_CSV}"
     echo "ACVMRP plots created."
 else 
-    python -m sparow.ci.cli \
+    python -m sparow.conf_intervals.cli \
         --grid-experiment \
         --model-module "${MODEL_MODULE}" \
         --model-name "${MODEL_NAME}" \
@@ -144,12 +148,15 @@ else
         --m-values "${M_VALUES}" \
         --n-values "${N_VALUES}" \
         --xhat-file "${XHAT_FILE}" \
-        --output-csv "${RESULTS_CSV}"
+        --output-csv "${RESULTS_CSV}" | tee "${CLI_LOG}" # writes terminal output to CLI_LOG
 
-    echo "Wrote ${RESULTS_CSV}"
-    echo "Wrote ${XHAT_FILE}"
+    ACTUAL_RESULTS_CSV=$(grep "Wrote CSV:" "${CLI_LOG}" | tail -n 1 | sed 's/.*Wrote CSV: //')
+    ACTUAL_XHAT_FILE=$(grep "Wrote xhat:" "${CLI_LOG}" | tail -n 1 | sed 's/.*Wrote xhat: //')
 
-    python "${PLOT_SCRIPT_STANDARD}" "${RESULTS_CSV}"
+    echo "Wrote ${ACTUAL_RESULTS_CSV}"
+    echo "Wrote ${ACTUAL_XHAT_FILE}"
+
+    python "${PLOT_SCRIPT_STANDARD}" "${ACTUAL_RESULTS_CSV}"
     echo "Standard MRP plots created."
 fi
 

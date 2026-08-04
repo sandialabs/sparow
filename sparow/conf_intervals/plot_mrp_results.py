@@ -1,14 +1,12 @@
 import sys
-import os
 import numpy as np
-import importlib
 from pathlib import Path
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import textwrap
 
-csv_path = sys.argv[1]
+csv_path = Path(sys.argv[1]).resolve()
 df = pd.read_csv(csv_path)
 
 true_gap = df["true_gap"].iloc[0]
@@ -23,14 +21,10 @@ plt.rcParams.update(
 )
 
 # ----------------------------------------------------------------------
-# Infer output directory from the problem module path
+# Write plots next to the CSV, inside a dedicated plots subdirectory
 # ----------------------------------------------------------------------
-model_module_name = df["model_module"].iloc[0]
-
-model_module = importlib.import_module(model_module_name)
-model_file = Path(model_module.__file__).resolve()
-output_dir = model_file.parent / "mrp_plots"
-output_dir.mkdir(exist_ok=True)
+output_dir = csv_path.parent / "plots"
+output_dir.mkdir(parents=True, exist_ok=True)
 
 # ----------------------------------------------------------
 # (a) Point estimator for Gap vs n

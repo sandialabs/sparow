@@ -6,6 +6,8 @@ __pycache__
 *.csv
 *.png
 
+*.log
+
 # Ignore Python byte-compiled files
 __pycache__/
 *.py[cod]
