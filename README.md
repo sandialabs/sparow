@@ -39,17 +39,6 @@ results, install the plotting dependencies as follows:
 cd sparow
 pip install -e ".[plot]"
 cd ..
-
-## Using SPAROW
-
-See [sparow_examples](https://github.com/sandialabs/sparow_examples) for a library of SPAROW examples.
-
-## Testing
-
-The Pytest software can be used to automatically run all tests within the current directory:
-
-```bash
-pytest .
 ```
 
 Additionally, the following syntax generates a summary that includes code coverage:
