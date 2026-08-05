@@ -30,12 +30,15 @@ N_VALUES="200,100"
 ACV_MRP="true"
 ACV_M_VALUES="5"
 
-# Files
-XHAT_FILE="../../../sparow_examples/sparow_examples/mrp_facilityloc/manually_created_suboptimal_xhat.npy"
-RESULTS_CSV="grid_results.csv"
-PLOT_SCRIPT_STANDARD="plot_mrp_results.py"
-PLOT_SCRIPT_ACV="plot_acvmrp_results.py"
-CLI_LOG="cli_run.log"
+# Filepaths - should be in same folder as the script where your problem instance is defined
+XHAT_FILE="../../sparow_examples/sparow_examples/mrp_facilityloc/manually_created_suboptimal_xhat.npy"
+CLI_LOG="../../sparow_examples/sparow_examples/mrp_facilityloc/cli_run.log"
+RESULTS_CSV="grid_results.csv" # this file gets automatically written to correct folder
+
+# Filepaths for scripts containing plotting functionality
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLOT_SCRIPT_STANDARD="${SCRIPT_DIR}/../sparow/conf_intervals/plot_mrp_results.py"
+PLOT_SCRIPT_ACV="${SCRIPT_DIR}/../sparow/conf_intervals/plot_acvmrp_results.py"
 
 # ==========================================================
 # Convert replacement choices into CLI flags

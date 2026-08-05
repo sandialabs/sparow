@@ -25,8 +25,8 @@ MRP_SEED=678
 MRP_WITH_REPLACEMENT="true"
 
 # Single-run settings
-SCENARIO_FILE="../../../sparow_examples/sparow_examples/mrp_facilityloc/discrete_facilityloc_scenarios.npy"
-XHAT_FILE="../../../sparow_examples/sparow_examples/mrp_facilityloc/manually_created_suboptimal_xhat.npy"
+SCENARIO_FILE="../../sparow_examples/sparow_examples/mrp_facilityloc/discrete_facilityloc_scenarios.npy"
+XHAT_FILE="../../sparow_examples/sparow_examples/mrp_facilityloc/manually_created_suboptimal_xhat.npy"
 N=100
 M_PAIRED=10
 M_LF_ONLY=5

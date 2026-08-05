@@ -25,7 +25,7 @@ MRP_SEED=678
 MRP_WITH_REPLACEMENT="true"
 
 # Single-run settings
-SCENARIO_FILE="../../../sparow_examples/sparow_examples/farmers/advanced_farmers_1000_scenarios.npy"
+SCENARIO_FILE="../../sparow_examples/sparow_examples/farmers/advanced_farmers_1000_scenarios.npy"
 XHAT_FILE="farmer_candidate_xhat_cand${CANDIDATE_SCEN_COUNT}_seed${CANDIDATE_SEED}.npy"
 N=500
 M=10
