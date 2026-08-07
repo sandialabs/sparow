@@ -711,6 +711,9 @@ class BendersSolver(object):
         opt = pyo.SolverFactory(self.solver_name)
         if self.is_persistent_solver:
             opt.set_instance(upper_model)
+
+        if self.solver_options:
+            opt.options.update(self.solver_options)
         # TODO: handle persistent solver setup
 
         # add subproblems
