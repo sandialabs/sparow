@@ -569,7 +569,7 @@ class BendersSolver(object):
         # return the subproblem model, b, and the complicating variable map.
         return model_lower, complicating_variable_map
 
-    def solve(
+    def solve_and_return_model(
         self,
         sp_lower,
         eta_bounds_map,
@@ -577,6 +577,7 @@ class BendersSolver(object):
         convergence_tol=1e-8,
         subproblem_transforms=None,
         master_transforms=None,
+        on_iteration=None,
         **options,
     ):
         # steps for general solve
@@ -594,6 +595,10 @@ class BendersSolver(object):
         # in future
 
         start_time = datetime.datetime.now()
+        if eta_bounds_map is None:
+            raise AssertionError(
+                f"eta_bounds_map was None, expect something like dict(s: (default_lower_eta, None) for s in sp_lower.bundles) where sp.bundles has structure {len(sp_lower.bundles)=} and {sp_lower.bundles.keys()=}"
+            )
         assert eta_bounds_map is not None, "Must give a valid bounds map"
         assert (
             self.subproblem_solver_name is not None
@@ -706,6 +711,9 @@ class BendersSolver(object):
         opt = pyo.SolverFactory(self.solver_name)
         if self.is_persistent_solver:
             opt.set_instance(upper_model)
+
+        if self.solver_options:
+            opt.options.update(self.solver_options)
         # TODO: handle persistent solver setup
 
         # add subproblems
@@ -755,6 +763,15 @@ class BendersSolver(object):
                     tee=False,
                 )
                 cuts_added = upper_model.benders.generate_cut()
+
+            if on_iteration:
+                on_iteration(
+                    data=munch.Munch(
+                        iter_idx=iteration,
+                        cuts_added=cuts_added,
+                        upper_model=upper_model,
+                    )
+                )
 
             if len(cuts_added) == 0:
                 termination_condition = f"Termination: No Cuts Added"
@@ -809,4 +826,28 @@ class BendersSolver(object):
         logger.info("-" * 70)
         logger.info("BendersSolver - STOP")
 
-        return self.solutions
+        return munch.Munch(solutions=self.solutions, upper_model=upper_model)
+
+    def solve(
+        self,
+        sp_lower,
+        eta_bounds_map,
+        error_on_initialized_root_vars=False,
+        convergence_tol=1e-8,
+        subproblem_transforms=None,
+        master_transforms=None,
+        on_iteration=None,
+        **options,
+    ):
+
+        data_Munch = self.solve_and_return_model(
+            sp_lower=sp_lower,
+            eta_bounds_map=eta_bounds_map,
+            error_on_initialized_root_vars=error_on_initialized_root_vars,
+            convergence_tol=convergence_tol,
+            subproblem_transforms=subproblem_transforms,
+            master_transforms=master_transforms,
+            on_iteration=on_iteration,
+            **options,
+        )
+        return data_Munch.solutions
