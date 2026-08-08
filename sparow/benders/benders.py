@@ -27,7 +27,7 @@ logger = sparow.logs.logger
 
 
 class BendersSolver(object):
-    """
+    r"""
     This class provides an way to solve Stochastic Programs (or other SP formatted problems)
     using Benders Decomposition. It relies on the OR-TOPAS Benders solver for its funcitonality.
 
@@ -483,6 +483,9 @@ class BendersSolver(object):
                 # we can either fix or delete
                 # fixing for now because we do not want unneed slack variables when generating alternative solutions
                 var.domain = pyo.Reals
+                # also need to clear the upper and lower bounds
+                var.setlb(None)
+                var.setub(None)
                 var.fix(0)
 
         # step 3: create eta tracking variables for the scenario set (either 1...N or a pyomo set)
