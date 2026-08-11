@@ -3,13 +3,14 @@ from typing import Optional, Dict, Any
 
 
 @dataclass
-class MRPOptions:
+class UQOptions:
     """
     Options for the standard Multiple Replications Procedure algorithm.
     """
 
     n: int  # sample size per replication
-    m: int  # number of replications
+    m: int  # number of paired replications (HF and LF both evaluated, or just HF in case of single fidelity)
+    M: Optional[int] = None  # Additional LF-only replications for multifidelity UQ
     alpha: float = 0.05  # confidence level is 1 - alpha
     seed: int = 12345  # base random seed for entire MRP algorithm run
     with_replacement: bool = (

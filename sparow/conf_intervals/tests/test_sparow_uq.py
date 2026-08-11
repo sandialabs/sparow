@@ -1,19 +1,26 @@
 import math
 import numpy as np
 import pytest
-from scipy import stats
 
-from sparow.conf_intervals.mrp_options import MRPOptions
+from sparow.conf_intervals.options import UQOptions
 from sparow.conf_intervals.standard_mrp import StandardMRP
+from sparow.conf_intervals.acv_mrp import ACVMRP
 from sparow.conf_intervals.scenario_sampler import ScenarioSampler
 from sparow.conf_intervals.cli import (
-    load_problem_adapter,
+    load_sp_model_for_uq,
+    load_model_ensemble_for_uq,
     build_candidate_solution,
     run_single_mrp_experiment,
     run_mrp_grid_experiment,
+    run_single_acvmrp_experiment,
+    run_acvmrp_grid_experiment,
 )
+from sparow.conf_intervals.evaluate_true_optimality_gap import TrueOptimalityGapEvaluator
 
-from sparow_examples.farmers.MRPfarmers import get_ci_problem_adapter
+from sparow_examples.farmers.MRPfarmers import get_sp_model_for_uq
+from sparow_examples.mrp_facilityloc.mrp_discrete_facilityloc import (
+    get_model_ensemble_for_uq,
+)
 
 # ============================================================================
 # Fixtures
@@ -21,26 +28,48 @@ from sparow_examples.farmers.MRPfarmers import get_ci_problem_adapter
 
 
 @pytest.fixture
-def advanced_adapter():
-    return get_ci_problem_adapter(model_name="Advanced", use_integer=False)
+def advanced_model():
+    """
+    Single-fidelity Advanced Farmers model wrapper.
+    """
+    return get_sp_model_for_uq(
+        model_name="Advanced",
+        use_integer=False,
+        seed=12345,
+        with_replacement=True,
+    )
 
 
 @pytest.fixture
-def advanced_scenarios(advanced_adapter):
-    scenarios = advanced_adapter.get_scenario_population()
-    advanced_adapter.validate_scenario_population(scenarios)
+def advanced_scenarios(advanced_model):
+    """
+    Full finite scenario population for Advanced Farmers.
+    """
+    scenarios = advanced_model.scenario_population().scenarios()
+    advanced_model.scenario_population.validate(scenarios)
     return scenarios
 
 
 @pytest.fixture
-def basic_adapter():
-    return get_ci_problem_adapter(model_name="Basic", use_integer=False)
+def basic_model():
+    """
+    Single-fidelity Basic Farmers model wrapper.
+    """
+    return get_sp_model_for_uq(
+        model_name="Basic",
+        use_integer=False,
+        seed=12345,
+        with_replacement=True,
+    )
 
 
 @pytest.fixture
-def basic_scenarios(basic_adapter):
-    scenarios = basic_adapter.get_scenario_population()
-    basic_adapter.validate_scenario_population(scenarios)
+def basic_scenarios(basic_model):
+    """
+    Full finite scenario population for Basic Farmers.
+    """
+    scenarios = basic_model.scenario_population().scenarios()
+    basic_model.scenario_population().validate(scenarios)
     return scenarios
 
 
@@ -49,44 +78,56 @@ def basic_scenarios(basic_adapter):
 # ============================================================================
 
 
-def test_candidate_generation_reproducibility(advanced_adapter, advanced_scenarios):
+def test_candidate_generation_reproducibility(advanced_model):
     """
     Same candidate seed + same sample size + same replacement rule
     should give identical sampled candidate xhat and objective.
     """
+    candidate_model_1 = get_sp_model_for_uq(
+        model_name="Advanced",
+        use_integer=False,
+        seed=12345,
+        with_replacement=True,
+    )
     xhat1, obj1 = build_candidate_solution(
-        problem_adapter=advanced_adapter,
-        full_scenarios=advanced_scenarios,
+        model=candidate_model_1,
         candidate_scen_count=500,
-        candidate_seed=12345,
-        with_replacement=True,
         solver_name="gurobi_direct",
     )
 
+    candidate_model_2 = get_sp_model_for_uq(
+        model_name="Advanced",
+        use_integer=False,
+        seed=12345,
+        with_replacement=True,
+    )
     xhat2, obj2 = build_candidate_solution(
-        problem_adapter=advanced_adapter,
-        full_scenarios=advanced_scenarios,
+        model=candidate_model_2,
         candidate_scen_count=500,
-        candidate_seed=12345,
-        with_replacement=True,
         solver_name="gurobi_direct",
     )
 
+    candidate_model_3 = get_sp_model_for_uq(
+        model_name="Advanced",
+        use_integer=False,
+        seed=123,
+        with_replacement=False,
+    )
     xhat3, obj3 = build_candidate_solution(
-        problem_adapter=advanced_adapter,
-        full_scenarios=advanced_scenarios,
+        model=candidate_model_3,
         candidate_scen_count=100,
-        candidate_seed=123,
-        with_replacement=False,
         solver_name="gurobi_direct",
     )
 
-    xhat4, obj4 = build_candidate_solution(
-        problem_adapter=advanced_adapter,
-        full_scenarios=advanced_scenarios,
-        candidate_scen_count=100,
-        candidate_seed=123,
+    candidate_model_4 = get_sp_model_for_uq(
+        model_name="Advanced",
+        use_integer=False,
+        seed=123,
         with_replacement=False,
+    )
+    xhat4, obj4 = build_candidate_solution(
+        model=candidate_model_4,
+        candidate_scen_count=100,
         solver_name="gurobi_direct",
     )
 
@@ -102,13 +143,13 @@ def test_candidate_generation_reproducibility(advanced_adapter, advanced_scenari
 # ============================================================================
 
 
-def test_without_replacement_sampling(advanced_scenarios):
+def test_without_replacement_sampling(advanced_model):
     """
     A replication batch sampled without replacement should contain
     no duplicate population indices.
     """
     sampler = ScenarioSampler(
-        scenarios=advanced_scenarios,
+        scenario_population=advanced_model.scenario_population(),
         seed=2468,
         with_replacement=False,
     )
@@ -119,14 +160,14 @@ def test_without_replacement_sampling(advanced_scenarios):
     assert len(pop_indices) == len(set(pop_indices))
 
 
-def test_with_replacement_sampling(advanced_scenarios):
+def test_with_replacement_sampling(advanced_model):
     """
     With replacement, all sampled scenarios should still get Probability = 1/n,
     and duplicates are allowed.
     """
     n = 600
     sampler = ScenarioSampler(
-        scenarios=advanced_scenarios,
+        scenario_population=advanced_model.scenario_population(),
         seed=2468,
         with_replacement=True,
     )
@@ -141,14 +182,14 @@ def test_with_replacement_sampling(advanced_scenarios):
     # So the main assertion is that no error occurs and probabilities are correct.
 
 
-def test_nested_sample_correctness(advanced_scenarios):
+def test_nested_sample_correctness(advanced_model):
     """
     If one replication first draws a superset sample of size n_max, then
     smaller n samples formed by taking prefixes should be strict subsets
     of the larger sample.
     """
     sampler = ScenarioSampler(
-        scenarios=advanced_scenarios,
+        scenario_population=advanced_model.scenario_population(),
         seed=54321,
         with_replacement=True,
     )
@@ -194,12 +235,12 @@ def test_nested_sample_correctness(advanced_scenarios):
         ),  # not a dictionary
     ],
 )
-def test_scenario_format_validation(advanced_adapter, bad_scenarios, expected_msg):
+def test_scenario_format_validation(advanced_model, bad_scenarios, expected_msg):
     """
     Each malformed scenario case should independently raise the expected validation error.
     """
     with pytest.raises(RuntimeError, match=expected_msg):
-        advanced_adapter.validate_scenario_population(bad_scenarios)
+        advanced_model.scenario_population().validate(bad_scenarios)
 
 
 # ============================================================================
@@ -207,21 +248,24 @@ def test_scenario_format_validation(advanced_adapter, bad_scenarios, expected_ms
 # ============================================================================
 
 
-def test_mrp_run_reproducibility(advanced_adapter, advanced_scenarios):
+def test_mrp_run_reproducibility(advanced_model):
     """
     Same xhat + same MRP options + same scenario population should produce
     identical replication values and CI outputs.
     """
-    xhat, _ = build_candidate_solution(
-        problem_adapter=advanced_adapter,
-        full_scenarios=advanced_scenarios,
-        candidate_scen_count=5,
-        candidate_seed=11111,
+    candidate_model = get_sp_model_for_uq(
+        model_name="Advanced",
+        use_integer=False,
+        seed=11111,
         with_replacement=True,
+    )
+    xhat, _ = build_candidate_solution(
+        model=candidate_model,
+        candidate_scen_count=5,
         solver_name="gurobi_direct",
     )
 
-    options = MRPOptions(
+    options = UQOptions(
         n=50,
         m=5,
         alpha=0.05,
@@ -231,18 +275,10 @@ def test_mrp_run_reproducibility(advanced_adapter, advanced_scenarios):
         verbose=False,
     )
 
-    mrp1 = StandardMRP(
-        problem_adapter=advanced_adapter,
-        scenarios=advanced_scenarios,
-        options=options,
-    )
+    mrp1 = StandardMRP(model=advanced_model, options=options)
     results1 = mrp1.run(xhat)
 
-    mrp2 = StandardMRP(
-        problem_adapter=advanced_adapter,
-        scenarios=advanced_scenarios,
-        options=options,
-    )
+    mrp2 = StandardMRP(model=advanced_model, options=options)
     results2 = mrp2.run(xhat)
 
     assert results1["point_estimate"] == results2["point_estimate"]
@@ -288,6 +324,8 @@ def test_grid_experiment_reproducibility_same_candidate_and_mrp_seed(tmp_path):
         n_values=[200, 100],
         use_existing_xhat=False,
         use_integer=False,
+        solver_options=None,
+        verbose=False
     )
 
     res1 = run_mrp_grid_experiment(
@@ -310,22 +348,31 @@ def test_grid_experiment_reproducibility_same_candidate_and_mrp_seed(tmp_path):
     assert res1["rows"] == res2["rows"]
 
 
-def test_single_run_reproducibility_same_mrp_seed(advanced_adapter, advanced_scenarios):
+def test_single_run_reproducibility_same_mrp_seed():
     """
     A single MRP run should be reproducible when the MRP seed is fixed.
     """
-    xhat, _ = build_candidate_solution(
-        problem_adapter=advanced_adapter,
-        full_scenarios=advanced_scenarios,
-        candidate_scen_count=5,
-        candidate_seed=12345,
+    candidate_model = get_sp_model_for_uq(
+        model_name="Advanced",
+        use_integer=False,
+        seed=12345,
         with_replacement=True,
+    )
+    xhat, _ = build_candidate_solution(
+        model=candidate_model,
+        candidate_scen_count=5,
         solver_name="gurobi_direct",
+    )
+
+    model = get_sp_model_for_uq(
+        model_name="Advanced",
+        use_integer=False,
+        seed=678,
+        with_replacement=True,
     )
 
     res1 = run_single_mrp_experiment(
-        problem_adapter=advanced_adapter,
-        scenarios=advanced_scenarios,
+        model=model,
         xhat=xhat,
         n=100,
         m=10,
@@ -333,11 +380,19 @@ def test_single_run_reproducibility_same_mrp_seed(advanced_adapter, advanced_sce
         seed=678,
         with_replacement=True,
         solver_name="gurobi_direct",
+        solver_options=None,
+        verbose=False,
+    )
+
+    model2 = get_sp_model_for_uq(
+        model_name="Advanced",
+        use_integer=False,
+        seed=678,
+        with_replacement=True,
     )
 
     res2 = run_single_mrp_experiment(
-        problem_adapter=advanced_adapter,
-        scenarios=advanced_scenarios,
+        model=model2,
         xhat=xhat,
         n=100,
         m=10,
@@ -345,6 +400,8 @@ def test_single_run_reproducibility_same_mrp_seed(advanced_adapter, advanced_sce
         seed=678,
         with_replacement=True,
         solver_name="gurobi_direct",
+        solver_options=None,
+        verbose=False,
     )
 
     assert res1["point_estimate"] == res2["point_estimate"]

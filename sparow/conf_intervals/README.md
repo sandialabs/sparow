@@ -1,167 +1,144 @@
-# Sparow Confidence Interval (CI) Module
+# Confidence Interval Estimation (Uncertainty Quantification) for Stochastic Programs
 
-This module implements confidence interval estimation procedures for stochastic programs, specifically the Multiple Replications Procedure (MRP) for the signle-fidelity case and Approximate Control Variate MRP (ACV-MRP) for the multifidelity case.
+For stochastic programs, this module provides methods for estimating confidence intervals on an upper bound for the optimality gap of a given candidate first-stage solution.
 
-## Overview
+It supports both a single-fidelity workflow for one model and a multifidelity workflow that uses approximate control variates. In the multifidelity case, the goal is to reduce the variance of the high-fidelity Monte Carlo estimator of the upper bound on the optimality gap.
 
-The quantity of interest is an upper bound on the optimality gap of a candidate first-stage solution. The core algorithms are:
+## Main methods
 
-1. **Standard MRP** - Multiple Replications Procedure for single-fidelity models
-2. **ACV-MRP** - Approximate Control Variate MRP for multifidelity models (extends Standard MRP)
+Two algorithms are currently supported:
 
-## Core Components
+- **Standard Multiple Replications Procedure (MRP)**  
+  For single fidelity workflows. Uses repeated independent scenario-batch replications to estimate an upper bound on the optimality gap and construct a confidence interval from the sample mean and sample variance of the replication outputs. The standard MRP procedure follows [Mak, Morton, and Wood (1999)] and [Bayraksan and Morton (2009)].
 
-### Algorithm Implementations
+- **Approximate Control Variates Multiple Replications Procedure (ACV-MRP)**  
+  For multifidelity workflows. Extends standard MRP by using a low-fidelity model as an approximate control variate. High-fidelity and low-fidelity replication outputs are evaluated on the same sampled scenario batches to induce correlation and reduce variance.
 
-#### `standard_mrp.py`
-Implements the standard Multiple Replications Procedure algorithm:
-- Estimates the optimality gap upper bound for a candidate solution `xhat`
-- Uses `m` independent replications, each with `n` sampled scenarios
-- Core logic: sample scenarios → solve SAA → evaluate candidate → compute gap
+## Model interface
 
-#### `acv_mrp.py`
-Implements the Approximate Control Variate MRP algorithm:
-- **Extends** Standard MRP with control variates for variance reduction
-- Uses both high-fidelity (HF) and low-fidelity (LF) models
-- Runs `m` paired replications (HF+LF) + `M` additional LF-only replications
-- Requires problem adapter to support multifidelity via `supports_acv()`
+To make a new stochastic programming instance compatible with the confidence interval code, the problem module should expose the following factory functions:
 
-### Options and Configuration
+- `get_sp_model_for_uq(...)` for **single-fidelity** workflows
+  Returns a single-fidelity model wrapper for use with `StandardMRP` and exact finite-population gap evaluation.
 
-#### `mrp_options.py`
-Defines `MRPOptions` dataclass for standard MRP configuration.
+- `get_model_ensemble_for_uq(...)` for **multifidelity** workflows  
+  Returns a multifidelity ensemble for use with `ACVMRP` and PyApprox integration.
 
-#### `acv_mrp_options.py`
-Defines `ACVMRPOptions` dataclass that extends `MRPOptions`.
-### Problem Interface
+These should return objects compatible with the internal protocols defined in `protocols.py`.
 
-#### `ci_problem_adapter.py`
-Abstract base class `CIProblemAdapter` defines the interface between algorithms and problem-specific implementations:
+In practice:
 
-**Required methods (must be implemented by subclasses):**
-- `get_scenario_population()`: Return full scenario population
-- `build_model_data(scenarios)`: Convert scenarios to model data dict
-- `build_stochastic_program(model_data)`: Build Sparow stochastic program
-- `first_stage_variable_order()`: Return ordered list of first-stage variables
+- `StandardMRP` expects **one model wrapper**
+- `ACVMRP` expects **two model wrappers**: one high fidelity and one low fidelity
 
-**Optional methods (for multifidelity support):**
-- `supports_acv()`: Return True if adapter supports ACV-MRP
-- `set_active_fidelity(fidelity)`: Switch between HF/LF models
-- `get_fidelity_levels()`: Return available fidelity levels (will be used in future for when you have multiple models of different fidelities)
-
-**Provided utility methods:**
-- `solve_extensive_form()`: Solve EF using Sparow's ExtensiveFormSolver
-- `evaluate_first_stage_solution()`: Evaluate fixed candidate first stage solution
-- `validate_scenario_population()`: Validate scenario format to ensure downstream code can use it
-- Conversion utilities between dict/vector representations
-
-### Supporting Utilities
-
-#### `scenario_sampler.py`
-`ScenarioSampler` class handles all of the scenario sampling logic:
-- Draws iid Monte Carlo samples from finite scenario population
-- Supports both with-replacement and without-replacement sampling
-- Uses `SeedSequence` for reproducible random streams across replications
-- We keep track of the scenarios we've drawn by their population ID/ index.
-
-#### `evaluate_true_optimality_gap.py`
-`TrueOptimalityGapEvaluator` computes exact optimality gap when full scenario population is available:
-- Solves EF over entire population to get true optimal value
-- Evaluates candidate solution on full population
-- Computes exact gap for validation/benchmarking
-
-### Command-Line Interface
-
-#### `cli.py`
-Main entry point with two operating modes:
-
-**Single-run mode**
-This is for a fixed set of experiment parameters: n, m, M.
-
-**Grid-experiment mode:**
-This is for trying different combinations in a parameter sweep: n, m, M.
-
-Handles:
-- Dynamic loading of problem-specific adapters via `get_ci_problem_adapter()`
-- Candidate solution generation from scratch, or read-in solution from .npy file
-- Result visualization via plot scripts
-
-## Shell Scripts
-
-### `run_single_mrp.sh`
-Example script for running standard MRP on the farmers problem:
-- Runs MRP with specified `n` and `m`
-- Computes true optimality gap for validation
-
-### `run_single_acvmrp.sh`
-Example script for running ACV-MRP on a toy discrete facility location problem:
-- WILL INCLUDE DISCRETE FACILITY LOCATION EXEMPLAR LATER
-- Uses `--acv-mrp` flag to enable ACV-MRP mode
-
-### `run_experiments.sh`
-Grid experiment script for parameter sweep:
-- Uses nested scenario sampling for fair comparison across parameters
-- Generates CSV results and plots using the plotting scripts: plot_mrp_results.py or plot_acvmrp_results.py
-
-## Example: Farmers Problem
-
-The `sparow_examples.farmers.MRPfarmers` module provides a concrete implementation:
+## Minimal usage: Standard MRP
 
 ```python
-# Basic 3-scenario problem from Birge & Louveaux
-BasicAdapter = CIProblemAdapter(...)
+from sparow.conf_intervals.mrp_options import MRPOptions
+from sparow.conf_intervals.standard_mrp import StandardMRP
+from my_problem_module import get_sp_model_for_uq
 
-# Advanced problem with interpolated yields (finite population)
-AdvancedAdapter = CIProblemAdapter(...)
+model = get_sp_model_for_uq(
+    model_name="MyModel",
+    use_integer=False,
+    seed=12345,
+    with_replacement=True,
+)
+
+xhat = {
+    # first-stage variable values
+}
+
+options = MRPOptions(
+    n=50,
+    m=10,
+    alpha=0.05,
+    seed=12345,
+    with_replacement=True,
+    solver_name="gurobi_direct",
+    verbose=True,
+)
+
+mrp = StandardMRP(model=model, options=options)
+results = mrp.run(xhat=xhat)
+
+print(results)
 ```
 
-The advanced farmers problem:
-- Creates Cartesian product of interpolated crop yields
-- Has finite scenario population for exact gap computation
-- Used as benchmark for MRP algorithm validation
+## Minimal usage: ACV-MRP
 
-## Extending for New Problems
+```python
+from sparow.conf_intervals.acv_mrp_options import ACVMRPOptions
+from sparow.conf_intervals.acv_mrp import ACVMRP
+from my_problem_module import get_model_ensemble_for_uq
 
-To use MRP with a new stochastic programming problem:
+ensemble = get_model_ensemble_for_uq(
+    model_name="HF",
+    use_integer=False,
+    seed=12345,
+    with_replacement=True,
+    lf_model_type="classic",
+)
 
-1. **Create a problem adapter:**
-   ```python
-   from sparow.ci import CIProblemAdapter
-   
-   class MyProblemAdapter(CIProblemAdapter):
-       def get_scenario_population(self):
-           # Return list of scenario dicts
-           pass
-       
-       def build_model_data(self, scenarios):
-           # Convert to Sparow model_data format
-           pass
-           
-       def build_stochastic_program(self, model_data):
-           # Return Sparow stochastic_program object
-           pass
-           
-       def first_stage_variable_order(self):
-           # Return list of first-stage variable names
-           pass
-   ```
+hf_model = ensemble.high_fidelity_model()
+lf_model = ensemble.low_fidelity_model()
 
-2. **Add factory function:**
-   ```python
-   def get_ci_problem_adapter(model_name=None, **kwargs):
-       if model_name == "variant1":
-           return MyProblemAdapter(model_name="variant1", ...)
-       return MyProblemAdapter(...)  # default
-   ```
+xhat = {
+    # first-stage variable values
+}
 
-## Future Extensions
+options = ACVMRPOptions(
+    n=50,
+    m=10,
+    M=5,
+    alpha=0.05,
+    seed=12345,
+    with_replacement=True,
+    solver_name="gurobi_direct",
+    verbose=True,
+)
 
-The architecture supports upcoming features:
+acv = ACVMRP(
+    hf_model=hf_model,
+    lf_model=lf_model,
+    options=options,
+)
 
-1. **PyApprox Integration:**
-   - ACVMRPOptions includes `use_pyapprox` and `pyapprox_config` fields
-   - Future PR will add PyApprox group ACV option
+results = acv.run(xhat=xhat)
 
-2. **Multifidelity Examples:**
-   - ACV-MRP currently works with discrete facility location example
-   - Future PR will add more ACV-MRP examples
+print(results)
+```
+
+## True finite-population benchmark
+
+If the full finite scenario population is known and your stochastic programming instance is small enough to solve over all scenarios within a reasonable amount of time, the package also provides a helper to compute the exact finite-population optimal value, the value of xhat, and the resulting true optimality gap:
+
+```python
+from sparow.conf_intervals.evaluate_true_optimality_gap import TrueOptimalityGapEvaluator
+
+true_gap_evaluator = TrueOptimalityGapEvaluator(
+    model=model,
+    solver_name="gurobi_direct",
+)
+
+true_gap_results = true_gap_evaluator.compute_true_gap(xhat=xhat)
+print(true_gap_results)
+```
+
+## Notes
+
+- The current implementation assumes minimization problems.
+- The standard MRP interval is based on a Monte Carlo sample mean CLT and uses the sample standard error.
+- The ACV-MRP interval uses a plug-in variance estimate for the control-variate-adjusted estimator.
+- The low-fidelity model should be chosen so that it is both cheaper and sufficiently correlated with the high-fidelity Monte Carlo estimator.
+
+## PyApprox Integration
+
+The codebase also includes a PyApprox [Jakeman (2023)] integration for using multifidelity allocation tools to suggest high-fidelity and low-fidelity sample counts, which can then be translated into ACV-MRP parameters. This helps allocate finite computational budget between high-fidelity model evaluations and low-fidelity model evaluations, such that we achieve maximum variance reduction for the optimality gap estimator.
+
+## References
+
+- Mak, Wai-Kei, David P. Morton, and R. Kevin Wood. 1999. “Monte Carlo Bounding Techniques for Determining Solution Quality in Stochastic Programs.” *Operations Research Letters* 24 (1–2): 47–56.
+- Bayraksan, Güzin, and David P. Morton. 2009. “Assessing Solution Quality in Stochastic Programs via Sampling.” In *Decision Technologies and Applications*, 102–122. INFORMS.
+- Jakeman, J. D. 2023. “PyApprox: A software package for sensitivity analysis, Bayesian inference, optimal experimental design, and multi-fidelity uncertainty quantification and surrogate modeling.” *Environmental Modelling & Software* 170: 105825.
+

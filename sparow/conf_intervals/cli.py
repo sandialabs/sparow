@@ -12,8 +12,7 @@ from pathlib import Path
 from datetime import datetime
 import re
 
-from sparow.conf_intervals.mrp_options import MRPOptions
-from sparow.conf_intervals.acv_mrp_options import ACVMRPOptions
+from sparow.conf_intervals.options import UQOptions
 from sparow.conf_intervals.standard_mrp import StandardMRP
 from sparow.conf_intervals.acv_mrp import ACVMRP
 from sparow.conf_intervals.evaluate_true_optimality_gap import TrueOptimalityGapEvaluator
@@ -352,7 +351,7 @@ def run_single_mrp_experiment(
     solver_options,
     verbose,
 ):
-    options = MRPOptions(
+    options = UQOptions(
         n=n,
         m=m,
         alpha=alpha,
@@ -385,7 +384,7 @@ def run_single_acvmrp_experiment(
     verbose,
 ):
 
-    options = ACVMRPOptions(
+    options = UQOptions(
         n=n,
         m=m,
         M=M,
@@ -532,7 +531,7 @@ def run_mrp_grid_experiment(
         for n in n_values:
             print(f"\n=== Running MRP for m={m}, n={n} ===")
 
-            options = MRPOptions(
+            options = UQOptions(
                 n=n,
                 m=m,
                 alpha=alpha,
@@ -718,7 +717,7 @@ def run_acvmrp_grid_experiment(
             for M in M_values:
                 print(f"\n=== Running ACV-MRP for m={m}, n={n}, M={M} ===")
 
-                options = ACVMRPOptions(
+                options = UQOptions(
                     n=n,
                     m=m,
                     M=M,
