@@ -9,7 +9,10 @@ import copy
 import numpy as np
 from typing import List, Dict, Any, Optional, Union
 
-from sparow.conf_intervals.protocols import ScenarioPopulationProtocol
+from sparow.conf_intervals.protocols import (
+    ScenarioPopulationProtocol,
+    ScenarioEncodingProtocol,
+)
 
 class ScenarioSampler:
     """
@@ -55,6 +58,11 @@ class ScenarioSampler:
         seed: int = 12345,
         with_replacement: bool = True,
     ):
+        if not isinstance(scenario_population, ScenarioPopulationProtocol):
+            raise TypeError(
+                "scenario_population must satisfy ScenarioPopulationProtocol."
+            )
+        
         self._scenario_population = scenario_population
         self.seed = seed
         self.with_replacement = with_replacement
@@ -176,6 +184,15 @@ class ScenarioBatchPrior:
         batch_size: int,
         seed: int = 12345,
     ):
+        if not isinstance(scenario_population, ScenarioPopulationProtocol):
+            raise TypeError(
+                "scenario_population must satisfy ScenarioPopulationProtocol."
+            )
+        if not isinstance(scenario_population, ScenarioEncodingProtocol):
+            raise TypeError(
+                "scenario_population must satisfy ScenarioEncodingProtocol "
+                "for PyApprox integration."
+            )
         self._bkd = bkd
         self._scenario_population = scenario_population
         self._batch_size = batch_size
@@ -219,8 +236,7 @@ class ScenarioBatchPrior:
         The returned array has shape (nvars, nsamples):
           - each column corresponds to one independent replication's batch of scenarios,
           - each replication's batch of scenarios contains batch_size sampled scenarios,
-          - the full batch data is flattened into one long column.._problem_adapter.encode_scenario_vector(self._scenarios[ii])
-                for ii in indices_of_selected_scens
+          - the full batch data is flattened into one long column.
 
         So nvars = batch_size * scenario_dim is the number of scalars needed to represent
         one full replication batch,

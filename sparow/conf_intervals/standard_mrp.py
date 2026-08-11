@@ -1,8 +1,6 @@
 import numpy as np
 from scipy import stats
 
-from sparow.conf_intervals.scenario_sampler import ScenarioSampler
-
 # TODO: This is specific to minimization problems... Need to adapt to model sense
 
 class StandardMRP:
@@ -17,19 +15,12 @@ class StandardMRP:
         4. compute estimate of upper bound on optimality gap F_{n,k}(xhat).
     """
 
-    def __init__(self, problem_adapter, scenarios, options):
-        self.problem_adapter = problem_adapter
-        self.scenarios = scenarios
+    def __init__(self, model, options):
+        self.model = model
         self.options = options
 
-        # Validate the full historical / finite scenario population once
-        self.problem_adapter.validate_scenario_population(self.scenarios)
-
-        self.sampler = ScenarioSampler(
-            scenarios=scenarios,
-            seed=options.seed,
-            with_replacement=options.with_replacement,
-        )
+        # Validate the full finite scenario population once at construction.
+        self.model.scenario_population().validate()
 
     def run(self, xhat):
         opts = self.options
@@ -49,28 +40,14 @@ class StandardMRP:
             # for each replication, and then use the first n scenarios from that superset
             # when doing nested-sample experiments.
             # This is useful for comparing results across different n values.
+            sampled_scenarios = self.model.draw_batch_of_scenarios(
+                n=opts.n,
+                replication_id=rep_id,
+                nested_sampling=opts.nested_sampling,
+                precomputed_supersets=opts.precomputed_supersets,
+            )
 
-            if opts.nested_sampling:
-
-                if opts.precomputed_supersets is None:
-                    raise RuntimeError(
-                        "nested_sampling=True requires precomputed_supersets in MRPOptions."
-                    )
-                if rep_id not in opts.precomputed_supersets:
-                    raise RuntimeError(
-                        f"Missing precomputed superset for replication {rep_id}."
-                    )
-
-                sampled_scenarios = opts.precomputed_supersets[rep_id][: opts.n]
-            else:
-                sampled_scenarios = self.sampler.draw_scenarios(
-                    n=opts.n,
-                    replication_id=rep_id,
-                )
-
-            # Validate the format of the sampled scenarios
-            self.problem_adapter.validate_scenario_population(sampled_scenarios)
-
+            # Keep track of which population scenarios were sampled.
             # We only use the population index to keep track of
             # which scenarios were sampled in each replication.... this is NOT
             # part of the sampling mechanism
@@ -78,31 +55,21 @@ class StandardMRP:
                 [s["Population_Index"] for s in sampled_scenarios]
             )
 
-            model_data_k = self.problem_adapter.build_model_data(sampled_scenarios)
-
+            
             # STEP 2 - solve SAA problem on this replication sample
-            solved_saa = self.problem_adapter.solve_extensive_form(
-                model_data=model_data_k,
-                solver_name=opts.solver_name,
-                solver_options=opts.solver_options,
-            )
-
-            saa_optimal_value = self.problem_adapter.get_objective_value(solved_saa)
-
             # STEP 3 - evaluate fixed candidate xhat on same set of scenarios
-            xhat_value = self.problem_adapter.evaluate_first_stage_solution(
+            # So this computes the replication-level gap estimate:
+            #   candidate value minus SAA optimal value
+            rep_result = self.model.replication_gap(
                 xhat=xhat,
-                model_data=model_data_k,
+                sampled_scenarios=sampled_scenarios,
                 solver_name=opts.solver_name,
                 solver_options=opts.solver_options,
             )
 
-            # STEP 4
-            # This is the replication's estimate of the optimality gap upper bound
-            # For minimization:
-            # F_{n,k}(xhat) = f_n(xhat) - f_n(x_n^{k*})
-
-            gap_raw = xhat_value - saa_optimal_value
+            gap_raw = rep_result["gap_estimate"]
+            xhat_value = rep_result["xhat_value"]
+            saa_optimal_value = rep_result["saa_optimal_value"]
 
             # Allow small absolute or relative numerical error based on the scale of
             # the objective values
@@ -133,23 +100,6 @@ class StandardMRP:
         ci_lower = 0.0  # we know the optimality gap is non-negative
         ci_upper = point_estimate + half_width
 
-        # =================================================================
-        # FOR COMPARISON AGAINST BOOT SP CODE'S OUTPUTS
-        # We are outputting two-sided normal-based CI for renference only
-        # =================================================================
-        z_statistic_two_sided = float(stats.norm.ppf(1.0 - opts.alpha / 2.0))
-        # NOTE: BOOT SP USES SAMPLE STD INSTEAD OF STANDARD ERROR FOR THE HALF-WIDTH OF THE TWO-SIDED NORMAL CI
-        # I think this is because they are assuming the sample is actually just the full
-        # population distribution....
-        half_width_two_sided_normal = float(z_statistic_two_sided * sample_std)
-        reference_ci_lower_two_sided_normal = float(
-            point_estimate - half_width_two_sided_normal
-        )
-        reference_ci_upper_two_sided_normal = float(
-            point_estimate + half_width_two_sided_normal
-        )
-        # ==================================================================
-
         return {
             "point_estimate": point_estimate,
             "sample_variance": sample_variance,
@@ -165,6 +115,4 @@ class StandardMRP:
             "alpha": opts.alpha,
             "with_replacement": opts.with_replacement,
             "seed": opts.seed,
-            "reference_ci_lower_two_sided_normal": reference_ci_lower_two_sided_normal,
-            "reference_ci_upper_two_sided_normal": reference_ci_upper_two_sided_normal,
         }

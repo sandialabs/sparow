@@ -19,6 +19,11 @@ from sparow.conf_intervals.acv_mrp import ACVMRP
 from sparow.conf_intervals.evaluate_true_optimality_gap import TrueOptimalityGapEvaluator
 from sparow.conf_intervals.scenario_sampler import ScenarioSampler
 
+from sparow.conf_intervals.protocols import (
+    StochasticProgramModelProtocol,
+    ModelEnsembleProtocol,
+)
+
 # ============================================================================
 # CLI argument parsing
 # ============================================================================
@@ -120,90 +125,120 @@ def save_xhat(xhat, path):
     np.save(path, xhat, allow_pickle=True)
 
 
-def load_problem_adapter(
-    model_module_name, model_name=None, use_integer=False, lf_model_type="classic"
+def load_sp_model_for_uq(
+    model_module_name,
+    model_name=None,
+    use_integer=False,
+    seed=12345,
+    with_replacement=True,
 ):
     """
-    This function helps keep the core CI code model-agnostic:
-    each model module (farmer, newsvendor, OPF, etc.) is responsible for
-    dispatching internally to itws own appropriate model-specific adapter, while
-    the core CI code here only needs to call one standard factory name.
+    Load a single stochastic-program wrapper from a model module.
 
-    Parameters
-    ----------
-    model_module_name : str
-        Python module name to import, e.g.
-        "sparow_examples.farmers.MRPfarmers".
-    model_name : str, optional
-        Name of the specific model variant within that module, e.g.
-        "Basic" or "Advanced". If None, the model module's default adapter
-        is requested.
-    use_integer : bool, optional
-        Whether the requested model instance should use integer first-stage
-        variables, if supported by the model module.
-    lf_model_type: str, optional
-        Which formulation to select for the low-fidelity model.
-        This depends on a script-specific selector for that particular problem
-        instance, if its CIProblemAdapter supports ACV-MRP
-
-    Returns
-    -------
-    CIProblemAdapter
-        An instantiated problem adapter compatible with the generic
-        Sparow confidence-interval code.
+    The model module must define a function that is named get_sp_model_for_uq(...).
+    That function must return an object satisfying the StochasticProgramProtocol.
     """
-
     model_module = importlib.import_module(model_module_name)
 
-    if not hasattr(model_module, "get_ci_problem_adapter"):
+    if not hasattr(model_module, "get_sp_model_for_uq"):
+        raise RuntimeError(f"Model module {model_module_name} must define get_sp_model_for_uq().")
+
+    if model_name is None:
+        model = model_module.get_sp_model_for_uq(
+            use_integer=use_integer,
+            seed=seed,
+            with_replacement=with_replacement,
+        )
+    else:
+        model = model_module.get_sp_model_for_uq(
+            model_name=model_name,
+            use_integer=use_integer,
+            seed=seed,
+            with_replacement=with_replacement,
+        )
+
+    # Runtime-check the returned object against the protocol.
+    # This gives users a clear failure early if their problem-specific
+    # factory did not return the right kind of object.
+    if not isinstance(model, StochasticProgramModelProtocol):
         raise RuntimeError(
-            f"Model module {model_module_name} must define get_ci_problem_adapter()."
+            f"Object returned by {model_module_name}.get_sp_model_for_uq(...) "
+            f"does not satisfy StochasticProgramModelProtocol."
+        )
+
+    return model
+
+def load_model_ensemble_for_uq(
+    model_module_name,
+    model_name=None,
+    use_integer=False,
+    seed=12345,
+    with_replacement=True,
+    lf_model_type="classic",
+):
+    """
+    Load a multifidelity model ensemble from a model module.
+
+    The module must define get_model_ensemble_for_uq(...).
+    """
+    model_module = importlib.import_module(model_module_name)
+
+    if not hasattr(model_module, "get_model_ensemble_for_uq"):
+        raise RuntimeError(
+            f"Model module {model_module_name} must define get_model_ensemble_for_uq()."
         )
 
     if model_name is None:
-        return model_module.get_ci_problem_adapter(
-            use_integer=use_integer, lf_model_type=lf_model_type
+        ensemble = model_module.get_model_ensemble_for_uq(
+            use_integer=use_integer,
+            seed=seed,
+            with_replacement=with_replacement,
+            lf_model_type=lf_model_type,
+        )
+    else:
+        ensemble = model_module.get_model_ensemble_for_uq(
+            model_name=model_name,
+            use_integer=use_integer,
+            seed=seed,
+            with_replacement=with_replacement,
+            lf_model_type=lf_model_type,
         )
 
-    return model_module.get_ci_problem_adapter(
-        model_name=model_name,
-        use_integer=use_integer,
-        lf_model_type=lf_model_type,
-    )
+    if not isinstance(ensemble, ModelEnsembleProtocol):
+        raise RuntimeError(
+            f"Object returned by {model_module_name}.get_model_ensemble_for_uq(...) "
+            "does not satisfy ModelEnsembleProtocol."
+        )
 
+    return ensemble
 
 def build_candidate_solution(
-    problem_adapter,
-    full_scenarios,
+    model,
     candidate_scen_count,
-    candidate_seed,
-    with_replacement,
     solver_name,
 ):
     """
-    Build a candidate first-stage solution, xhat, by drawing a sampled batch
-    from the full scenario population using ScenarioSampler.
+    Build a candidate first-stage solution xhat using one sampled scenario batch.
+
+    This assumes model was instantiated with the desired seed and with_replacement flag
+    for candidate solution generation. So when you load the model for candidate generation, 
+    you must pass the candidate seed and replacement rule into load_sp_model_for_uq(...)
     """
-    sampler = ScenarioSampler(
-        scenarios=full_scenarios,
-        seed=candidate_seed,
-        with_replacement=with_replacement,
-    )
-
-    sampled_candidate_scenarios = sampler.draw_scenarios(
+    scenario_batch = model.draw_batch_of_scenarios(
         n=candidate_scen_count,
-        replication_id=0,  # Only one "replication" or set of samples needed to get candidate sol
+        replication_id=123456789, # arbitrary rep id, does not overlap with any existing rep ids
+        nested_sampling=False,
+        precomputed_supersets=None,
     )
 
-    candidate_model_data = problem_adapter.build_model_data(sampled_candidate_scenarios)
-
-    solved_candidate = problem_adapter.solve_extensive_form(
-        model_data=candidate_model_data,
+    solved_candidate = model.solve_saa(
+        sampled_scenarios=scenario_batch,
         solver_name=solver_name,
+        solver_options=None,
     )
 
-    candidate_obj = problem_adapter.get_objective_value(solved_candidate)
-    xhat = problem_adapter.get_first_stage_solution(solved_candidate)
+    candidate_obj = model.get_objective_value(solved_candidate)
+    xhat = model.get_first_stage_solution(solved_candidate)
 
     return xhat, candidate_obj
 
@@ -306,8 +341,7 @@ def place_output_in_run_dir(run_dir, filename):
 
 
 def run_single_mrp_experiment(
-    problem_adapter,
-    scenarios,
+    model,
     xhat,
     n,
     m,
@@ -318,7 +352,6 @@ def run_single_mrp_experiment(
     solver_options,
     verbose,
 ):
-
     options = MRPOptions(
         n=n,
         m=m,
@@ -331,8 +364,7 @@ def run_single_mrp_experiment(
     )
 
     mrp = StandardMRP(
-        problem_adapter=problem_adapter,
-        scenarios=scenarios,
+        model=model,
         options=options,
     )
 
@@ -340,8 +372,7 @@ def run_single_mrp_experiment(
 
 
 def run_single_acvmrp_experiment(
-    problem_adapter,
-    scenarios,
+    ensemble,
     xhat,
     n,
     m,
@@ -367,8 +398,8 @@ def run_single_acvmrp_experiment(
     )
 
     acvmrp = ACVMRP(
-        problem_adapter=problem_adapter,
-        scenarios=scenarios,
+        hf_model=ensemble.high_fidelity_model(),
+        lf_model=ensemble.low_fidelity_model(),
         options=options,
     )
 
@@ -398,13 +429,6 @@ def run_mrp_grid_experiment(
     """
     Run a full grid experiment over (m, n) for one fixed candidate xhat.
 
-    This function:
-      1. loads the adapter and full scenario population,
-      2. optionally builds or loads xhat,
-      3. computes the exact true optimality gap,
-      4. runs MRP for all (m, n) parameter combinations,
-      5. writes the results to a CSV file.
-
     Note that we do the following to make result comparisons easier:
         - We use the same candidate xhat for all (m, n) combinations.
         - For each replication index k, first draw one superset sample of size
@@ -413,15 +437,17 @@ def run_mrp_grid_experiment(
     This means the sampled scenarios are nested:
     n_small < n_large  ==>  sample(n_small) is a subset of sample(n_large)
     """
-    problem_adapter = load_problem_adapter(
+    # Model used for MRP replications
+    model = load_sp_model_for_uq(
         model_module_name=model_module_name,
         model_name=model_name,
         use_integer=use_integer,
-        lf_model_type=lf_model_type,
+        seed=mrp_seed,
+        with_replacement=mrp_with_replacement,
     )
 
-    full_scenarios = problem_adapter.get_scenario_population()
-    problem_adapter.validate_scenario_population(full_scenarios)
+    full_scenarios = model.scenario_population().scenarios()
+    model.scenario_population().validate(full_scenarios)
 
     # ------------------------------------------------------
     # Candidate xhat
@@ -438,12 +464,19 @@ def run_mrp_grid_experiment(
             print(f"Candidate sample size: {candidate_scen_count}")
             print(f"Candidate seed: {candidate_seed}")
             print(f"Candidate sampling with replacement: {candidate_with_replacement}")
-        xhat, candidate_ef_objective = build_candidate_solution(
-            problem_adapter=problem_adapter,
-            full_scenarios=full_scenarios,
-            candidate_scen_count=candidate_scen_count,
-            candidate_seed=candidate_seed,
+
+        # Model used to draw a random scenario batch for candidate solution generation
+        candidate_model = load_sp_model_for_uq(
+            model_module_name=model_module_name,
+            model_name=model_name,
+            use_integer=use_integer,
+            seed=candidate_seed,
             with_replacement=candidate_with_replacement,
+        )
+
+        xhat, candidate_ef_objective = build_candidate_solution(
+            model=candidate_model,
+            candidate_scen_count=candidate_scen_count,
             solver_name=solver_name,
         )
         if verbose:
@@ -454,9 +487,9 @@ def run_mrp_grid_experiment(
     # Exact true gap
     # ------------------------------------------------------
     true_gap_evaluator = TrueOptimalityGapEvaluator(
-        problem_adapter=problem_adapter,
-        scenarios=full_scenarios,
+        model=model,
         solver_name=solver_name,
+        solver_options=solver_options,
     )
 
     true_gap_results = true_gap_evaluator.compute_true_gap(xhat=xhat)
@@ -479,21 +512,13 @@ def run_mrp_grid_experiment(
     n_max = max(n_values)
     m_max = max(m_values)
 
-    sampler = ScenarioSampler(
-        scenarios=full_scenarios,
-        seed=mrp_seed,
-        with_replacement=mrp_with_replacement,
-    )
-
     # Pre-draw the superset batch for every replication up to m_max
     # Each replication k gets one sample of size n_max, and smaller n's
     # will use prefixes of that sample.
 
-    sampled_supersets = (
-        {}
-    )  # key = rep_id, value = list of sampled scenarios of size n_max
+    sampled_supersets = ({})  # key = rep_id, value = list of sampled scenarios of size n_max
     for rep_id in range(m_max):
-        sampled_supersets[rep_id] = sampler.draw_scenarios(
+        sampled_supersets[rep_id] = model.scenario_sampler().draw_scenarios(
             n=n_max,
             replication_id=rep_id,
         )
@@ -520,8 +545,7 @@ def run_mrp_grid_experiment(
             )
 
             mrp = StandardMRP(
-                problem_adapter=problem_adapter,
-                scenarios=full_scenarios,
+                model=model,
                 options=options,
             )
 
@@ -549,6 +573,11 @@ def run_mrp_grid_experiment(
             rows.append(row)
 
     fieldnames = list(rows[0].keys())
+
+    output_csv = str(output_csv)
+    output_csv_parent = os.path.dirname(output_csv)
+    if output_csv_parent:
+        os.makedirs(output_csv_parent, exist_ok=True)
 
     with open(output_csv, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -588,26 +617,21 @@ def run_acvmrp_grid_experiment(
 ):
     """
     Run a full ACV-MRP grid experiment over (m, n, M) for one fixed candidate xhat.
-
-    This function:
-      1. loads the adapter and full scenario population,
-      2. optionally builds or loads xhat,
-      3. computes the exact true optimality gap,
-      4. runs ACV-MRP for all (m, n, M) parameter combinations,
-      5. writes the results to a CSV file.
-
-    NOTE: we use one fixed candidate xhat
-    across all configurations for fair comparison.
     """
-    problem_adapter = load_problem_adapter(
+    ensemble = load_model_ensemble_for_uq(
         model_module_name=model_module_name,
         model_name=model_name,
         use_integer=use_integer,
+        seed=mrp_seed,
+        with_replacement=mrp_with_replacement,
         lf_model_type=lf_model_type,
     )
 
-    full_scenarios = problem_adapter.get_scenario_population()
-    problem_adapter.validate_scenario_population(full_scenarios)
+    hf_model = ensemble.high_fidelity_model()
+    lf_model = ensemble.low_fidelity_model()
+
+    full_scenarios = hf_model.scenario_population().scenarios()
+    hf_model.scenario_population().validate(full_scenarios)
 
     # ------------------------------------------------------
     # Candidate xhat
@@ -624,12 +648,17 @@ def run_acvmrp_grid_experiment(
             print(f"Candidate sample size: {candidate_scen_count}")
             print(f"Candidate seed: {candidate_seed}")
             print(f"Candidate sampling with replacement: {candidate_with_replacement}")
-        xhat, candidate_ef_objective = build_candidate_solution(
-            problem_adapter=problem_adapter,
-            full_scenarios=full_scenarios,
-            candidate_scen_count=candidate_scen_count,
-            candidate_seed=candidate_seed,
+        candidate_model = load_sp_model_for_uq(
+            model_module_name=model_module_name,
+            model_name=model_name,
+            use_integer=use_integer,
+            seed=candidate_seed,
             with_replacement=candidate_with_replacement,
+        )
+
+        xhat, candidate_ef_objective = build_candidate_solution(
+            model=candidate_model,
+            candidate_scen_count=candidate_scen_count,
             solver_name=solver_name,
         )
         if verbose:
@@ -640,9 +669,9 @@ def run_acvmrp_grid_experiment(
     # Exact true gap
     # ------------------------------------------------------
     true_gap_evaluator = TrueOptimalityGapEvaluator(
-        problem_adapter=problem_adapter,
-        scenarios=full_scenarios,
+        model=hf_model,
         solver_name=solver_name,
+        solver_options=solver_options,
     )
 
     true_gap_results = true_gap_evaluator.compute_true_gap(xhat=xhat)
@@ -668,24 +697,13 @@ def run_acvmrp_grid_experiment(
     m_max = max(m_values)
     M_max = max(M_values)
 
-    sampler = ScenarioSampler(
-        scenarios=full_scenarios,
-        seed=mrp_seed,
-        with_replacement=mrp_with_replacement,
-    )
-
     # Need enough supersets for paired replications and
     # additional LF-only replications
     total_replications_needed = m_max + M_max
+    sampled_supersets = {}
 
-    # Pre-draw the superset batch for every replication up to m_max
-    # Each replication k gets one sample of size n_max, and smaller n's
-    # will use prefixes of that sample.
-    sampled_supersets = (
-        {}
-    )  # key = rep_id, value = list of sampled scenarios of size n_max
     for rep_id in range(total_replications_needed):
-        sampled_supersets[rep_id] = sampler.draw_scenarios(
+        sampled_supersets[rep_id] = hf_model.scenario_sampler().draw_scenarios(
             n=n_max,
             replication_id=rep_id,
         )
@@ -714,8 +732,8 @@ def run_acvmrp_grid_experiment(
                 )
 
                 acvmrp = ACVMRP(
-                    problem_adapter=problem_adapter,
-                    scenarios=full_scenarios,
+                    hf_model=hf_model,
+                    lf_model=lf_model,
                     options=options,
                 )
 
@@ -775,8 +793,10 @@ def run_acvmrp_grid_experiment(
 # Main entry point
 # ============================================================================
 
-
 def main():
+    # ----------------------------------------------------------------------
+    # Parse command-line arguments
+    # ----------------------------------------------------------------------
     args = parse_args()
 
     if args.verbose:
@@ -784,7 +804,9 @@ def main():
         print("ARGS:", args)
         print("\n==================================\n")
 
-    # Candidate-solution generation replacement rule
+    # ----------------------------------------------------------------------
+    # Interpret candidate-generation sampling flags
+    # ----------------------------------------------------------------------
     if args.candidate_with_replacement and args.candidate_without_replacement:
         raise ValueError(
             "Choose only one of --candidate-with-replacement or --candidate-without-replacement."
@@ -794,7 +816,9 @@ def main():
     if args.candidate_without_replacement:
         candidate_with_replacement = False
 
-    # MRP replication replacement rule
+    # ----------------------------------------------------------------------
+    # Interpret replication sampling flags
+    # ----------------------------------------------------------------------
     if args.mrp_with_replacement and args.mrp_without_replacement:
         raise ValueError(
             "Choose only one of --mrp-with-replacement or --mrp-without-replacement."
@@ -808,6 +832,10 @@ def main():
     # Grid-experiment mode
     # ----------------------------------------------------------------------
     if args.grid_experiment:
+
+        # --------------------------------------------------
+        # Validate required grid-experiment arguments
+        # --------------------------------------------------
         if args.candidate_scen_count is None:
             raise ValueError(
                 "--candidate-scen-count is required in --grid-experiment mode."
@@ -819,6 +847,9 @@ def main():
         if args.output_csv is None:
             raise ValueError("--output-csv is required in --grid-experiment mode.")
 
+        # --------------------------------------------------
+        # ACV-MRP grid experiment
+        # --------------------------------------------------
         if args.acv_mrp:
             if args.M_values is None:
                 raise ValueError("--M-values is required for ACV-MRP grid experiments.")
@@ -837,7 +868,7 @@ def main():
                 m_values=parsed_m_values,
                 n_values=parsed_n_values,
                 M_values=parsed_M_values,
-                acv_mrp_flag=args.acv_mrp,
+                acv_mrp_flag=True,
             )
 
             if not args.use_existing_xhat:
@@ -861,17 +892,20 @@ def main():
                 alpha=args.alpha,
                 mrp_seed=args.mrp_seed,
                 mrp_with_replacement=mrp_with_replacement,
-                m_values=parse_int_list(args.m_values),
-                n_values=parse_int_list(args.n_values),
-                M_values=parse_int_list(args.M_values),
+                m_values=parsed_m_values,
+                n_values=parsed_n_values,
+                M_values=parsed_M_values,
                 xhat_file=args.xhat_file,
                 use_existing_xhat=args.use_existing_xhat,
                 output_csv=args.output_csv,
                 use_integer=args.use_integer,
                 lf_model_type=args.lf_model_type,
             )
-        else:
 
+        # --------------------------------------------------
+        # Standard MRP grid experiment
+        # --------------------------------------------------
+        else:
             parsed_m_values = parse_int_list(args.m_values)
             parsed_n_values = parse_int_list(args.n_values)
 
@@ -885,7 +919,7 @@ def main():
                 m_values=parsed_m_values,
                 n_values=parsed_n_values,
                 M_values=None,
-                acv_mrp_flag=args.acv_mrp,
+                acv_mrp_flag=False,
             )
 
             if not args.use_existing_xhat:
@@ -894,7 +928,9 @@ def main():
 
             if args.verbose:
                 print(f"Created run directory: {run_dir}")
-                
+                print(f"xhat file will be written to: {args.xhat_file}")
+                print(f"CSV file will be written to: {args.output_csv}")
+
             results = run_mrp_grid_experiment(
                 model_module_name=args.model_module,
                 model_name=args.model_name,
@@ -907,8 +943,8 @@ def main():
                 alpha=args.alpha,
                 mrp_seed=args.mrp_seed,
                 mrp_with_replacement=mrp_with_replacement,
-                m_values=parse_int_list(args.m_values),
-                n_values=parse_int_list(args.n_values),
+                m_values=parsed_m_values,
+                n_values=parsed_n_values,
                 xhat_file=args.xhat_file,
                 use_existing_xhat=args.use_existing_xhat,
                 output_csv=args.output_csv,
@@ -916,22 +952,34 @@ def main():
                 lf_model_type=args.lf_model_type,
             )
 
+        # --------------------------------------------------
+        # Final grid-experiment reporting
+        # --------------------------------------------------
         if args.verbose:
             print("\nGrid experiment complete.")
 
+        if not os.path.exists(args.output_csv):
+            raise RuntimeError(f"Expected CSV was not written: {args.output_csv}")
+
         print(f"Wrote CSV: {args.output_csv}")
         print(f"Wrote xhat: {args.xhat_file}")
-
         return
 
     # ----------------------------------------------------------------------
     # Single-run mode
     # ----------------------------------------------------------------------
+
+    # --------------------------------------------------
+    # Validate required single-run arguments
+    # --------------------------------------------------
     if args.scenario_file is None:
         raise ValueError("--scenario-file is required in single-run mode.")
     if args.n is None or args.m is None:
         raise ValueError("--n and --m are required in single-run mode.")
 
+    # --------------------------------------------------
+    # Create output directory and xhat path
+    # --------------------------------------------------
     run_dir = make_run_directory(
         model_module_name=args.model_module,
         model_name=args.model_name,
@@ -945,7 +993,6 @@ def main():
         acv_mrp_flag=args.acv_mrp,
     )
 
-    # Place the xhat file in the run directory unless it is already an absolute path
     if not args.use_existing_xhat:
         args.xhat_file = str(place_output_in_run_dir(run_dir, args.xhat_file))
 
@@ -953,22 +1000,31 @@ def main():
         print(f"Created run directory: {run_dir}")
         print(f"xhat file will be written to: {args.xhat_file}")
 
-    adapter = load_problem_adapter(
+    # --------------------------------------------------
+    # Load the primary single-fidelity model wrapper
+    # --------------------------------------------------
+    model = load_sp_model_for_uq(
         model_module_name=args.model_module,
         model_name=args.model_name,
         use_integer=args.use_integer,
-        lf_model_type=args.lf_model_type,
+        seed=args.mrp_seed,
+        with_replacement=mrp_with_replacement,
     )
 
-    scenarios = load_scenarios(args.scenario_file)
-    adapter.validate_scenario_population(scenarios)
-    if args.verbose:
-        print(f"Loaded {len(scenarios)} scenarios from {args.scenario_file}.")
+    scenarios = model.scenario_population().scenarios()
+    model.scenario_population().validate(scenarios)
 
+    if args.verbose:
+        print(f"Loaded {len(scenarios)} scenarios from the model wrapper.")
+
+    # --------------------------------------------------
+    # Load or generate candidate solution xhat
+    # --------------------------------------------------
     if os.path.exists(args.xhat_file) and args.use_existing_xhat:
         xhat = load_xhat(args.xhat_file)
         if "ROOT" in xhat:
             xhat = xhat["ROOT"]
+
         if args.verbose:
             print(f"Loaded candidate solution xhat from {args.xhat_file}:")
             print(f"xhat: {xhat}")
@@ -977,34 +1033,56 @@ def main():
             raise ValueError(
                 "--candidate-scen-count is required in single-run mode when xhat file does not already exist."
             )
+
         if args.verbose:
-            print(f"Generating new candidate solution using subsampled scenarios...")
+            print("Generating new candidate solution using subsampled scenarios...")
             print(f"Candidate sample size: {args.candidate_scen_count}")
             print(f"Candidate seed: {args.candidate_seed}")
             print(f"Candidate sampling with replacement: {candidate_with_replacement}")
 
-        xhat, candidate_obj = build_candidate_solution(
-            problem_adapter=adapter,
-            full_scenarios=scenarios,
-            candidate_scen_count=args.candidate_scen_count,
-            candidate_seed=args.candidate_seed,
+        candidate_model = load_sp_model_for_uq(
+            model_module_name=args.model_module,
+            model_name=args.model_name,
+            use_integer=args.use_integer,
+            seed=args.candidate_seed,
             with_replacement=candidate_with_replacement,
+        )
+
+        xhat, candidate_obj = build_candidate_solution(
+            model=candidate_model,
+            candidate_scen_count=args.candidate_scen_count,
             solver_name=args.solver_name,
         )
 
         save_xhat(xhat, args.xhat_file)
 
-        print(f"Generated candidate solution xhat and wrote it to {args.xhat_file}:")
-        print(f"xhat: {xhat}")
-        print(f"Candidate EF objective: {candidate_obj}")
+        if args.verbose:
+            print(f"Generated candidate solution xhat and wrote it to {args.xhat_file}:")
+            print(f"xhat: {xhat}")
+            print(f"Candidate EF objective: {candidate_obj}")
 
+    # --------------------------------------------------
+    # Multifidelity ACV-MRP - single algorithm run
+    # --------------------------------------------------
     if args.acv_mrp:
+        ensemble = load_model_ensemble_for_uq(
+            model_module_name=args.model_module,
+            model_name=args.model_name,
+            use_integer=args.use_integer,
+            seed=args.mrp_seed,
+            with_replacement=mrp_with_replacement,
+            lf_model_type=args.lf_model_type,
+        )
 
-        # Run ACV-MRP
-        print("\n=== Running ACV-MRP ===\n")
+        hf_model = ensemble.high_fidelity_model()
+        scenarios = hf_model.scenario_population().scenarios()
+        hf_model.scenario_population().validate(scenarios)
+
+        if args.verbose:
+            print("\n=== Running ACV-MRP ===\n")
+
         results = run_single_acvmrp_experiment(
-            problem_adapter=adapter,
-            scenarios=scenarios,
+            ensemble=ensemble,
             xhat=xhat,
             n=args.n,
             m=args.m,
@@ -1017,34 +1095,34 @@ def main():
             verbose=args.verbose,
         )
 
-        print("\nACV-MRP Results:\n")
+        if args.verbose:
+            print("\nACV-MRP Results:\n")
+            print(f"ACV Point Estimator: {results['point_estimate']}")
+            print(f"Sample variance (HF): {results['sample_variance_F']}")
+            print(
+                f"Plug-in variance estimate for ACV estimator: {results['variance_acv_estimator']}"
+            )
+            print(f"Variance reduction factor: {results['variance_reduction_factor']}")
+            print("\n")
+            print(f"Sample variance (paired LF): {results['sample_variance_G_paired']}")
+            print(f"Sample covariance (F,G): {results['sample_covariance_FG']}")
+            print(f"Estimated sample correlation (rho): {results['sample_correlation']}")
+            print(
+                f"Estimated control variate coefficient (alpha): {results['control_variate_coefficient']}"
+            )
+            print(f"z_statistic: {results['z_statistic']}")
+            print(f"Half-width: {results['half_width']}")
+            print(f"CI: [{results['ci_lower']}, {results['ci_upper']}]")
 
-        print(f"ACV Point Estimator: {results['point_estimate']}")
-        print(f"Sample variance (HF): {results['sample_variance_F']}")
-        print(
-            f"Plug-in variance estimate for ACV estimator: {results['variance_acv_estimator']}"
-        )
-        print(f"Variance reduction factor: {results['variance_reduction_factor']}")
-
-        print("\n")
-
-        print(f"Sample variance (paired LF): {results['sample_variance_G_paired']}")
-        print(f"Sample covariance (F,G): {results['sample_covariance_FG']}")
-        print(f"Estimated sample correlation (rho): {results['sample_correlation']}")
-        print(
-            f"Estimated control variate coefficient (alpha): {results['control_variate_coefficient']}"
-        )
-        print(f"z_statistic: {results['z_statistic']}")
-        print(f"Half-width: {results['half_width']}")
-        print(f"CI: [{results['ci_lower']}, {results['ci_upper']}]")
-
+    # -----------------------------------------------------
+    # Standard single-fidelity MRP - single algorithm run
+    # -----------------------------------------------------
     else:
+        if args.verbose:
+            print("\n=== Running Standard MRP ===\n")
 
-        # Run standard MRP
-        print("\n=== Running Standard MRP ===\n")
         results = run_single_mrp_experiment(
-            problem_adapter=adapter,
-            scenarios=scenarios,
+            model=model,
             xhat=xhat,
             n=args.n,
             m=args.m,
@@ -1056,34 +1134,39 @@ def main():
             verbose=args.verbose,
         )
 
-        print("\nStandard MRP Results:\n")
-        print(f"Point estimate: {results['point_estimate']}")
-        print(f"Sample variance: {results['sample_variance']}")
-        print(f"Sample std dev: {results['sample_std']}")
-        print(f"t-statistic: {results['t_statistic']}")
-        print(f"Half-width: {results['half_width']}")
-        print(f"CI: [{results['ci_lower']}, {results['ci_upper']}]")
-
         if args.verbose:
-            print("\n==================================\n")
-            print("REFERENCE VALUES FOR COMPARISON AGAINST BOOT SP OUTPUTS:")
-            print(
-                f"Reference CI (two-sided normal): [{results['reference_ci_lower_two_sided_normal']}, {results['reference_ci_upper_two_sided_normal']}]"
-            )
-            print("\n==================================\n")
+            print("\nStandard MRP Results:\n")
+            print(f"Point estimate: {results['point_estimate']}")
+            print(f"Sample variance: {results['sample_variance']}")
+            print(f"Sample std dev: {results['sample_std']}")
+            print(f"t-statistic: {results['t_statistic']}")
+            print(f"Half-width: {results['half_width']}")
+            print(f"CI: [{results['ci_lower']}, {results['ci_upper']}]")
 
+    # --------------------------------------------------
+    # Optional true-gap computation
+    # --------------------------------------------------
     if args.compute_true_gap:
-        true_gap_evaluator = TrueOptimalityGapEvaluator(
-            problem_adapter=adapter,
-            scenarios=scenarios,
-            solver_name=args.solver_name,
-        )
+        if args.acv_mrp:
+            true_gap_evaluator = TrueOptimalityGapEvaluator(
+                model=hf_model,
+                solver_name=args.solver_name,
+                solver_options=args.solver_options,
+            )
+        else:
+            true_gap_evaluator = TrueOptimalityGapEvaluator(
+                model=model,
+                solver_name=args.solver_name,
+                solver_options=args.solver_options,
+            )
+
         true_gap = true_gap_evaluator.compute_true_gap(xhat=xhat)
 
-        print("\nTrue finite-population gap:\n")
-        print(f"True optimal value: {true_gap['true_optimal_value']}")
-        print(f"xhat true value: {true_gap['xhat_true_value']}")
-        print(f"True gap: {true_gap['true_gap']}")
+        if args.verbose:
+            print("\nTrue finite-population gap:\n")
+            print(f"True optimal value: {true_gap['true_optimal_value']}")
+            print(f"xhat true value: {true_gap['xhat_true_value']}")
+            print(f"True gap: {true_gap['true_gap']}")
 
 if __name__ == "__main__":
     main()

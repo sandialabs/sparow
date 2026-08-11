@@ -11,45 +11,86 @@ class TrueOptimalityGapEvaluator:
     This is useful when the user wants an exact finite-population benchmark.
     """
 
-    def __init__(
-        self, problem_adapter, scenarios, solver_name="highs", solver_options=None
-    ):
-        self.problem_adapter = problem_adapter
-        self.scenarios = scenarios
+    def __init__(self, model, solver_name, solver_options=None):
+        """
+        Parameters
+        ----------
+        model : SPModelWrapperforUQ
+            One single-fidelity stochastic-program wrapper.
+        solver_name : str
+            Solver used for the extensive-form solve and fixed-solution evaluation.
+        solver_options : dict, optional
+            Optional solver settings.
+        """
+        self.model = model
         self.solver_name = solver_name
         self.solver_options = solver_options
 
-        # Validate scenarios once
-        self.problem_adapter.validate_scenario_population(self.scenarios)
+        # Validate the full scenario population once up front.
+        self.model.scenario_population().validate()
 
-    # STEP 1 - solve the true EF over the full population of historical scenarios
-    # to get the true optimal value
+    def full_scenarios(self):
+        """
+        Return the full finite scenario population.
+        """
+        return self.model.scenario_population().scenarios()
+
     def compute_true_optimal_value(self):
-        model_data = self.problem_adapter.build_model_data(self.scenarios)
+        """
+        Solve the full extensive form over the complete finite scenario population.
 
-        solved_full = self.problem_adapter.solve_extensive_form(
-            model_data=model_data,
+        Returns
+        -------
+        float
+            The exact finite-population optimal value.
+        """
+        scenarios = self.full_scenarios()
+        solved_full = self.model.solve_saa(
+            sampled_scenarios=scenarios,
             solver_name=self.solver_name,
             solver_options=self.solver_options,
         )
+        return self.model.get_objective_value(solved_full)
 
-        return self.problem_adapter.get_objective_value(solved_full)
-
-    # STEP 2 - we are given a candidate solution, xhat... TODO: read in from npy file?
-    # STEP 3 - rebuild the full EF over all historical population scenarios and fix xhat
-    # STEP 4 - with xhat fixed, solve the recourse EF over model_data, and return the resulting objective value.
     def evaluate_xhat(self, xhat):
-        model_data = self.problem_adapter.build_model_data(self.scenarios)
+        """
+        Evaluate a fixed candidate solution on the complete finite scenario population.
 
-        return self.problem_adapter.evaluate_first_stage_solution(
+        Parameters
+        ----------
+        xhat : dict
+            Candidate first-stage solution.
+
+        Returns
+        -------
+        float
+            Objective value of xhat on the full finite scenario population.
+        """
+        scenarios = self.full_scenarios()
+        return self.model.evaluate_xhat(
             xhat=xhat,
-            model_data=model_data,
+            sampled_scenarios=scenarios,
             solver_name=self.solver_name,
             solver_options=self.solver_options,
         )
 
-    # STEP 5 - return true optimality gap
     def compute_true_gap(self, xhat):
+        """
+        Compute the exact finite-population optimality gap.
+
+        Parameters
+        ----------
+        xhat : dict
+            Candidate first-stage solution.
+
+        Returns
+        -------
+        dict
+            Keys:
+              - true_optimal_value
+              - xhat_true_value
+              - true_gap
+        """
         true_optimal_value = self.compute_true_optimal_value()
         xhat_true_value = self.evaluate_xhat(xhat)
 

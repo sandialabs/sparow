@@ -5,8 +5,7 @@ confidence interval estimation code:
 - ScenarioPopulationProtocol
 - ScenarioEncodingProtocol
 - ScenarioSamplerProtocol
-- CandidateSolutionProtocol
-- StochasticProgramProtocol
+- StochasticProgramModelProtocol
 - ModelEnsembleProtocol
 """
 
@@ -108,39 +107,6 @@ class ScenarioSamplerProtocol(Protocol):
         ...
 
 
-# Provide ordering of the first-stage decision variables
-# Extract candidate first-stage solution from candidate generation code
-@runtime_checkable
-class CandidateSolutionProtocol(Protocol):
-    """
-    Protocol for candidate-solution extraction and representation.
-
-    This handles:
-      - extracting a first-stage candidate from solve results,
-      - defining the first-stage variable order,
-      - converting a candidate dictionary into a flat numeric vector format.
-    """
-
-    def first_stage_variable_order(self) -> List[str]:
-        """
-        Return the ordered list of first-stage variable names.
-        """
-        ...
-
-    def get_first_stage_solution(self, solved_object: Dict[str, Any]) -> Dict[str, float]:
-        """
-        Extract the candidate first-stage solution from solver output.
-        This is where the candidate solution generation code lives.
-        """
-        ...
-
-    def first_stage_solution_dict_to_vector(self, xhat: Dict[str, float]) -> List[float]:
-        """
-        Convert a candidate solution dictionary to an ordered numeric vector.
-        """
-        ...
-
-
 # Build model data from given scenario batch
 # Solve Sample Average Approximation (SAA) extensive form model
 # Evaluate a fixed first-stage candidate solution in extensive form model
@@ -217,7 +183,7 @@ class StochasticProgramModelProtocol(Protocol):
         """
         ...
 
-    def draw_batch(
+    def draw_batch_of_scenarios(
         self,
         n: int,
         replication_id: int,

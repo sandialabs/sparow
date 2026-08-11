@@ -13,7 +13,7 @@ VERBOSE="true"
 
 # Candidate-solution generation (if you don't want to use existing file)
 CANDIDATE_SCEN_COUNT=0
-CANDIDATE_SEED=123
+CANDIDATE_SEED=0
 CANDIDATE_WITH_REPLACEMENT="false"
 
 # If you want to use existing candidate solution, already written to file

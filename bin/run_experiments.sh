@@ -10,10 +10,11 @@ MODEL_NAME="HF"
 LF_MODEL_TYPE="classic"
 SOLVER="gurobi_direct"
 VERBOSE="true"
+ACV_MRP="true" # Specify whether to run ACV-MRP or standard MRP. If true, will run ACV-MRP.
 
 # Candidate-solution generation (if you don't want to use existing file)
 CANDIDATE_SCEN_COUNT=0
-CANDIDATE_SEED=12345
+CANDIDATE_SEED=0
 CANDIDATE_WITH_REPLACEMENT="false"
 
 # If you want to use existing candidate solution, already written to file
@@ -25,20 +26,20 @@ MRP_SEED=678
 MRP_WITH_REPLACEMENT="true"
 
 # Grid of m and n values, optionally M values
-M_VALUES="5,10"
+M_VALUES="10,20"
 N_VALUES="200,100"
-ACV_MRP="true"
 ACV_M_VALUES="5"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Filepaths - should be in same folder as the script where your problem instance is defined
-XHAT_FILE="../../sparow_examples/sparow_examples/mrp_facilityloc/manually_created_suboptimal_xhat.npy"
-CLI_LOG="../../sparow_examples/sparow_examples/mrp_facilityloc/cli_run.log"
+XHAT_FILE="${SCRIPT_DIR}/../../sparow_examples/sparow_examples/mrp_facilityloc/manually_created_suboptimal_xhat.npy"
 RESULTS_CSV="grid_results.csv" # this file gets automatically written to correct folder
+CLI_LOG="${SCRIPT_DIR}/../../sparow_examples/sparow_examples/mrp_facilityloc/cli_run.log"
 
 # Filepaths for scripts containing plotting functionality
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLOT_SCRIPT_STANDARD="${SCRIPT_DIR}/../sparow/conf_intervals/plot_mrp_results.py"
-PLOT_SCRIPT_ACV="${SCRIPT_DIR}/../sparow/conf_intervals/plot_acvmrp_results.py"
+PLOT_SCRIPT_STANDARD="${SCRIPT_DIR}/../sparow/conf_intervals/plot_results/plot_mrp_results.py"
+PLOT_SCRIPT_ACV="${SCRIPT_DIR}/../sparow/conf_intervals/plot_results/plot_acvmrp_results.py"
 
 # ==========================================================
 # Convert replacement choices into CLI flags

@@ -1,3 +1,15 @@
+"""
+This class is intended to satisfy StochasticProgramModelProtocol.
+Conceptually: the protocol defines the interface, while the SPModelWrapperforUQ class 
+is a concrete, reusable implementation of that interface.
+
+SPModelWrapperforUQ does not need to import or subclass StochasticProgramModelProtocol in 
+order to satisfy it. Rather, it needs to implement the required methods with compatible 
+signatures. The protocol is mainly there so that type checkers and 
+runtime isinstance(..., ProtocolClass) checks can verify compatibility, 
+"""
+
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -13,7 +25,7 @@ from sparow.conf_intervals.protocols import (
 
 class SPModelWrapperforUQ:
     """
-    Wrapper for a single SPAROW stochastic-program model at one fidelity to support
+    Wrapper for a single SPAROW stochastic-program model to support
     confidence interval estimation and uncertainty quantification.
 
     This object is not the underlying SPAROW StochasticProgram itself.
@@ -37,6 +49,16 @@ class SPModelWrapperforUQ:
         first_stage_variables: Optional[List[str]] = None,
         first_stage_variable_order: Optional[List[str]] = None,
     ):
+
+        if not isinstance(scenario_population, ScenarioPopulationProtocol):
+            raise TypeError(
+                "scenario_population must satisfy ScenarioPopulationProtocol."
+            )
+        if not isinstance(scenario_sampler, ScenarioSamplerProtocol):
+            raise TypeError(
+                "scenario_sampler must satisfy ScenarioSamplerProtocol."
+            )
+        
         self._name = name
         self._fidelity = fidelity
         self._scenario_population = scenario_population

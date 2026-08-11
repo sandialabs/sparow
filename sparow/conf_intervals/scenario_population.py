@@ -1,7 +1,8 @@
 """
 This file contains a concrete implementation of a finite scenario population object.
-The scenario population object implements the 
-ScenarioPopulationProtocol and ScenarioEncodingProtocol.
+The scenario population object is intended to satisfy:
+  - ScenarioPopulationProtocol
+  - ScenarioEncodingProtocol
 
 This object stores:
   - the full list of scenario dictionaries,

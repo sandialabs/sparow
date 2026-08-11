@@ -10,45 +10,35 @@ from .scenario_sampler import ScenarioSampler
 class ACVMRP:
     """
     Approximate Control Variate Multiple Replications Procedure (ACV-MRP).
-    For estimating the upper bound on the optimality gap of a candidate first-stage solution xhat.
-    Uses a low-fidelity model as a control variate to reduce variance in the optimality gap estimator,
+
+    This version works directly with two stochastic-program model
+    wrappers:
+      - one high-fidelity model,
+      - one low-fidelity model.
+
+    The first m replications are paired: both models are evaluated on the
+    same sampled scenario batch. The next M replications evaluate only the
+    low-fidelity model on additional independent batches.
     """
 
-    def __init__(self, problem_adapter, scenarios, options):
-        self.problem_adapter = problem_adapter
-        self.scenarios = scenarios
+    def __init__(self, hf_model, lf_model, options):
+        self.hf_model = hf_model
+        self.lf_model = lf_model
         self.options = options
 
-        # Validate whether the problem adapter supports ACV-MRP algorithm
-        self._validate_acv_support()
+        # Validate the scenario populations once at construction.
+        self.hf_model.scenario_population().validate()
+        self.lf_model.scenario_population().validate()
 
-        # Validate the full historical / finite scenario population once
-        self.problem_adapter.validate_scenario_population(self.scenarios)
-
-        self.sampler = ScenarioSampler(
-            scenarios=scenarios,
-            seed=options.seed,
-            with_replacement=options.with_replacement,
-        )
-
-    def _validate_acv_support(self):
-        if not self.problem_adapter.supports_acv():
-            raise ValueError("Problem adapter does not support ACV-MRP")
 
     def run(self, xhat):
 
         if self.options.m < 2:
-            raise ValueError(
-                "ACV-MRP requires m >= 2 to estimate sample variance/covariance."
-            )
+            raise ValueError("ACV-MRP requires m >= 2 to estimate sample variance/covariance.")
 
         if self.options.verbose:
-            print(
-                f"Running ACV-MRP with m={self.options.m}, M={self.options.M}, n={self.options.n}"
-            )
-            print(
-                f"Using precomputed superset of scenarios for nested sampling scheme: {self.options.nested_sampling}"
-            )
+            print(f"Running ACV-MRP with m={self.options.m}, M={self.options.M}, n={self.options.n}")
+            print(f"Using precomputed superset of scenarios for nested sampling scheme: {self.options.nested_sampling}")
 
         # Step 1: Paired replications (k= 1...m)
         paired_replications = self._run_paired_replications(xhat)
@@ -61,18 +51,32 @@ class ACVMRP:
             paired_replications, lf_only_replications
         )
 
-        # reset program state at the end of run for safety
-        self.problem_adapter.set_active_fidelity("high")
-
         return results
 
-    def _run_paired_replications(self, xhat):
+    def _draw_batch(self, replication_id):
+        """
+        Draw one shared scenario batch.
 
+        The same batch is used for both HF and LF in paired replications so that
+        the induced correlation can be exploited by the control variate.
+        """
         opts = self.options
 
-        if opts.m < 2:
-            raise ValueError("MRP requires m >= 2 to estimate sample variance.")
+        return self.hf_model.draw_batch_of_scenarios(
+            n=opts.n,
+            replication_id=replication_id,
+            nested_sampling=opts.nested_sampling,
+            precomputed_supersets=opts.precomputed_supersets,
+        )
 
+    def _run_paired_replications(self, xhat):
+        """
+        Run the first m paired replications.
+
+        Each paired replication evaluates both HF and LF on the same scenario batch.
+        """
+
+        opts = self.options
         paired = []
 
         for rep_id in range(opts.m):
@@ -80,41 +84,21 @@ class ACVMRP:
             if opts.verbose:
                 print(f"Running paired ACV-MRP replication {rep_id + 1}/{opts.m}")
 
-            # STEP 1 - draw a batch of n iid scenarios
-            # We also have the option to draw a precomputed superset of scenarios
-            # for each replication, and then use the first n scenarios from that superset
-            # when doing nested-sample experiments.
-            # This is useful for comparing results across different n values.
-            if opts.nested_sampling:
+            sampled_scenarios = self._draw_batch(rep_id)
 
-                if opts.precomputed_supersets is None:
-                    raise RuntimeError(
-                        "nested_sampling=True requires precomputed_supersets in ACVMRPOptions."
-                    )
-                if rep_id not in opts.precomputed_supersets:
-                    raise RuntimeError(
-                        f"Missing precomputed superset for replication {rep_id}."
-                    )
-                if opts.verbose:
-                    print("Using scenarios from precomputed superset.")
-                sampled_scenarios = opts.precomputed_supersets[rep_id][: opts.n]
-            else:
-                if opts.verbose:
-                    print("Resampling fresh batch of scenarios")
+            hf_result = self.hf_model.replication_gap(
+                xhat=xhat,
+                sampled_scenarios=sampled_scenarios,
+                solver_name=opts.solver_name,
+                solver_options=opts.solver_options,
+            )
 
-                sampled_scenarios = self.sampler.draw_scenarios(
-                    n=opts.n,
-                    replication_id=rep_id,
-                )
-
-            # Validate the format of the sampled scenarios
-            self.problem_adapter.validate_scenario_population(sampled_scenarios)
-
-            model_data_k = self.problem_adapter.build_model_data(sampled_scenarios)
-
-            # Evaluate both HF and LF models on same batch of scenarios
-            hf_result = self._evaluate_fidelity(xhat, model_data_k, "high")
-            lf_result = self._evaluate_fidelity(xhat, model_data_k, "low")
+            lf_result = self.lf_model.replication_gap(
+                xhat=xhat,
+                sampled_scenarios=sampled_scenarios,
+                solver_name=opts.solver_name,
+                solver_options=opts.solver_options,
+            )
 
             if opts.verbose:
                 print(
@@ -137,7 +121,9 @@ class ACVMRP:
         return paired
 
     def _run_lf_only_replications(self, xhat):
-        """Run M additional LF-only replications."""
+        """
+        Run the additional M LF-only replications.
+        """
         if self.options.M == 0:
             return []
 
@@ -150,41 +136,14 @@ class ACVMRP:
             if opts.verbose:
                 print(f"Running LF-only replication {rep_id + 1 - opts.m}/{opts.M}")
 
-            # STEP 1 - draw a batch of n iid scenarios
-            # We also have the option to draw a precomputed superset of scenarios
-            # for each replication, and then use the first n scenarios from that superset
-            # when doing nested-sample experiments.
-            # This is useful for comparing results across different n values.
-            if opts.nested_sampling:
+            sampled_scenarios = self._draw_batch(rep_id)
 
-                if opts.precomputed_supersets is None:
-                    raise RuntimeError(
-                        "nested_sampling=True requires precomputed_supersets in ACVMRPOptions."
-                    )
-                if rep_id not in opts.precomputed_supersets:
-                    raise RuntimeError(
-                        f"Missing precomputed superset for replication {rep_id}."
-                    )
-                if opts.verbose:
-                    print("Using scenarios from precomputed superset.")
-
-                sampled_scenarios = opts.precomputed_supersets[rep_id][: opts.n]
-            else:
-                if opts.verbose:
-                    print("Resampling fresh batch of scenarios")
-
-                sampled_scenarios = self.sampler.draw_scenarios(
-                    n=opts.n,
-                    replication_id=rep_id,
-                )
-
-            # Validate the format of the sampled scenarios
-            self.problem_adapter.validate_scenario_population(sampled_scenarios)
-
-            model_data_k = self.problem_adapter.build_model_data(sampled_scenarios)
-
-            # Evaluate only the LF model on this batch of scenarios
-            lf_result = self._evaluate_fidelity(xhat, model_data_k, "low")
+            lf_result = self.lf_model.replication_gap(
+                xhat=xhat,
+                sampled_scenarios=sampled_scenarios,
+                solver_name=opts.solver_name,
+                solver_options=opts.solver_options,
+            )
 
             if opts.verbose:
                 print(
@@ -203,66 +162,10 @@ class ACVMRP:
 
         return lf_only
 
-    def _evaluate_fidelity(self, xhat, model_data, fidelity):
-        """Wrapper that handles both standard and ACV adapters."""
-
-        # Tell the adapter which fidelity to use
-        self.problem_adapter.set_active_fidelity(fidelity)
-
-        # STEP 1 - draw a batch of n iid scenarios
-        # This is done in _run_paired_replications and was used to create model_data argument
-
-        # # DANGER!!!! ONLY UNCOMMENT THE CODE BELOW IF RUNNING QUICK SANITY CHECK
-        # # FOR A SAMPLE ALLOCATION RECOMMENDATION OBTAINED WITH PYAPPROX
-        # # TEMP sanity-check: artificially inflate HF evaluation cost
-        # # so that each HF replication-level evaluation incurs extra time,
-        # # matching the PyApprox demo interpretation.
-        # if fidelity == "high":
-        #     print("WARNING: Artificially Adding time for a single HF replication!!!!!")
-        #     time.sleep(1.0)
-
-        # STEP 2 - solve SAA problem on this replication sample
-        # This calls build_stochastic_program internally with the correct model fidelity
-        solved_saa = self.problem_adapter.solve_extensive_form(
-            model_data=model_data,
-            solver_name=self.options.solver_name,
-            solver_options=self.options.solver_options,
-        )
-
-        saa_optimal_value = self.problem_adapter.get_objective_value(solved_saa)
-
-        # STEP 3 - evaluate fixed candidate xhat on same set of scenarios
-        # This calls build_stochastic_program internally with the correct model fidelity
-        xhat_value = self.problem_adapter.evaluate_first_stage_solution(
-            xhat=xhat,
-            model_data=model_data,
-            solver_name=self.options.solver_name,
-            solver_options=self.options.solver_options,
-        )
-
-        gap_raw = xhat_value - saa_optimal_value
-
-        # Allow small absolute or relative numerical error based on the scale of
-        # the objective values
-        tol = max(1e-10, 1e-12 * max(1.0, abs(xhat_value), abs(saa_optimal_value)))
-
-        if gap_raw < -tol:
-            raise RuntimeError(
-                f"Gap estimate is significantly negative: {gap_raw}. "
-                f"xhat_value={xhat_value}, saa_optimal_value={saa_optimal_value}"
-            )
-
-        gap_estimate = max(0.0, gap_raw)
-
-        return {
-            "gap_estimate": gap_estimate,
-            "xhat_value": xhat_value,
-            "saa_optimal_value": saa_optimal_value,
-            "fidelity": fidelity,
-        }
-
     def _compute_acv_statistics(self, paired_reps, lf_only_reps):
-        """Compute ACV estimator and confidence interval from replication results."""
+        """
+        Compute the ACV point estimator and its confidence interval.
+        """
         opts = self.options
 
         # Extract optimality gap estimates from paired and LF-only replications
@@ -319,6 +222,7 @@ class ACVMRP:
         ci_upper = max(0.0, F_acv + half_width)
 
         # Compute variance reduction factor for comparison
+        # This is the benefit provided by the additional M low-fidelity reps
         variance_reduction = s_F_sq / var_acv if var_acv > 0 else float("inf")
 
         return {
