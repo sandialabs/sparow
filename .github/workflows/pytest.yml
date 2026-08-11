@@ -84,7 +84,7 @@ jobs:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
           channels: conda-forge,defaults
-          activate-environment: conin_dev
+          activate-environment: sparow
           environment-file: dev_environment.yml
           use-mamba: true
 
@@ -134,7 +134,7 @@ jobs:
           auto-update-conda: true
           python-version: 3.13
           channels: conda-forge,defaults
-          activate-environment: conin_dev
+          activate-environment: sparow
           environment-file: dev_environment.yml
           use-mamba: true
 
