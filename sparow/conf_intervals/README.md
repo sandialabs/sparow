@@ -34,7 +34,7 @@ In practice:
 ## Minimal usage: Standard MRP
 
 ```python
-from sparow.conf_intervals.mrp_options import MRPOptions
+from sparow.conf_intervals.options import UQOptions
 from sparow.conf_intervals.standard_mrp import StandardMRP
 from my_problem_module import get_sp_model_for_uq
 
@@ -49,7 +49,7 @@ xhat = {
     # first-stage variable values
 }
 
-options = MRPOptions(
+options = UQOptions(
     n=50,
     m=10,
     alpha=0.05,
@@ -68,7 +68,7 @@ print(results)
 ## Minimal usage: ACV-MRP
 
 ```python
-from sparow.conf_intervals.acv_mrp_options import ACVMRPOptions
+from sparow.conf_intervals.options import UQOptions
 from sparow.conf_intervals.acv_mrp import ACVMRP
 from my_problem_module import get_model_ensemble_for_uq
 
@@ -87,7 +87,7 @@ xhat = {
     # first-stage variable values
 }
 
-options = ACVMRPOptions(
+options = UQOptions(
     n=50,
     m=10,
     M=5,
