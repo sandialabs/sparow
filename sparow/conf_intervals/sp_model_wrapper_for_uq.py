@@ -1,14 +1,13 @@
 """
 This class is intended to satisfy StochasticProgramModelProtocol.
-Conceptually: the protocol defines the interface, while the SPModelWrapperforUQ class 
+Conceptually: the protocol defines the interface, while the SPModelWrapperforUQ class
 is a concrete, reusable implementation of that interface.
 
-SPModelWrapperforUQ does not need to import or subclass StochasticProgramModelProtocol in 
-order to satisfy it. Rather, it needs to implement the required methods with compatible 
-signatures. The protocol is mainly there so that type checkers and 
-runtime isinstance(..., ProtocolClass) checks can verify compatibility, 
+SPModelWrapperforUQ does not need to import or subclass StochasticProgramModelProtocol in
+order to satisfy it. Rather, it needs to implement the required methods with compatible
+signatures. The protocol is mainly there so that type checkers and
+runtime isinstance(..., ProtocolClass) checks can verify compatibility,
 """
-
 
 from __future__ import annotations
 
@@ -55,19 +54,21 @@ class SPModelWrapperforUQ:
                 "scenario_population must satisfy ScenarioPopulationProtocol."
             )
         if not isinstance(scenario_sampler, ScenarioSamplerProtocol):
-            raise TypeError(
-                "scenario_sampler must satisfy ScenarioSamplerProtocol."
-            )
-        
+            raise TypeError("scenario_sampler must satisfy ScenarioSamplerProtocol.")
+
         self._name = name
         self._fidelity = fidelity
         self._scenario_population = scenario_population
         self._scenario_sampler = scenario_sampler
         self._model_builder = model_builder
         self._app_data = {} if app_data is None else dict(app_data)
-        self._first_stage_variables = [] if first_stage_variables is None else list(first_stage_variables)
+        self._first_stage_variables = (
+            [] if first_stage_variables is None else list(first_stage_variables)
+        )
         self._first_stage_variable_order = (
-            [] if first_stage_variable_order is None else list(first_stage_variable_order)
+            []
+            if first_stage_variable_order is None
+            else list(first_stage_variable_order)
         )
 
         # Validate the stored scenario population once at construction time.
@@ -109,7 +110,7 @@ class SPModelWrapperforUQ:
 
     def app_data(self) -> Dict[str, Any]:
         """
-        Return the application data dictionary that is used to 
+        Return the application data dictionary that is used to
         initialize the stochastic program.
         """
         return self._app_data
@@ -122,7 +123,7 @@ class SPModelWrapperforUQ:
 
     def first_stage_variable_order(self) -> List[str]:
         """
-        Return the ordered first-stage variable names used to encode 
+        Return the ordered first-stage variable names used to encode
         the first-stage candidate solution, xhat.
         """
         return self._first_stage_variable_order
@@ -139,8 +140,8 @@ class SPModelWrapperforUQ:
         precomputed_supersets: Optional[Dict[int, List[Dict[str, Any]]]] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Draw one scenario batch of scenarios for a replication. If not using a 
-        precomputed superset, internally calls to self._scenario_sampler.draw_scenarios 
+        Draw one scenario batch of scenarios for a replication. If not using a
+        precomputed superset, internally calls to self._scenario_sampler.draw_scenarios
         to actually draw the scenarios.
 
         Parameters
@@ -151,7 +152,7 @@ class SPModelWrapperforUQ:
             Replication index used for reproducible sampling.
         nested_sampling : bool, optional
             Whether to use a precomputed superset and truncate it to size n.
-            This is useful for numerical experiments where we vary/ increment 
+            This is useful for numerical experiments where we vary/ increment
             batch size n and want to keep the same underlying superset of scenarios for comparability.
         precomputed_supersets : dict, optional
             Mapping from replication id to a precomputed scenario list.
@@ -164,12 +165,16 @@ class SPModelWrapperforUQ:
         if nested_sampling:
 
             if precomputed_supersets is None:
-                raise RuntimeError("nested_sampling=True requires precomputed_supersets.")
+                raise RuntimeError(
+                    "nested_sampling=True requires precomputed_supersets."
+                )
             if replication_id not in precomputed_supersets:
-                raise RuntimeError(f"Missing precomputed superset for replication {replication_id}.")
+                raise RuntimeError(
+                    f"Missing precomputed superset for replication {replication_id}."
+                )
 
             # Nested sampling keeps the same underlying superset and takes
-            # its first n scenarios.... so results are comparable across 
+            # its first n scenarios.... so results are comparable across
             # different values.
             sampled_scenarios = precomputed_supersets[replication_id][:n]
 
@@ -183,7 +188,9 @@ class SPModelWrapperforUQ:
 
         return sampled_scenarios
 
-    def build_model_data(self, sampled_scenarios: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def build_model_data(
+        self, sampled_scenarios: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """
         Build the model_data dictionary expected by SPAROW.
         """
@@ -214,7 +221,7 @@ class SPModelWrapperforUQ:
         loglevel: str = "INFO",
     ) -> Dict[str, Any]:
         """
-        Solve the Sample Average Approximationextensive form for 
+        Solve the Sample Average Approximationextensive form for
         the supplied model data.
 
         Returns
@@ -241,11 +248,15 @@ class SPModelWrapperforUQ:
         """
         try:
             return solved_object["pool_config"]["best_value"]
-        
-        except Exception as exc:
-            raise RuntimeError("Could not get objective value from solved_object['pool_config']['best_value'].") from exc
 
-    def get_first_stage_solution(self, solved_object: Dict[str, Any]) -> Dict[str, float]:
+        except Exception as exc:
+            raise RuntimeError(
+                "Could not get objective value from solved_object['pool_config']['best_value']."
+            ) from exc
+
+    def get_first_stage_solution(
+        self, solved_object: Dict[str, Any]
+    ) -> Dict[str, float]:
         """
         Extract the first-stage candidate solution xhat returned from solver output
         when running candidate generation code.
@@ -267,17 +278,25 @@ class SPModelWrapperforUQ:
 
         missing = [name for name in order if name not in xhat]
         if missing:
-            raise RuntimeError(f"Could not extract all first-stage vars from solved_object. Missing: {missing}")
+            raise RuntimeError(
+                f"Could not extract all first-stage vars from solved_object. Missing: {missing}"
+            )
 
         return xhat
 
-    def first_stage_solution_dict_to_vector(self, xhat: Dict[str, float]) -> List[float]:
+    def first_stage_solution_dict_to_vector(
+        self, xhat: Dict[str, float]
+    ) -> List[float]:
         """
         Convert an xhat dictionary into the ordered vector expected by sp.evaluate(...).
         """
-        missing = [name for name in self._first_stage_variable_order if name not in xhat]
+        missing = [
+            name for name in self._first_stage_variable_order if name not in xhat
+        ]
         if missing:
-            raise RuntimeError(f"xhat is missing required first-stage variable(s): {missing}")
+            raise RuntimeError(
+                f"xhat is missing required first-stage variable(s): {missing}"
+            )
 
         return [xhat[name] for name in self._first_stage_variable_order]
 

@@ -31,6 +31,7 @@ from sparow.conf_intervals.protocols import (
 )
 from sparow.conf_intervals.scenario_sampler import ScenarioBatchPrior
 
+
 class PyApproxModelWrapper:
     """
     PyApprox model wrapper for one replication-level gap estimate.
@@ -222,7 +223,7 @@ def build_pyapprox_mf_problem_from_ensemble(
     """
     if not isinstance(ensemble, ModelEnsembleProtocol):
         raise TypeError("ensemble must satisfy ModelEnsembleProtocol.")
-    
+
     bkd = NumpyBkd()
 
     hf_model = ensemble.high_fidelity_model()

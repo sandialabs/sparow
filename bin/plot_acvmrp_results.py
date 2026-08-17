@@ -100,7 +100,7 @@ for (m, M), sub in df.groupby(["m", "M"]):
         sub["point_estimate_hf_only"],
         marker="o",
         linestyle="--",
-        color='blue',
+        color="blue",
         label=rf"HF-only point estimator $\bar{{F}}_n^m(\hat{{x}})$",
     )
     plt.plot(
@@ -108,7 +108,7 @@ for (m, M), sub in df.groupby(["m", "M"]):
         sub["ci_upper_hf_only"],
         marker="o",
         linestyle=":",
-        color='blue',
+        color="blue",
         label=rf"HF-only upper bound $U_f^{{\mathrm{{HF}}}}$",
     )
 
@@ -117,7 +117,7 @@ for (m, M), sub in df.groupby(["m", "M"]):
         sub["point_estimate"],
         marker="s",
         linestyle="--",
-        color='green',
+        color="green",
         label=rf"ACV point estimator $\bar{{F}}^{{\mathrm{{ACV}}}}(\hat{{x}},m,M)$",
     )
     plt.plot(
@@ -125,7 +125,7 @@ for (m, M), sub in df.groupby(["m", "M"]):
         sub["ci_upper"],
         marker="s",
         linestyle=":",
-        color='green',
+        color="green",
         label=rf"ACV upper bound $U_f^{{\mathrm{{ACV}}}}$",
     )
 
@@ -162,7 +162,7 @@ for (n, m), sub in df.groupby(["n", "m"]):
         sub["point_estimate_hf_only"],
         marker="o",
         linestyle="--",
-        color='blue',
+        color="blue",
         label=rf"HF-only point estimator $\bar{{F}}_n^m(\hat{{x}})$",
     )
     plt.plot(
@@ -170,7 +170,7 @@ for (n, m), sub in df.groupby(["n", "m"]):
         sub["ci_upper_hf_only"],
         marker="o",
         linestyle=":",
-        color='blue',
+        color="blue",
         label=rf"HF-only upper bound $U_f^{{\mathrm{{HF}}}}$",
     )
 
@@ -179,7 +179,7 @@ for (n, m), sub in df.groupby(["n", "m"]):
         sub["point_estimate"],
         marker="s",
         linestyle="--",
-        color='green',
+        color="green",
         label=rf"ACV point estimator $\bar{{F}}^{{\mathrm{{ACV}}}}(\hat{{x}},m,M)$",
     )
     plt.plot(
@@ -187,7 +187,7 @@ for (n, m), sub in df.groupby(["n", "m"]):
         sub["ci_upper"],
         marker="s",
         linestyle=":",
-        color='green',
+        color="green",
         label=rf"ACV upper bound $U_f^{{\mathrm{{ACV}}}}$",
     )
 

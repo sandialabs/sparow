@@ -35,8 +35,12 @@ class FiniteScenarioPopulation:
         scenario_vector_keys: Optional[List[str]] = None,
     ):
         self._scenarios = scenarios
-        self._required_scenario_keys = [] if required_scenario_keys is None else list(required_scenario_keys)
-        self._scenario_vector_keys = [] if scenario_vector_keys is None else list(scenario_vector_keys)
+        self._required_scenario_keys = (
+            [] if required_scenario_keys is None else list(required_scenario_keys)
+        )
+        self._scenario_vector_keys = (
+            [] if scenario_vector_keys is None else list(scenario_vector_keys)
+        )
 
         self.validate(self._scenarios)
 
@@ -48,7 +52,7 @@ class FiniteScenarioPopulation:
 
     def required_scenario_keys(self) -> List[str]:
         """
-        Return required nonstandard scenario keys. 
+        Return required nonstandard scenario keys.
         This is usually the string name identifier foruncertain problem data.
         """
         return self._required_scenario_keys
@@ -66,7 +70,9 @@ class FiniteScenarioPopulation:
             scenarios = self._scenarios
 
         if not isinstance(scenarios, list):
-            raise RuntimeError("Scenario population must be a list of scenario dictionaries.")
+            raise RuntimeError(
+                "Scenario population must be a list of scenario dictionaries."
+            )
 
         required = ["ID", "Probability"] + self._required_scenario_keys
 
@@ -76,7 +82,9 @@ class FiniteScenarioPopulation:
 
             missing = [key for key in required if key not in scen]
             if missing:
-                raise RuntimeError(f"Scenario at index {i} is missing required key(s): {missing}")
+                raise RuntimeError(
+                    f"Scenario at index {i} is missing required key(s): {missing}"
+                )
 
     def scenario_vector_keys(self) -> List[str]:
         """
@@ -127,7 +135,7 @@ class FiniteScenarioPopulation:
                 cursor += 1
             else:
                 length = len(ref_value)
-                out[key] = [float(v) for v in vector[cursor:cursor + length]]
+                out[key] = [float(v) for v in vector[cursor : cursor + length]]
                 cursor += length
 
         return out

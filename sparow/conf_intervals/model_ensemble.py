@@ -15,7 +15,7 @@ class ModelEnsemble:
     The second model is assumed to be the low-fidelity model when a
     two-model ACV-MRP workflow is used.
 
-    For PyApprox integration - the first model is assumed to be the 
+    For PyApprox integration - the first model is assumed to be the
     high-fidelity model of interest, while the remaining models are of
     varying fidelities.
     """

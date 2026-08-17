@@ -15,7 +15,9 @@ from sparow.conf_intervals.cli import (
     run_single_acvmrp_experiment,
     run_acvmrp_grid_experiment,
 )
-from sparow.conf_intervals.evaluate_true_optimality_gap import TrueOptimalityGapEvaluator
+from sparow.conf_intervals.evaluate_true_optimality_gap import (
+    TrueOptimalityGapEvaluator,
+)
 
 from sparow_examples.farmers.MRPfarmers import get_sp_model_for_uq
 from sparow_examples.mrp_facilityloc.mrp_discrete_facilityloc import (
@@ -325,7 +327,7 @@ def test_grid_experiment_reproducibility_same_candidate_and_mrp_seed(tmp_path):
         use_existing_xhat=False,
         use_integer=False,
         solver_options=None,
-        verbose=False
+        verbose=False,
     )
 
     res1 = run_mrp_grid_experiment(
