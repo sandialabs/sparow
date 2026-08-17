@@ -32,16 +32,12 @@ pip install -e .
 cd ..
 ```
 
-## Using SPAROW
-
-See [sparow_examples](https://github.com/sandialabs/sparow_examples) for a library of SPAROW examples.
-
-## Testing
-
-The Pytest software can be used to automatically run all tests within the current directory:
+There are some shell scripts and plotting code located in `sparow/bin` that can be used for running numerical experiments with the Uncertainty Quantification (UQ) workflows. In these scripts, you can change the file paths to use your own custom stochastic programming models (see the `README.md` in `sparow/conf_intervals` for more details). If you want to run these optional plotting scripts that generate figures from results stored in CSV format, install the plotting dependencies:
 
 ```bash
-pytest .
+cd sparow
+pip install -e ".[plot]"
+cd ..
 ```
 
 Additionally, the following syntax generates a summary that includes code coverage:

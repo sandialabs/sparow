@@ -1,3 +1,16 @@
 __pycache__
 *.egg-info
 .coverage
+
+*.npy
+*.csv
+*.png
+
+*.log
+
+# Ignore Python byte-compiled files
+__pycache__/
+*.py[cod]
+
+.DS_Store
+
