@@ -29,6 +29,9 @@ class TestEFNewsvendor:
         results_dict = results.to_dict()
         soln = next(iter(results_dict["solutions"].values()))
 
+        # print("Results Dict:")
+        # print(results_dict)
+        # print("End of results dict")
         obj_val = soln["objectives"][0]["value"]
         assert obj_val == pytest.approx(app.objective_value)
         assert app.unique_solution
