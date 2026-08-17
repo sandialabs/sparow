@@ -3,8 +3,12 @@ import numpy as np
 import pytest
 
 from sparow.conf_intervals.options import UQOptions
-from sparow.conf_intervals.standard_mrp import StandardMRP # DONE: some tests for single-fidelity UQ workflows
-from sparow.conf_intervals.acv_mrp import ACVMRP # TODO: some tests for multifidelity UQ workflows
+from sparow.conf_intervals.standard_mrp import (
+    StandardMRP,
+)  # DONE: some tests for single-fidelity UQ workflows
+from sparow.conf_intervals.acv_mrp import (
+    ACVMRP,
+)  # TODO: some tests for multifidelity UQ workflows
 from sparow.conf_intervals.scenario_sampler import ScenarioSampler
 from sparow.conf_intervals.cli import (
     load_sp_model_for_uq,
@@ -15,7 +19,9 @@ from sparow.conf_intervals.cli import (
     run_single_acvmrp_experiment,
     run_acvmrp_grid_experiment,
 )
-from sparow.conf_intervals.evaluate_true_optimality_gap import TrueOptimalityGapEvaluator
+from sparow.conf_intervals.evaluate_true_optimality_gap import (
+    TrueOptimalityGapEvaluator,
+)
 
 from sparow.sp.examples.farmers.MRPfarmers import get_sp_model_for_uq
 
