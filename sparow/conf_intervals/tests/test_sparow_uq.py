@@ -89,7 +89,7 @@ def test_candidate_generation_reproducibility(advanced_model):
     xhat1, obj1 = build_candidate_solution(
         model=candidate_model_1,
         candidate_scen_count=500,
-        solver_name="gurobi_direct",
+        solver_name="highs",
     )
 
     candidate_model_2 = get_sp_model_for_uq(
@@ -101,7 +101,7 @@ def test_candidate_generation_reproducibility(advanced_model):
     xhat2, obj2 = build_candidate_solution(
         model=candidate_model_2,
         candidate_scen_count=500,
-        solver_name="gurobi_direct",
+        solver_name="highs",
     )
 
     candidate_model_3 = get_sp_model_for_uq(
@@ -113,7 +113,7 @@ def test_candidate_generation_reproducibility(advanced_model):
     xhat3, obj3 = build_candidate_solution(
         model=candidate_model_3,
         candidate_scen_count=100,
-        solver_name="gurobi_direct",
+        solver_name="highs",
     )
 
     candidate_model_4 = get_sp_model_for_uq(
@@ -125,7 +125,7 @@ def test_candidate_generation_reproducibility(advanced_model):
     xhat4, obj4 = build_candidate_solution(
         model=candidate_model_4,
         candidate_scen_count=100,
-        solver_name="gurobi_direct",
+        solver_name="highs",
     )
 
     assert xhat1 == xhat2
@@ -259,7 +259,7 @@ def test_mrp_run_reproducibility(advanced_model):
     xhat, _ = build_candidate_solution(
         model=candidate_model,
         candidate_scen_count=5,
-        solver_name="gurobi_direct",
+        solver_name="highs",
     )
 
     options = UQOptions(
@@ -268,7 +268,7 @@ def test_mrp_run_reproducibility(advanced_model):
         alpha=0.05,
         seed=6789,
         with_replacement=True,
-        solver_name="gurobi_direct",
+        solver_name="highs",
         verbose=False,
     )
 
@@ -310,7 +310,7 @@ def test_grid_experiment_reproducibility_same_candidate_and_mrp_seed(tmp_path):
     kwargs = dict(
         model_module_name="sparow_examples.farmers.MRPfarmers",
         model_name="Advanced",
-        solver_name="gurobi_direct",
+        solver_name="highs",
         candidate_scen_count=5,
         candidate_seed=12345,
         candidate_with_replacement=True,
@@ -358,7 +358,7 @@ def test_single_run_reproducibility_same_mrp_seed():
     xhat, _ = build_candidate_solution(
         model=candidate_model,
         candidate_scen_count=5,
-        solver_name="gurobi_direct",
+        solver_name="highs",
     )
 
     model = get_sp_model_for_uq(
@@ -376,7 +376,7 @@ def test_single_run_reproducibility_same_mrp_seed():
         alpha=0.05,
         seed=678,
         with_replacement=True,
-        solver_name="gurobi_direct",
+        solver_name="highs",
         solver_options=None,
         verbose=False,
     )
@@ -396,7 +396,7 @@ def test_single_run_reproducibility_same_mrp_seed():
         alpha=0.05,
         seed=678,
         with_replacement=True,
-        solver_name="gurobi_direct",
+        solver_name="highs",
         solver_options=None,
         verbose=False,
     )
