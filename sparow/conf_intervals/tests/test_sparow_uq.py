@@ -314,7 +314,7 @@ def test_grid_experiment_reproducibility_same_candidate_and_mrp_seed(tmp_path):
     xhat_file_2 = tmp_path / "xhat2.npy"
 
     kwargs = dict(
-        model_module_name="sparow_examples.farmers.MRPfarmers",
+        model_module_name="sparow.sp.examples.farmers.MRPfarmers",
         model_name="Advanced",
         solver_name="highs",
         candidate_scen_count=5,
