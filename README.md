@@ -32,8 +32,7 @@ pip install -e .
 cd ..
 ```
 
-If you want to run the optional plotting scripts that generate figures from CSV
-results, install the plotting dependencies as follows:
+There are some shell scripts and plotting code located in sparow/bin that can be used for running numerical experiments for the Uncertainty Quantification (UQ) workflows. In these scripts, you can change the file paths to use your own custom stochastic programming models, if desired (see the `README.md` in `sparow/conf_intervals` for more details). If you want to run these optional plotting scripts that generate figures from CSV results, install the plotting dependencies as follows:
 
 ```bash
 cd sparow

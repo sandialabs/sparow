@@ -1110,8 +1110,8 @@ def main():
                 f"Estimated control variate coefficient (alpha): {results['control_variate_coefficient']}"
             )
             print(f"z_statistic: {results['z_statistic']}")
-            print(f"Half-width: {results['half_width']}")
-            print(f"CI: [{results['ci_lower']}, {results['ci_upper']}]")
+            print(f"Margin of Error (confidence interval upper bound - point estimate): {results['half_width']}")
+            print(f"Confidence Interval: [{results['ci_lower']}, {results['ci_upper']}]")
 
     # -----------------------------------------------------
     # Standard single-fidelity MRP - single algorithm run
@@ -1139,8 +1139,8 @@ def main():
             print(f"Sample variance: {results['sample_variance']}")
             print(f"Sample std dev: {results['sample_std']}")
             print(f"t-statistic: {results['t_statistic']}")
-            print(f"Half-width: {results['half_width']}")
-            print(f"CI: [{results['ci_lower']}, {results['ci_upper']}]")
+            print(f"Margin of Error (confidence interval upper bound - point estimate): {results['half_width']}")
+            print(f"Confidence Interval: [{results['ci_lower']}, {results['ci_upper']}]")
 
     # --------------------------------------------------
     # Optional true-gap computation
