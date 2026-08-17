@@ -26,7 +26,7 @@ output_dir = csv_path.parent / "plots"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 # ----------------------------------------------------------
-# (a) ACV point estimator for gap vs n, grouped by (m, M)
+# ACV point estimator for gap vs n, grouped by (m, M)
 # ----------------------------------------------------------
 for M, subM in df.groupby("M"):
     plt.figure()
@@ -55,7 +55,7 @@ for M, subM in df.groupby("M"):
     plt.close()
 
 # ----------------------------------------------------------
-# (b) ACV CI upper bound vs n
+# ACV Confidence Interval upper bound vs n
 # ----------------------------------------------------------
 for M, subM in df.groupby("M"):
     plt.figure()
@@ -84,30 +84,7 @@ for M, subM in df.groupby("M"):
     plt.close()
 
 # ----------------------------------------------------------
-# (c) Variance reduction factor vs n
-# ----------------------------------------------------------
-for M, subM in df.groupby("M"):
-    plt.figure()
-    for m, sub in subM.groupby("m"):
-        sub = sub.sort_values("n")
-        plt.plot(
-            sub["n"],
-            sub["variance_reduction_factor"],
-            marker="o",
-            label=rf"paired reps $m={m},\,$ additional reps $M={M}$",
-        )
-
-    plt.grid()
-    plt.xlabel(r"Sample size $n$")
-    plt.ylabel("Variance reduction factor")
-    plt.title(rf"Variance reduction factor versus $n$ for $M={M}$")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(output_dir / f"variance_reduction_vs_n_M_{M}.png", dpi=200)
-    plt.close()
-
-# ----------------------------------------------------------
-# (d) For fixed (m, M), compare ACV and HF-only versus n
+# For fixed (m, M), compare ACV and HF-only versus n
 # ----------------------------------------------------------
 for (m, M), sub in df.groupby(["m", "M"]):
     sub = sub.sort_values("n").copy()
@@ -123,6 +100,7 @@ for (m, M), sub in df.groupby(["m", "M"]):
         sub["point_estimate_hf_only"],
         marker="o",
         linestyle="--",
+        color='blue',
         label=rf"HF-only point estimator $\bar{{F}}_n^m(\hat{{x}})$",
     )
     plt.plot(
@@ -130,6 +108,7 @@ for (m, M), sub in df.groupby(["m", "M"]):
         sub["ci_upper_hf_only"],
         marker="o",
         linestyle=":",
+        color='blue',
         label=rf"HF-only upper bound $U_f^{{\mathrm{{HF}}}}$",
     )
 
@@ -137,30 +116,17 @@ for (m, M), sub in df.groupby(["m", "M"]):
         sub["n"],
         sub["point_estimate"],
         marker="s",
-        linestyle="-",
+        linestyle="--",
+        color='green',
         label=rf"ACV point estimator $\bar{{F}}^{{\mathrm{{ACV}}}}(\hat{{x}},m,M)$",
     )
     plt.plot(
         sub["n"],
         sub["ci_upper"],
         marker="s",
-        linestyle="-.",
+        linestyle=":",
+        color='green',
         label=rf"ACV upper bound $U_f^{{\mathrm{{ACV}}}}$",
-    )
-
-    plt.fill_between(
-        sub["n"],
-        sub["point_estimate_hf_only"],
-        sub["ci_upper_hf_only"],
-        alpha=0.15,
-        label=r"HF-only one-sided interval",
-    )
-    plt.fill_between(
-        sub["n"],
-        sub["point_estimate"],
-        sub["ci_upper"],
-        alpha=0.15,
-        label=r"ACV one-sided interval",
     )
 
     plt.axhline(
@@ -180,7 +146,7 @@ for (m, M), sub in df.groupby(["m", "M"]):
     plt.close()
 
 # ----------------------------------------------------------
-# (e) For fixed (n, m), compare ACV and HF-only versus M
+# For fixed (n, m), compare ACV and HF-only versus M
 # ----------------------------------------------------------
 for (n, m), sub in df.groupby(["n", "m"]):
     sub = sub.sort_values("M").copy()
@@ -196,6 +162,7 @@ for (n, m), sub in df.groupby(["n", "m"]):
         sub["point_estimate_hf_only"],
         marker="o",
         linestyle="--",
+        color='blue',
         label=rf"HF-only point estimator $\bar{{F}}_n^m(\hat{{x}})$",
     )
     plt.plot(
@@ -203,6 +170,7 @@ for (n, m), sub in df.groupby(["n", "m"]):
         sub["ci_upper_hf_only"],
         marker="o",
         linestyle=":",
+        color='blue',
         label=rf"HF-only upper bound $U_f^{{\mathrm{{HF}}}}$",
     )
 
@@ -210,14 +178,16 @@ for (n, m), sub in df.groupby(["n", "m"]):
         sub["M"],
         sub["point_estimate"],
         marker="s",
-        linestyle="-",
+        linestyle="--",
+        color='green',
         label=rf"ACV point estimator $\bar{{F}}^{{\mathrm{{ACV}}}}(\hat{{x}},m,M)$",
     )
     plt.plot(
         sub["M"],
         sub["ci_upper"],
         marker="s",
-        linestyle="-.",
+        linestyle=":",
+        color='green',
         label=rf"ACV upper bound $U_f^{{\mathrm{{ACV}}}}$",
     )
 
@@ -238,7 +208,7 @@ for (n, m), sub in df.groupby(["n", "m"]):
     plt.close()
 
 # ----------------------------------------------------------
-# (f) Actual estimator variance: ACV vs HF-only
+# Actual estimator variance: ACV vs HF-only
 # ----------------------------------------------------------
 for M, subM in df.groupby("M"):
     plt.figure()
@@ -265,20 +235,20 @@ for M, subM in df.groupby("M"):
             sub["variance_acv_estimator_plot"],
             marker="s",
             linestyle="-",
-            label=rf"ACV estimator variance, $m={m},\,M={M}$",
+            label=rf"Multifidelity estimator variance, $m={m},\,M={M}$",
         )
 
     plt.grid()
     plt.xlabel(r"Sample size $n$")
     plt.ylabel("Estimator variance")
-    plt.title(rf"Estimator variance: ACV vs HF-only for $M={M}$")
+    plt.title(rf"Estimator variance: HF-only vs Multifidelity with additional $M={M}$")
     plt.legend()
     plt.tight_layout()
     plt.savefig(output_dir / f"variance_acv_vs_hf_only_M_{M}.png", dpi=200)
     plt.close()
 
 # ----------------------------------------------------------
-# (g) ACV point estimator vs HF-only point estimator
+# ACV point estimator vs HF-only point estimator
 # ----------------------------------------------------------
 for M, subM in df.groupby("M"):
     plt.figure()
@@ -319,7 +289,7 @@ for M, subM in df.groupby("M"):
     plt.close()
 
 # ----------------------------------------------------------
-# (h) Standard error: ACV vs HF-only, normalized by true gap
+# Standard error: ACV vs HF-only, normalized by true gap
 # ----------------------------------------------------------
 for M, subM in df.groupby("M"):
     plt.figure()
@@ -364,7 +334,7 @@ for M, subM in df.groupby("M"):
     plt.close()
 
 # ----------------------------------------------------------
-# (i) Sample correlation versus n
+# Sample correlation versus n
 # ----------------------------------------------------------
 for M, subM in df.groupby("M"):
     plt.figure()
@@ -388,7 +358,7 @@ for M, subM in df.groupby("M"):
     plt.close()
 
 # ----------------------------------------------------------
-# (j) Estimated control variate coefficient versus n
+# Estimated control variate coefficient versus n
 # ----------------------------------------------------------
 for M, subM in df.groupby("M"):
     plt.figure()
@@ -414,7 +384,7 @@ for M, subM in df.groupby("M"):
     plt.close()
 
 # ----------------------------------------------------------
-# (k) Effect of M for fixed n and m
+# Effect of M for fixed n and m
 # ----------------------------------------------------------
 plt.figure()
 
@@ -439,7 +409,7 @@ plt.savefig(output_dir / "variance_reduction_vs_M.png", dpi=200)
 plt.close()
 
 # ----------------------------------------------------------
-# (l) For fixed (m, M), effect of increasing n:
+# For fixed (m, M), effect of increasing n:
 #     ACV point estimate and one-sided CI
 # ----------------------------------------------------------
 for (m, M), sub in df.groupby(["m", "M"]):
@@ -489,40 +459,7 @@ for (m, M), sub in df.groupby(["m", "M"]):
     plt.close()
 
 # ----------------------------------------------------------
-# (m) Interval-width ratio plot: ACV / HF-only
-# ----------------------------------------------------------
-for M, subM in df.groupby("M"):
-    plt.figure()
-
-    for m, sub in subM.groupby("m"):
-        sub = sub.sort_values("n").copy()
-
-        sub["standard_error_hf_only"] = np.sqrt(sub["sample_variance_F"] / sub["m"])
-        sub["half_width_hf_only"] = sub["z_statistic"] * sub["standard_error_hf_only"]
-        sub["interval_width_ratio"] = sub["half_width"] / sub["half_width_hf_only"]
-
-        plt.plot(
-            sub["n"],
-            sub["interval_width_ratio"],
-            marker="o",
-            label=rf"$\epsilon_f^{{\mathrm{{ACV}}}} / \epsilon_f^{{\mathrm{{HF}}}}$, $m={m},\,M={M}$",
-        )
-
-    plt.axhline(1.0, color="black", linestyle="--", label=r"No improvement")
-
-    plt.grid()
-    plt.xlabel(r"Sample size $n$")
-    plt.ylabel(
-        r"Interval-width ratio $\epsilon_f^{\mathrm{ACV}} / \epsilon_f^{\mathrm{HF}}$"
-    )
-    plt.title(rf"Interval-width ratio versus $n$ for $M={M}$")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(output_dir / f"interval_width_ratio_vs_n_M_{M}.png", dpi=200)
-    plt.close()
-
-# ----------------------------------------------------------
-# (n) Upper-bound distance above the true gap
+# Upper-bound distance above the true gap
 # ----------------------------------------------------------
 for M, subM in df.groupby("M"):
     plt.figure()

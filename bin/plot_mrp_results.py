@@ -27,7 +27,7 @@ output_dir = csv_path.parent / "plots"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 # ----------------------------------------------------------
-# (a) Point estimator for Gap vs n
+# Point estimator for Gap vs n
 # ----------------------------------------------------------
 plt.figure()
 for m, sub in df.groupby("m"):
@@ -54,7 +54,7 @@ plt.savefig(output_dir / "gap_estimate_vs_n.png", dpi=200)
 plt.close()
 
 # ----------------------------------------------------------
-# (b) CI upper bound vs n
+# Confidence Interval upper bound vs n
 # ----------------------------------------------------------
 plt.figure()
 for m, sub in df.groupby("m"):
@@ -78,7 +78,7 @@ plt.savefig(output_dir / "ci_upper_vs_n.png", dpi=200)
 plt.close()
 
 # ----------------------------------------------------------
-# (c) Normalized margin of error (half width) vs n
+# Normalized margin of error (half width) vs n
 # ----------------------------------------------------------
 fig, ax = plt.subplots()
 
@@ -111,17 +111,8 @@ ref_scale = df_sorted["normalized_margin_of_error"].iloc[0] * np.sqrt(
 )
 ref_line = ref_scale / np.sqrt(n_ref)
 
-# ax.plot(
-#     n_ref,
-#     ref_line,
-#     linestyle=":",
-#     color="black",
-#     linewidth=1.8,
-#     label=r"Reference $\propto 1/\sqrt{n}$"
-# )
-
 ax.grid()
-# ax.set_xlabel(r"Number of sampled scenarios per replication, $n$")
+ax.set_xlabel(r"Number of sampled scenarios per replication, $n$")
 ax.set_ylabel(r"Relative margin of error")
 ax.set_title(
     "Relative margin of error for one-sided confidence interval\nvs sample size $n$"
@@ -149,7 +140,7 @@ fig.savefig(output_dir / "normalized_margin_of_error_vs_n.png", dpi=200)
 plt.close(fig)
 
 # --------------------------------------------------------------
-# (d) Sample standard deviation (normalized by true gap) vs n
+# Sample standard deviation (normalized by true gap) vs n
 # --------------------------------------------------------------
 plt.figure()
 for m, sub in df.groupby("m"):
@@ -168,8 +159,8 @@ plt.savefig(output_dir / "sample_std_dev_vs_n.png", dpi=200)
 plt.close()
 
 # ----------------------------------------------------------
-# (e) For fixed m, effect of increasing n:
-#     point estimate and one-sided CI
+# For fixed m, effect of increasing n:
+#     point estimate and one-sided Confidence Interval
 # ----------------------------------------------------------
 for m, sub in df.groupby("m"):
     sub = sub.sort_values("n")
@@ -216,7 +207,7 @@ for m, sub in df.groupby("m"):
     plt.close()
 
 # ----------------------------------------------------------
-# (f) Absolute error (normalized by true gap)
+# Absolute error (normalized by true gap)
 #     between point estimator and true optimality gap vs n
 # ----------------------------------------------------------
 plt.figure()
@@ -240,7 +231,7 @@ plt.savefig(output_dir / "absolute_error_vs_n.png", dpi=200)
 plt.close()
 
 # ----------------------------------------------------------
-# (g) Coefficient-of-variation-type quantity vs n
+# Coefficient-of-variation-type quantity vs n
 # ----------------------------------------------------------
 fig, ax = plt.subplots()
 
@@ -253,17 +244,6 @@ for m, sub in df.groupby("m"):
 # Reference trend line proportional to 1/sqrt(n)
 n_ref = np.sort(df["n"].unique())
 df_sorted = df.sort_values(["m", "n"]).copy()
-cv_like_pct_ref = 100.0 * df_sorted["sample_std_dev"] / df_sorted["point_estimate"]
-ref_scale = cv_like_pct_ref.iloc[0] * np.sqrt(df_sorted["n"].iloc[0])
-ref_line = ref_scale / np.sqrt(n_ref)
-
-ax.plot(
-    n_ref,
-    ref_line,
-    linestyle="--",
-    color="black",
-    label=r"Reference trend $\propto 1/\sqrt{n}$",
-)
 
 ax.grid()
 ax.set_xlabel(r"Sample size $n$")
@@ -273,9 +253,8 @@ ax.legend()
 
 caption = (
     r"Relative replication variability, measured as "
-    r"$100 \times s_F(\hat{x},m)/\bar{F}_n^m(\hat{x})$, versus sample size $n$ "
-    r"for several replication counts $m$. The dashed reference line shows a trend "
-    r"proportional to $1/\sqrt{n}$. Large values indicate that replication-to-replication "
+    r"$100 \times s_F(\hat{x},m)/\bar{F}_n^m(\hat{x})$, versus sample size $n$. "
+    r"Large values indicate that replication-to-replication "
     r"variability is high relative to the estimated upper bound itself."
 )
 
