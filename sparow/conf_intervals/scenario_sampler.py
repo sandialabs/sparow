@@ -1,6 +1,6 @@
 """
-This file contains class definitions for drawing Monte Carlo samples (batches) of scenarios 
-from a finite scenario population. 
+This file contains class definitions for drawing Monte Carlo samples (batches) of scenarios
+from a finite scenario population.
 These batches can be used for Monte Carlo replications in the MRP or ACV-MRP algorithms,
 as well as in the format required by PyApprox.
 """
@@ -13,6 +13,7 @@ from sparow.conf_intervals.protocols import (
     ScenarioPopulationProtocol,
     ScenarioEncodingProtocol,
 )
+
 
 class ScenarioSampler:
     """
@@ -31,23 +32,23 @@ class ScenarioSampler:
     Example usage for drawing a batch of scenarios for a single replication:
     -------------
 
-    scenarios = [                                              
+    scenarios = [
         {"ID": "s0", "Probability": 0.5, "Demand": [1.0, 2.0]},
         {"ID": "s1", "Probability": 0.5, "Demand": [3.0, 4.0]},
-    ]                              
+    ]
     pop = FiniteScenarioPopulation(
         scenarios=scenarios,
         required_scenario_keys=["Demand"],
         scenario_vector_keys=["Demand"],
-    )                               
+    )
     sampler = ScenarioSampler(scenario_population=pop, seed=123, with_replacement=True)
     batch = sampler.draw_scenarios(n=3, replication_id=0)
     print(batch)
 
     Output:
     [
-        {'ID': 'rep0_scen0', 'Probability': 0.333, 'Demand': [1.0, 2.0], 'Original_ID': 's0', 'Population_Index': 0}, 
-        {'ID': 'rep0_scen1', 'Probability': 0.333, 'Demand': [3.0, 4.0], 'Original_ID': 's1', 'Population_Index': 1}, 
+        {'ID': 'rep0_scen0', 'Probability': 0.333, 'Demand': [1.0, 2.0], 'Original_ID': 's0', 'Population_Index': 0},
+        {'ID': 'rep0_scen1', 'Probability': 0.333, 'Demand': [3.0, 4.0], 'Original_ID': 's1', 'Population_Index': 1},
         {'ID': 'rep0_scen2', 'Probability': 0.333, 'Demand': [3.0, 4.0], 'Original_ID': 's1', 'Population_Index': 1}
     ]
     """
@@ -62,7 +63,7 @@ class ScenarioSampler:
             raise TypeError(
                 "scenario_population must satisfy ScenarioPopulationProtocol."
             )
-        
+
         self._scenario_population = scenario_population
         self.seed = seed
         self.with_replacement = with_replacement
@@ -92,7 +93,7 @@ class ScenarioSampler:
         """
         Create a deterministic RNG stream for one replication.
 
-        For reproducibility of the entire algorithm run, since each 
+        For reproducibility of the entire algorithm run, since each
         replication needs its own independent Monte Carlo sample of n scenarios:
 
             - self.seed is the base seed for the entire MRP algorithm run.
@@ -252,9 +253,9 @@ class ScenarioBatchPrior:
 
             # Choose n scenarios from the population set of scenarios to form a batch
             indices_of_selected_scens = self._rng.choice(
-                len(self._scenarios), 
-                size=self._batch_size, 
-                replace=with_replacement_flag
+                len(self._scenarios),
+                size=self._batch_size,
+                replace=with_replacement_flag,
             )
 
             # Encode each sampled scenario dictionary into a flat numeric vector.

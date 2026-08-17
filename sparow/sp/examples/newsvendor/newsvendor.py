@@ -22,6 +22,11 @@ model_data = {
 # including a single second stage
 #
 def builder(data, args):
+    # This function creates a polyhedral objective with 2 sections,
+    #   which is formed by: greater and less.
+    # Since there are two line segments, there can be up to one vertex.
+    # This is the same model creation logic as LF_newsvendor in sp/examples/mf_newsvendor.py.
+    # Scenario data between files may be different.
     b = data["b"]
     c = data["c"]
     h = data["h"]
@@ -57,4 +62,34 @@ def simple_newsvendor():
         objective_value=76.5,
         unique_solution=True,
         solution_values={"x": 60.0, "s[None,1].x": 15.0, "s[None,2].x": 60.0},
+    )
+
+
+def single_scenario_newsvendor():
+    """
+    Newsvendor example adapted from
+
+    A Tutorial on Stochastic Programming
+    Alexander Shapiro∗ and Andy Philpott†
+    March 21, 2007
+    https://www.epoc.org.nz/papers/ShapiroTutorialSP.pdf
+
+    Specifically the d = 50 case, where z^* also is 50.0
+
+    This is designed to check the probability weighting piece of benders
+    """
+
+    local_model_data = {
+        "scenarios": [
+            {"ID": 1, "d": 50},
+        ],
+    }
+    sp = stochastic_program(first_stage_variables=["x"])
+    sp.initialize_application(app_data=app_data)
+    sp.initialize_model(model_data=local_model_data, model_builder=builder)
+    return Munch(
+        sp=sp,
+        objective_value=50.0,
+        unique_solution=True,
+        solution_values={"x": 50.0},
     )

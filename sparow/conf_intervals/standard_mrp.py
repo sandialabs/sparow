@@ -3,6 +3,7 @@ from scipy import stats
 
 # TODO: This is specific to minimization problems... Need to adapt to model sense
 
+
 class StandardMRP:
     """
     Standard Multiple Replications Procedure for estimating the upper bound on
@@ -55,7 +56,6 @@ class StandardMRP:
                 [s["Population_Index"] for s in sampled_scenarios]
             )
 
-            
             # STEP 2 - solve SAA problem on this replication sample
             # STEP 3 - evaluate fixed candidate xhat on same set of scenarios
             # So this computes the replication-level gap estimate:

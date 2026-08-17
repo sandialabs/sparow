@@ -27,15 +27,20 @@ class ACVMRP:
         self.hf_model.scenario_population().validate()
         self.lf_model.scenario_population().validate()
 
-
     def run(self, xhat):
 
         if self.options.m < 2:
-            raise ValueError("ACV-MRP requires m >= 2 to estimate sample variance/covariance.")
+            raise ValueError(
+                "ACV-MRP requires m >= 2 to estimate sample variance/covariance."
+            )
 
         if self.options.verbose:
-            print(f"Running ACV-MRP with m={self.options.m}, M={self.options.M}, n={self.options.n}")
-            print(f"Using precomputed superset of scenarios for nested sampling scheme: {self.options.nested_sampling}")
+            print(
+                f"Running ACV-MRP with m={self.options.m}, M={self.options.M}, n={self.options.n}"
+            )
+            print(
+                f"Using precomputed superset of scenarios for nested sampling scheme: {self.options.nested_sampling}"
+            )
 
         # Step 1: Paired replications (k= 1...m)
         paired_replications = self._run_paired_replications(xhat)

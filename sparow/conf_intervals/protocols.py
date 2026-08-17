@@ -1,5 +1,5 @@
 """
-The following protocols define the interfaces for various components of the 
+The following protocols define the interfaces for various components of the
 confidence interval estimation code:
 
 - ScenarioPopulationProtocol
@@ -11,16 +11,15 @@ confidence interval estimation code:
 
 from __future__ import annotations
 
-from typing import (
-    Any, Dict, List, Optional, Protocol, Sequence, runtime_checkable
-)
+from typing import Any, Dict, List, Optional, Protocol, Sequence, runtime_checkable
+
 
 # Return the full finite population of historical scenarios
 # Validate the formatting of the scenario dictionaries
 @runtime_checkable
 class ScenarioPopulationProtocol(Protocol):
     """
-    Protocol for storing a finite population of scenarios that we'd like to 
+    Protocol for storing a finite population of scenarios that we'd like to
     sample from.
 
     A scenario population stores the full finite set of scenario dictionaries
@@ -53,7 +52,7 @@ class ScenarioEncodingProtocol(Protocol):
     Protocol for encoding and decoding scenario data as numeric vectors.
 
     This is useful when interfacing with PyApprox or any other method that
-    expects scenario data to be represented as arrays instead of dictionaries. 
+    expects scenario data to be represented as arrays instead of dictionaries.
     """
 
     def scenario_vector_keys(self) -> List[str]:
@@ -93,7 +92,11 @@ class ScenarioSamplerProtocol(Protocol):
     Protocol for sampling batches of scenarios from a finite scenario population.
     """
 
-    def draw_scenarios(self, n: int, replication_id: int,) -> List[Dict[str, Any]]:
+    def draw_scenarios(
+        self,
+        n: int,
+        replication_id: int,
+    ) -> List[Dict[str, Any]]:
         """
         Draw one batch, comprised of n i.i.d.scenario draws.
 
@@ -223,7 +226,7 @@ class ModelEnsembleProtocol(Protocol):
     Protocol for a collection of stochastic program models.
 
     This is useful for multifidelity methods such as ACV-MRP and PyApprox.
-    Note that the native ACV-MRP in SPAROW expects a pair of models ('high' and 'low'), 
+    Note that the native ACV-MRP in SPAROW expects a pair of models ('high' and 'low'),
     but this protocol allows for more than two models when using PyApprox.
     """
 
@@ -244,7 +247,3 @@ class ModelEnsembleProtocol(Protocol):
         Return the low-fidelity model.
         """
         ...
-
-
-
-

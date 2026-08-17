@@ -15,7 +15,9 @@ import re
 from sparow.conf_intervals.options import UQOptions
 from sparow.conf_intervals.standard_mrp import StandardMRP
 from sparow.conf_intervals.acv_mrp import ACVMRP
-from sparow.conf_intervals.evaluate_true_optimality_gap import TrueOptimalityGapEvaluator
+from sparow.conf_intervals.evaluate_true_optimality_gap import (
+    TrueOptimalityGapEvaluator,
+)
 from sparow.conf_intervals.scenario_sampler import ScenarioSampler
 
 from sparow.conf_intervals.protocols import (
@@ -140,7 +142,9 @@ def load_sp_model_for_uq(
     model_module = importlib.import_module(model_module_name)
 
     if not hasattr(model_module, "get_sp_model_for_uq"):
-        raise RuntimeError(f"Model module {model_module_name} must define get_sp_model_for_uq().")
+        raise RuntimeError(
+            f"Model module {model_module_name} must define get_sp_model_for_uq()."
+        )
 
     if model_name is None:
         model = model_module.get_sp_model_for_uq(
@@ -166,6 +170,7 @@ def load_sp_model_for_uq(
         )
 
     return model
+
 
 def load_model_ensemble_for_uq(
     model_module_name,
@@ -211,6 +216,7 @@ def load_model_ensemble_for_uq(
 
     return ensemble
 
+
 def build_candidate_solution(
     model,
     candidate_scen_count,
@@ -220,12 +226,12 @@ def build_candidate_solution(
     Build a candidate first-stage solution xhat using one sampled scenario batch.
 
     This assumes model was instantiated with the desired seed and with_replacement flag
-    for candidate solution generation. So when you load the model for candidate generation, 
+    for candidate solution generation. So when you load the model for candidate generation,
     you must pass the candidate seed and replacement rule into load_sp_model_for_uq(...)
     """
     scenario_batch = model.draw_batch_of_scenarios(
         n=candidate_scen_count,
-        replication_id=123456789, # arbitrary rep id, does not overlap with any existing rep ids
+        replication_id=123456789,  # arbitrary rep id, does not overlap with any existing rep ids
         nested_sampling=False,
         precomputed_supersets=None,
     )
@@ -241,9 +247,11 @@ def build_candidate_solution(
 
     return xhat, candidate_obj
 
+
 # ============================================================================
 # Helpers for saving experiment results to dedicated subdirectory
 # ============================================================================
+
 
 def _create_safe_path_name(value):
     """Convert a value to a filesystem-friendly string."""
@@ -251,13 +259,16 @@ def _create_safe_path_name(value):
     s = s.replace(" ", "")
     s = s.replace("/", "-")
     s = s.replace(",", "_")
-    s = re.sub(r"[^A-Za-z0-9_.=-]+", "-", s) # Replace any other non-alphanumeric characters with hyphens
-    return s 
+    s = re.sub(
+        r"[^A-Za-z0-9_.=-]+", "-", s
+    )  # Replace any other non-alphanumeric characters with hyphens
+    return s
 
 
 def _module_basename(model_module_name):
     """Use the last component of the module path for directory naming."""
     return model_module_name.split(".")[-1]
+
 
 def get_model_module_parent_dir(model_module_name):
     """
@@ -289,7 +300,7 @@ def make_run_directory(
     """
     if acv_mrp_flag is None:
         raise ValueError("acv_mrp_flag must be specified as True or False.")
-    
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     parts = [_create_safe_path_name(_module_basename(model_module_name))]
@@ -515,7 +526,9 @@ def run_mrp_grid_experiment(
     # Each replication k gets one sample of size n_max, and smaller n's
     # will use prefixes of that sample.
 
-    sampled_supersets = ({})  # key = rep_id, value = list of sampled scenarios of size n_max
+    sampled_supersets = (
+        {}
+    )  # key = rep_id, value = list of sampled scenarios of size n_max
     for rep_id in range(m_max):
         sampled_supersets[rep_id] = model.scenario_sampler().draw_scenarios(
             n=n_max,
@@ -792,6 +805,7 @@ def run_acvmrp_grid_experiment(
 # Main entry point
 # ============================================================================
 
+
 def main():
     # ----------------------------------------------------------------------
     # Parse command-line arguments
@@ -1056,7 +1070,9 @@ def main():
         save_xhat(xhat, args.xhat_file)
 
         if args.verbose:
-            print(f"Generated candidate solution xhat and wrote it to {args.xhat_file}:")
+            print(
+                f"Generated candidate solution xhat and wrote it to {args.xhat_file}:"
+            )
             print(f"xhat: {xhat}")
             print(f"Candidate EF objective: {candidate_obj}")
 
@@ -1105,13 +1121,19 @@ def main():
             print("\n")
             print(f"Sample variance (paired LF): {results['sample_variance_G_paired']}")
             print(f"Sample covariance (F,G): {results['sample_covariance_FG']}")
-            print(f"Estimated sample correlation (rho): {results['sample_correlation']}")
+            print(
+                f"Estimated sample correlation (rho): {results['sample_correlation']}"
+            )
             print(
                 f"Estimated control variate coefficient (alpha): {results['control_variate_coefficient']}"
             )
             print(f"z_statistic: {results['z_statistic']}")
-            print(f"Half-width: {results['half_width']}")
-            print(f"CI: [{results['ci_lower']}, {results['ci_upper']}]")
+            print(
+                f"Margin of Error (confidence interval upper bound - point estimate): {results['half_width']}"
+            )
+            print(
+                f"Confidence Interval: [{results['ci_lower']}, {results['ci_upper']}]"
+            )
 
     # -----------------------------------------------------
     # Standard single-fidelity MRP - single algorithm run
@@ -1139,8 +1161,12 @@ def main():
             print(f"Sample variance: {results['sample_variance']}")
             print(f"Sample std dev: {results['sample_std']}")
             print(f"t-statistic: {results['t_statistic']}")
-            print(f"Half-width: {results['half_width']}")
-            print(f"CI: [{results['ci_lower']}, {results['ci_upper']}]")
+            print(
+                f"Margin of Error (confidence interval upper bound - point estimate): {results['half_width']}"
+            )
+            print(
+                f"Confidence Interval: [{results['ci_lower']}, {results['ci_upper']}]"
+            )
 
     # --------------------------------------------------
     # Optional true-gap computation
@@ -1166,6 +1192,7 @@ def main():
             print(f"True optimal value: {true_gap['true_optimal_value']}")
             print(f"xhat true value: {true_gap['xhat_true_value']}")
             print(f"True gap: {true_gap['true_gap']}")
+
 
 if __name__ == "__main__":
     main()
