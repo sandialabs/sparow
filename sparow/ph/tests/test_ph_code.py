@@ -320,7 +320,7 @@ class TestSolverAgainstMPISPPY(object):
             default_rho=10,
         )
         soln = results.last_solution
-        xbar_ph = np.array([var.value for var in reversed(soln.variables())])
+        xbar_ph = np.array([var.value for var in soln.variables()])
 
         if verbose:
             print("xbar_mpi:", xbar_mpi)
@@ -366,7 +366,7 @@ class TestSolverAgainstMPISPPY(object):
         data = []
         for scenario in scenarios:
             temp = []
-            for i in range(2, -1, -1):
+            for i in range(3):
                 temp.append(soln.variable(i).suffix.w[scenario])
             data.append(temp)
         array2 = np.array(data)
