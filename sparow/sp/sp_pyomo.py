@@ -129,7 +129,7 @@ class StochasticProgram_Pyomo_Base(StochasticProgram):
         b : str
             Bundle identifier.
         """
-        fsv = list(self._first_stage_variables(M=M))
+        fsv = self._first_stage_variables(M=M)
         if len(self.varcuid_to_int) == 0:
             #
             # self.varcuid_to_int maps the cuids for variables to unique integers (starting with 0).
@@ -486,7 +486,7 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                 )
             )
 
-    def _first_stage_variables(self, *, M: Any) -> Any:
+    def _first_stage_variables_generator(self, *, M: Any) -> Any:
         """
         Generator function to yield first-stage variables based on their names.
 
@@ -514,6 +514,27 @@ class StochasticProgram_Pyomo_NamedBuilder(StochasticProgram_Pyomo_Base):
                     yield var.name, var
             else:
                 yield varname, comp
+
+    def _first_stage_variables(self, *, M: Any) -> Any:
+        """
+        Returns a sorted list of first-stage variables based on their names.
+
+        Parameters
+        ----------
+        M : pyomo.ConcreteModel
+            The Pyomo model to extract first-stage variables from.
+
+        Returns
+        -------
+        list
+            Tuples of (variable_name, variable_component).
+
+        Raises
+        ------
+        AssertionError
+            If a variable name is not found in the model.
+        """
+        return sorted(self._first_stage_variables_generator(M=M))
 
     def _create_scenario(self, scenario_tuple: tuple) -> Any:
         """
