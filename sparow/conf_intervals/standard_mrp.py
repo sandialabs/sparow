@@ -1,9 +1,6 @@
 import numpy as np
 from scipy import stats
 
-# TODO: This is specific to minimization problems... Need to adapt to model sense
-
-
 class StandardMRP:
     """
     Standard Multiple Replications Procedure for estimating the upper bound on

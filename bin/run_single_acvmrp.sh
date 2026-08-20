@@ -5,19 +5,19 @@ set -euo pipefail
 # User settings
 # ==========================================================
 
-MODEL_MODULE="sparow_examples.mrp_facilityloc.mrp_discrete_facilityloc"
+MODEL_MODULE="sparow_examples.uq_opf.uq_opf"
 MODEL_NAME="HF"
-LF_MODEL_TYPE="classic"
-SOLVER="gurobi_direct"
+LF_MODEL_TYPE="dcopf"
+SOLVER="ipopt"
 VERBOSE="true"
 
 # Candidate-solution generation (if you don't want to use existing file)
-CANDIDATE_SCEN_COUNT=0
-CANDIDATE_SEED=0
+CANDIDATE_SCEN_COUNT=1
+CANDIDATE_SEED=123
 CANDIDATE_WITH_REPLACEMENT="false"
 
 # If you want to use existing candidate solution, already written to file
-USE_EXISTING_XHAT="true"
+USE_EXISTING_XHAT="false"
 
 # MRP confidence interval settings
 ALPHA=0.05
@@ -25,10 +25,9 @@ MRP_SEED=678
 MRP_WITH_REPLACEMENT="true"
 
 # Single-run settings
-SCENARIO_FILE="../../sparow_examples/sparow_examples/mrp_facilityloc/discrete_facilityloc_scenarios.npy"
-XHAT_FILE="../../sparow_examples/sparow_examples/mrp_facilityloc/manually_created_suboptimal_xhat.npy"
-N=100
-M_PAIRED=10
+XHAT_FILE="../../sparow_examples/sparow_examples/uq_opf/first_stage_candidate_xhat.npy"
+N=20
+M_PAIRED=5
 M_LF_ONLY=5
 COMPUTE_TRUE_GAP="true"
 ACV_MRP="true"
@@ -97,20 +96,10 @@ else
     exit 1
 fi
 
-# ==========================================================
-# Basic file existence checks
-# ==========================================================
-
-if [ ! -f "${SCENARIO_FILE}" ]; then
-    echo "Error: scenario file not found: ${SCENARIO_FILE}"
-    exit 1
-fi
-
 echo "=== Running single ACV-MRP experiment ==="
 echo "ACV-MRP flag: ${ACV_FLAG}"
 echo "Candidate sampling flag: ${CANDIDATE_FLAG}"
 echo "MRP sampling flag: ${MRP_FLAG}"
-echo "Scenario file: ${SCENARIO_FILE}"
 echo "xhat file: ${XHAT_FILE}"
 echo "candidate_scen_count: ${CANDIDATE_SCEN_COUNT}"
 echo "n: ${N}"
@@ -130,7 +119,6 @@ python -m sparow.conf_intervals.cli \
     --alpha "${ALPHA}" \
     --mrp-seed "${MRP_SEED}" \
     ${MRP_FLAG} \
-    --scenario-file "${SCENARIO_FILE}" \
     --xhat-file "${XHAT_FILE}" \
     --n "${N}" \
     --m "${M_PAIRED}" \

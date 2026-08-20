@@ -25,7 +25,6 @@ MRP_SEED=678
 MRP_WITH_REPLACEMENT="true"
 
 # Single-run settings
-SCENARIO_FILE="../../sparow_examples/sparow_examples/farmers/advanced_farmers_1000_scenarios.npy"
 XHAT_FILE="farmer_candidate_xhat_cand${CANDIDATE_SCEN_COUNT}_seed${CANDIDATE_SEED}.npy"
 N=500
 M=10
@@ -88,7 +87,6 @@ fi
 echo "=== Running single standard MRP experiment ==="
 echo "Candidate sampling flag: ${CANDIDATE_FLAG}"
 echo "MRP sampling flag: ${MRP_FLAG}"
-echo "Scenario file: ${SCENARIO_FILE}"
 echo "xhat file: ${XHAT_FILE}"
 echo "candidate_scen_count: ${CANDIDATE_SCEN_COUNT}"
 echo "n: ${N}"
@@ -107,7 +105,6 @@ python -m sparow.conf_intervals.cli \
     --alpha "${ALPHA}" \
     --mrp-seed "${MRP_SEED}" \
     ${MRP_FLAG} \
-    --scenario-file "${SCENARIO_FILE}" \
     --xhat-file "${XHAT_FILE}" \
     --n "${N}" \
     --m "${M}" \

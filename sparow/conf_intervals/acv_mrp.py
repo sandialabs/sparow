@@ -1,9 +1,6 @@
 import numpy as np
 from scipy import stats
 
-from .scenario_sampler import ScenarioSampler
-
-
 class ACVMRP:
     """
     Approximate Control Variate Multiple Replications Procedure (ACV-MRP).
