@@ -599,25 +599,34 @@ for M, subM in df.groupby("M"):
     plt.savefig(output_dir / f"upper_bound_distance_above_true_gap_M_{M}.png", dpi=200)
     plt.close()
 
-# ----------------------------------------------------------
-# For fixed (m, M), show HF-only and ACV one-sided confidence intervals
-# as horizontal segments for each n
-# ----------------------------------------------------------
-for (m, M), sub in df.groupby(["m", "M"]):
-    sub = sub.sort_values("n").copy()
+# ==========================================================
+# Plotting the confidence intervals for direct comparison:
+# Helper functions
+# ==========================================================
 
-    # HF quantities for comparison
+def add_hf_only_interval_columns(sub):
+    """
+    Reconstruct the HF-only one-sided confidence interval quantities.
+    """
+    sub = sub.copy()
+
     sub["standard_error_hf_only"] = np.sqrt(sub["sample_variance_F"] / sub["m"])
-    sub["t_statistic_hf_only"] = stats.t.ppf(1.0 - sub["alpha"].iloc[0], df=m - 1)
-    sub["half_width_hf_only"] = sub["t_statistic_hf_only"] * sub["standard_error_hf_only"]
+
+    # Use the t-statistic for the HF-only interval 
+    sub["t_statistic_hf_only"] = sub["m"].apply(
+        lambda mm: stats.t.ppf(1.0 - sub["alpha"].iloc[0], df=mm - 1)
+    )
+    sub["half_width_hf_only"] = (sub["t_statistic_hf_only"] * sub["standard_error_hf_only"])
     sub["ci_lower_hf_only"] = 0.0
     sub["ci_upper_hf_only"] = sub["point_estimate_hf_only"] + sub["half_width_hf_only"]
 
-    y_positions = np.arange(len(sub))
-    offset = 0.16
-    cap_half_height = 0.10
+    return sub
 
-    # Automatic truncation of x-axis:
+
+def compute_interval_axis_limits(sub, true_gap, pad_fraction=0.08, default_pad=1.0):
+    """
+    Compute x-axis limits that focus on the informative upper ends of the intervals.
+    """
     min_point = min(
         sub["point_estimate"].min(),
         sub["point_estimate_hf_only"].min(),
@@ -626,118 +635,203 @@ for (m, M), sub in df.groupby(["m", "M"]):
     max_upper = max(sub["ci_upper"].max(), sub["ci_upper_hf_only"].max())
 
     x_span = max_upper - min_point
-    x_pad = 0.08 * x_span if x_span > 0 else 1.0
+    x_pad = pad_fraction * x_span if x_span > 0 else default_pad
 
     x_left = min_point - x_pad
     x_right = max_upper + x_pad
 
-    fig, ax = plt.subplots(figsize=(10, 4 + 0.55 * len(sub)))
+    return x_left, x_right
 
-    for y, (_, row) in zip(y_positions, sub.iterrows()):
-        # HF-only interval, clipped at visible left edge
-        hf_left = max(row["ci_lower_hf_only"], x_left)
-        hf_right = row["ci_upper_hf_only"]
 
-        ax.hlines(
-            y=y + offset,
-            xmin=hf_left,
-            xmax=hf_right,
-            color="steelblue",
-            linewidth=2,
-            alpha=0.9,
-        )
-        if row["ci_lower_hf_only"] >= x_left:
-            ax.vlines(
-                x=row["ci_lower_hf_only"],
-                ymin=y + offset - cap_half_height,
-                ymax=y + offset + cap_half_height,
-                color="steelblue",
-                linewidth=2,
-                alpha=0.9,
-            )
-        ax.vlines(
-            x=hf_right,
-            ymin=y + offset - cap_half_height,
-            ymax=y + offset + cap_half_height,
-            color="steelblue",
-            linewidth=2,
-            alpha=0.9,
-        )
-        ax.plot(
-            row["point_estimate_hf_only"],
-            y + offset,
-            marker="o",
-            color="navy",
-            markersize=6,
-        )
+def draw_horizontal_interval(
+    ax,
+    *,
+    y,
+    ci_lower,
+    ci_upper,
+    point_estimate,
+    x_left,
+    line_color,
+    line_style="-",
+    line_width=2,
+    marker="o",
+    marker_color=None,
+    marker_size=6,
+    alpha=0.9,
+    cap_half_height=0.10,
+):
+    """
+    Draw one horizontal one-sided confidence interval with end caps and a point marker.
+    """
+    visible_left = max(ci_lower, x_left)
+    visible_right = ci_upper
 
-        # ACV interval, clipped at visible left edge
-        acv_left = max(row["ci_lower"], x_left)
-        acv_right = row["ci_upper"]
-
-        ax.hlines(
-            y=y - offset,
-            xmin=acv_left,
-            xmax=acv_right,
-            color="darkgreen",
-            linewidth=2,
-            alpha=0.9,
-        )
-        if row["ci_lower"] >= x_left:
-            ax.vlines(
-                x=row["ci_lower"],
-                ymin=y - offset - cap_half_height,
-                ymax=y - offset + cap_half_height,
-                color="darkgreen",
-                linewidth=2,
-                alpha=0.9,
-            )
-        ax.vlines(
-            x=acv_right,
-            ymin=y - offset - cap_half_height,
-            ymax=y - offset + cap_half_height,
-            color="darkgreen",
-            linewidth=2,
-            alpha=0.9,
-        )
-        ax.plot(
-            row["point_estimate"],
-            y - offset,
-            marker="o",
-            color="green",
-            markersize=6,
-        )
-
-    ax.axvline(
-        true_gap,
-        color="black",
-        linestyle="--",
-        linewidth=1.5,
-        label=rf"True optimality gap $\Delta_f(\hat{{x}})$",
+    ax.hlines(
+        y=y,
+        xmin=visible_left,
+        xmax=visible_right,
+        color=line_color,
+        linestyle=line_style,
+        linewidth=line_width,
+        alpha=alpha,
     )
 
-    ax.set_xlim(left=x_left, right=x_right)
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels([rf"$n={int(n)}$" for n in sub["n"]])
-    ax.set_xlabel(r"Gap estimate / confidence interval")
-    ax.set_ylabel(r"Sample size")
-    ax.set_title(
-        rf"HF-only vs ACV one-sided confidence intervals for fixed $m={m}$ and $M={M}$"
-    )
-    ax.grid(axis="x", alpha=0.3)
+    # Only draw the left cap if that endpoint is actually visible.
+    if ci_lower >= x_left:
+        ax.vlines(
+            x=ci_lower,
+            ymin=y - cap_half_height,
+            ymax=y + cap_half_height,
+            color=line_color,
+            linestyle=line_style,
+            linewidth=line_width,
+            alpha=alpha,
+        )
 
-    legend_handles = [
-        Line2D([0], [0], color="steelblue", lw=2, label="HF-only confidence interval"),
-        Line2D([0], [0], marker="o", color="navy", lw=0, markersize=6, label=rf"HF-only point estimator $\bar{{F}}_n^m(\hat{{x}})$"),
-        Line2D([0], [0], color="darkgreen", lw=2, label="ACV confidence interval"),
-        Line2D([0], [0], marker="o", color="green", lw=0, markersize=6, label=rf"ACV point estimator $\bar{{F}}^{{\mathrm{{ACV}}}}(\hat{{x}},m,M)$"),
-        Line2D([0], [0], color="black", lw=1.5, linestyle="--", label=rf"True optimality gap $\Delta_f(\hat{{x}})$"),
-    ]
+    # Always draw the right cap
+    ax.vlines(
+        x=visible_right,
+        ymin=y - cap_half_height,
+        ymax=y + cap_half_height,
+        color=line_color,
+        linestyle=line_style,
+        linewidth=line_width,
+        alpha=alpha,
+    )
+
+    ax.plot(
+        point_estimate,
+        y,
+        marker=marker,
+        color=marker_color if marker_color is not None else line_color,
+        markersize=marker_size,
+    )
+
+
+def add_interval_comparison_legend(ax, *, bw=False):
+    """
+    Add the legend for interval-comparison plots outside the axes.
+    Putting the legend outside prevents it from covering the interval endpoints.
+    """
+    if bw:
+        legend_handles = [
+            Line2D([0], [0], color="black", lw=2, linestyle="-", marker="o", markersize=6,
+                   label=rf"HF-only interval and point estimator $\bar{{F}}_n^m(\hat{{x}})$"),
+            Line2D([0], [0], color="black", lw=2, linestyle="--", marker="s", markersize=5,
+                   label=rf"ACV interval and point estimator $\bar{{F}}^{{\mathrm{{ACV}}}}(\hat{{x}},m,M)$"),
+            Line2D([0], [0], color="black", lw=1.5, linestyle=":",
+                   label=rf"True optimality gap $\Delta_f(\hat{{x}})$"),
+        ]
+    else:
+        legend_handles = [
+            Line2D([0], [0], color="steelblue", lw=2, label="HF-only confidence interval"),
+            Line2D([0], [0], marker="o", color="navy", lw=0, markersize=6,
+                   label=rf"HF-only point estimator $\bar{{F}}_n^m(\hat{{x}})$"),
+            Line2D([0], [0], color="darkgreen", lw=2, label="ACV confidence interval"),
+            Line2D([0], [0], marker="o", color="green", lw=0, markersize=6,
+                   label=rf"ACV point estimator $\bar{{F}}^{{\mathrm{{ACV}}}}(\hat{{x}},m,M)$"),
+            Line2D([0], [0], color="black", lw=1.5, linestyle="--",
+                   label=rf"True optimality gap $\Delta_f(\hat{{x}})$"),
+        ]
+
     ax.legend(
         handles=legend_handles,
         loc="center left",
         bbox_to_anchor=(1.02, 0.5),
         borderaxespad=0.0,
+    )
+
+
+def finalize_interval_plot(
+    ax,
+    *,
+    true_gap,
+    x_left,
+    x_right,
+    y_positions,
+    ytick_labels,
+    xlabel,
+    ylabel,
+    title,
+    bw=False,
+):
+    """
+    Apply the shared formatting for interval-comparison plots.
+    """
+    ax.axvline(
+        true_gap,
+        color="black",
+        linestyle=":" if bw else "--",
+        linewidth=1.5,
+    )
+    ax.set_xlim(left=x_left, right=x_right)
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels(ytick_labels)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    ax.grid(axis="x", alpha=0.3)
+
+    add_interval_comparison_legend(ax, bw=bw)
+
+# ----------------------------------------------------------
+# For fixed (m, M), show HF-only and ACV one-sided confidence intervals
+# as horizontal segments for each n
+# ----------------------------------------------------------
+for (m, M), sub in df.groupby(["m", "M"]):
+    sub = sub.sort_values("n").copy()
+    sub = add_hf_only_interval_columns(sub)
+
+    y_positions = np.arange(len(sub))
+    offset = 0.10
+    cap_half_height = 0.08
+    x_left, x_right = compute_interval_axis_limits(sub, true_gap)
+
+    fig, ax = plt.subplots(figsize=(10, 4 + 0.55 * len(sub)))
+
+    for y, (_, row) in zip(y_positions, sub.iterrows()):
+        # Separate vertical offsets keep HF-only and ACV visible on the same row.
+        draw_horizontal_interval(
+            ax,
+            y=y + offset,
+            ci_lower=row["ci_lower_hf_only"],
+            ci_upper=row["ci_upper_hf_only"],
+            point_estimate=row["point_estimate_hf_only"],
+            x_left=x_left,
+            line_color="steelblue",
+            marker="o",
+            marker_color="navy",
+            marker_size=6,
+            alpha=0.9,
+            cap_half_height=cap_half_height,
+        )
+
+        draw_horizontal_interval(
+            ax,
+            y=y - offset,
+            ci_lower=row["ci_lower"],
+            ci_upper=row["ci_upper"],
+            point_estimate=row["point_estimate"],
+            x_left=x_left,
+            line_color="darkgreen",
+            marker="o",
+            marker_color="green",
+            marker_size=6,
+            alpha=0.9,
+            cap_half_height=cap_half_height,
+        )
+
+    finalize_interval_plot(
+        ax,
+        true_gap=true_gap,
+        x_left=x_left,
+        x_right=x_right,
+        y_positions=y_positions,
+        ytick_labels=[rf"$n={int(n)}$" for n in sub["n"]],
+        xlabel=r"Gap estimate / confidence interval",
+        ylabel=r"Sample size",
+        title=rf"HF-only vs ACV one-sided confidence intervals for fixed $m={m}$ and $M={M}$",
+        bw=False,
     )
 
     plt.tight_layout(rect=[0.10, 0, 0.82, 1])
@@ -751,143 +845,60 @@ for (m, M), sub in df.groupby(["m", "M"]):
 # ----------------------------------------------------------
 for (m, M), sub in df.groupby(["m", "M"]):
     sub = sub.sort_values("n").copy()
-
-    # HF quantities for comparison
-    sub["standard_error_hf_only"] = np.sqrt(sub["sample_variance_F"] / sub["m"])
-    sub["t_statistic_hf_only"] = stats.t.ppf(1.0 - sub["alpha"].iloc[0], df=m - 1)
-    sub["half_width_hf_only"] = sub["t_statistic_hf_only"] * sub["standard_error_hf_only"]
-    sub["ci_lower_hf_only"] = 0.0
-    sub["ci_upper_hf_only"] = sub["point_estimate_hf_only"] + sub["half_width_hf_only"]
+    sub = add_hf_only_interval_columns(sub)
 
     y_positions = np.arange(len(sub))
-    offset = 0.14
+    offset = 0.10
     cap_half_height = 0.08
-
-    min_point = min(
-        sub["point_estimate"].min(),
-        sub["point_estimate_hf_only"].min(),
-        true_gap,
-    )
-    max_upper = max(sub["ci_upper"].max(), sub["ci_upper_hf_only"].max())
-
-    x_span = max_upper - min_point
-    x_pad = 0.08 * x_span if x_span > 0 else 1.0
-    x_left = min_point - x_pad
-    x_right = max_upper + x_pad
+    x_left, x_right = compute_interval_axis_limits(sub, true_gap)
 
     fig, ax = plt.subplots(figsize=(10, 4 + 0.55 * len(sub)))
 
     for y, (_, row) in zip(y_positions, sub.iterrows()):
-        # HF-only interval: solid line, upper offset
-        hf_left = max(row["ci_lower_hf_only"], x_left)
-        hf_right = row["ci_upper_hf_only"]
-
-        ax.hlines(
+        # In black-and-white, line style and marker style distinguish HF-only vs ACV.
+        draw_horizontal_interval(
+            ax,
             y=y + offset,
-            xmin=hf_left,
-            xmax=hf_right,
-            color="black",
-            linestyle="-",
-            linewidth=2,
-            alpha=0.95,
-        )
-        if row["ci_lower_hf_only"] >= x_left:
-            ax.vlines(
-                x=row["ci_lower_hf_only"],
-                ymin=y + offset - cap_half_height,
-                ymax=y + offset + cap_half_height,
-                color="black",
-                linestyle="-",
-                linewidth=2,
-                alpha=0.95,
-            )
-        ax.vlines(
-            x=hf_right,
-            ymin=y + offset - cap_half_height,
-            ymax=y + offset + cap_half_height,
-            color="black",
-            linestyle="-",
-            linewidth=2,
-            alpha=0.95,
-        )
-        ax.plot(
-            row["point_estimate_hf_only"],
-            y + offset,
+            ci_lower=row["ci_lower_hf_only"],
+            ci_upper=row["ci_upper_hf_only"],
+            point_estimate=row["point_estimate_hf_only"],
+            x_left=x_left,
+            line_color="black",
+            line_style="-",
             marker="o",
-            color="black",
-            markersize=6,
+            marker_color="black",
+            marker_size=6,
+            alpha=0.95,
+            cap_half_height=cap_half_height,
         )
 
-        # ACV interval: dashed line, lower offset
-        acv_left = max(row["ci_lower"], x_left)
-        acv_right = row["ci_upper"]
-
-        ax.hlines(
+        draw_horizontal_interval(
+            ax,
             y=y - offset,
-            xmin=acv_left,
-            xmax=acv_right,
-            color="black",
-            linestyle="--",
-            linewidth=2,
-            alpha=0.95,
-        )
-        if row["ci_lower"] >= x_left:
-            ax.vlines(
-                x=row["ci_lower"],
-                ymin=y - offset - cap_half_height,
-                ymax=y - offset + cap_half_height,
-                color="black",
-                linestyle="--",
-                linewidth=2,
-                alpha=0.95,
-            )
-        ax.vlines(
-            x=acv_right,
-            ymin=y - offset - cap_half_height,
-            ymax=y - offset + cap_half_height,
-            color="black",
-            linestyle="--",
-            linewidth=2,
-            alpha=0.95,
-        )
-        ax.plot(
-            row["point_estimate"],
-            y - offset,
+            ci_lower=row["ci_lower"],
+            ci_upper=row["ci_upper"],
+            point_estimate=row["point_estimate"],
+            x_left=x_left,
+            line_color="black",
+            line_style="--",
             marker="s",
-            color="black",
-            markersize=5,
+            marker_color="black",
+            marker_size=5,
+            alpha=0.95,
+            cap_half_height=cap_half_height,
         )
 
-    ax.axvline(
-        true_gap,
-        color="black",
-        linestyle=":",
-        linewidth=1.5,
-    )
-
-    ax.set_xlim(left=x_left, right=x_right)
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels([rf"$n={int(n)}$" for n in sub["n"]])
-    ax.set_xlabel(r"Gap estimate / confidence interval")
-    ax.set_ylabel(r"Sample size")
-    ax.set_title(
-        rf"HF-only vs ACV one-sided confidence intervals for fixed $m={m}$ and $M={M}$"
-    )
-    ax.grid(axis="x", alpha=0.3)
-
-    legend_handles = [
-        Line2D([0], [0], color="black", lw=2, linestyle="-", marker="o", markersize=6,
-               label=rf"HF-only interval and point estimator $\bar{{F}}_n^m(\hat{{x}})$"),
-        Line2D([0], [0], color="black", lw=2, linestyle="--", marker="s", markersize=5,
-               label=rf"ACV interval and point estimator $\bar{{F}}^{{\mathrm{{ACV}}}}(\hat{{x}},m,M)$"),
-        Line2D([0], [0], color="black", lw=1.5, linestyle=":",
-               label=rf"True optimality gap $\Delta_f(\hat{{x}})$"),
-    ]
-    ax.legend(
-        handles=legend_handles,
-        loc="center left",
-        bbox_to_anchor=(1.02, 0.5),
-        borderaxespad=0.0,
+    finalize_interval_plot(
+        ax,
+        true_gap=true_gap,
+        x_left=x_left,
+        x_right=x_right,
+        y_positions=y_positions,
+        ytick_labels=[rf"$n={int(n)}$" for n in sub["n"]],
+        xlabel=r"Gap estimate / confidence interval",
+        ylabel=r"Sample size",
+        title=rf"HF-only vs ACV one-sided confidence intervals for fixed $m={m}$ and $M={M}$",
+        bw=True,
     )
 
     plt.tight_layout(rect=[0.10, 0, 0.82, 1])
@@ -900,139 +911,57 @@ for (m, M), sub in df.groupby(["m", "M"]):
 # ----------------------------------------------------------
 for (n, m), sub in df.groupby(["n", "m"]):
     sub = sub.sort_values("M").copy()
-
-    # HF quantities for comparison
-    sub["standard_error_hf_only"] = np.sqrt(sub["sample_variance_F"] / sub["m"])
-    sub["t_statistic_hf_only"] = stats.t.ppf(1.0 - sub["alpha"].iloc[0], df=m - 1)
-    sub["half_width_hf_only"] = sub["t_statistic_hf_only"] * sub["standard_error_hf_only"]
-    sub["ci_lower_hf_only"] = 0.0
-    sub["ci_upper_hf_only"] = sub["point_estimate_hf_only"] + sub["half_width_hf_only"]
+    sub = add_hf_only_interval_columns(sub)
 
     y_positions = np.arange(len(sub))
-    offset = 0.16
-    cap_half_height = 0.10
-
-    # Automatic truncation of x-axis:
-    min_point = min(
-        sub["point_estimate"].min(),
-        sub["point_estimate_hf_only"].min(),
-        true_gap,
-    )
-    max_upper = max(sub["ci_upper"].max(), sub["ci_upper_hf_only"].max())
-
-    x_span = max_upper - min_point
-    x_pad = 0.08 * x_span if x_span > 0 else 1.0
-
-    x_left = min_point - x_pad
-    x_right = max_upper + x_pad
+    offset = 0.10
+    cap_half_height = 0.08
+    x_left, x_right = compute_interval_axis_limits(sub, true_gap)
 
     fig, ax = plt.subplots(figsize=(10, 4 + 0.55 * len(sub)))
 
     for y, (_, row) in zip(y_positions, sub.iterrows()):
-        # HF-only interval, clipped at visible left edge
-        hf_left = max(row["ci_lower_hf_only"], x_left)
-        hf_right = row["ci_upper_hf_only"]
-
-        ax.hlines(
+        draw_horizontal_interval(
+            ax,
             y=y + offset,
-            xmin=hf_left,
-            xmax=hf_right,
-            color="steelblue",
-            linewidth=2,
-            alpha=0.9,
-        )
-        if row["ci_lower_hf_only"] >= x_left:
-            ax.vlines(
-                x=row["ci_lower_hf_only"],
-                ymin=y + offset - cap_half_height,
-                ymax=y + offset + cap_half_height,
-                color="steelblue",
-                linewidth=2,
-                alpha=0.9,
-            )
-        ax.vlines(
-            x=hf_right,
-            ymin=y + offset - cap_half_height,
-            ymax=y + offset + cap_half_height,
-            color="steelblue",
-            linewidth=2,
-            alpha=0.9,
-        )
-        ax.plot(
-            row["point_estimate_hf_only"],
-            y + offset,
+            ci_lower=row["ci_lower_hf_only"],
+            ci_upper=row["ci_upper_hf_only"],
+            point_estimate=row["point_estimate_hf_only"],
+            x_left=x_left,
+            line_color="steelblue",
             marker="o",
-            color="navy",
-            markersize=6,
+            marker_color="navy",
+            marker_size=6,
+            alpha=0.9,
+            cap_half_height=cap_half_height,
         )
 
-        # ACV interval, clipped at visible left edge
-        acv_left = max(row["ci_lower"], x_left)
-        acv_right = row["ci_upper"]
-
-        ax.hlines(
+        draw_horizontal_interval(
+            ax,
             y=y - offset,
-            xmin=acv_left,
-            xmax=acv_right,
-            color="darkgreen",
-            linewidth=2,
-            alpha=0.9,
-        )
-        if row["ci_lower"] >= x_left:
-            ax.vlines(
-                x=row["ci_lower"],
-                ymin=y - offset - cap_half_height,
-                ymax=y - offset + cap_half_height,
-                color="darkgreen",
-                linewidth=2,
-                alpha=0.9,
-            )
-        ax.vlines(
-            x=acv_right,
-            ymin=y - offset - cap_half_height,
-            ymax=y - offset + cap_half_height,
-            color="darkgreen",
-            linewidth=2,
-            alpha=0.9,
-        )
-        ax.plot(
-            row["point_estimate"],
-            y - offset,
+            ci_lower=row["ci_lower"],
+            ci_upper=row["ci_upper"],
+            point_estimate=row["point_estimate"],
+            x_left=x_left,
+            line_color="darkgreen",
             marker="o",
-            color="green",
-            markersize=6,
+            marker_color="green",
+            marker_size=6,
+            alpha=0.9,
+            cap_half_height=cap_half_height,
         )
 
-    ax.axvline(
-        true_gap,
-        color="black",
-        linestyle="--",
-        linewidth=1.5,
-        label=rf"True optimality gap $\Delta_f(\hat{{x}})$",
-    )
-
-    ax.set_xlim(left=x_left, right=x_right)
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels([rf"$M={int(M)}$" for M in sub["M"]])
-    ax.set_xlabel(r"Gap estimate / confidence interval")
-    ax.set_ylabel(r"Additional LF replications")
-    ax.set_title(
-        rf"HF-only vs ACV one-sided confidence intervals for fixed $n={n}$ and $m={m}$"
-    )
-    ax.grid(axis="x", alpha=0.3)
-
-    legend_handles = [
-        Line2D([0], [0], color="steelblue", lw=2, label="HF-only confidence interval"),
-        Line2D([0], [0], marker="o", color="navy", lw=0, markersize=6, label=rf"HF-only point estimator $\bar{{F}}_n^m(\hat{{x}})$"),
-        Line2D([0], [0], color="darkgreen", lw=2, label="ACV confidence interval"),
-        Line2D([0], [0], marker="o", color="green", lw=0, markersize=6, label=rf"ACV point estimator $\bar{{F}}^{{\mathrm{{ACV}}}}(\hat{{x}},m,M)$"),
-        Line2D([0], [0], color="black", lw=1.5, linestyle="--", label=rf"True optimality gap $\Delta_f(\hat{{x}})$"),
-    ]
-    ax.legend(
-        handles=legend_handles,
-        loc="center left",
-        bbox_to_anchor=(1.02, 0.5),
-        borderaxespad=0.0,
+    finalize_interval_plot(
+        ax,
+        true_gap=true_gap,
+        x_left=x_left,
+        x_right=x_right,
+        y_positions=y_positions,
+        ytick_labels=[rf"$M={int(M)}$" for M in sub["M"]],
+        xlabel=r"Gap estimate / confidence interval",
+        ylabel=r"Additional LF replications",
+        title=rf"HF-only vs ACV one-sided confidence intervals for fixed $n={n}$ and $m={m}$",
+        bw=False,
     )
 
     plt.tight_layout(rect=[0.10, 0, 0.82, 1])
@@ -1046,143 +975,59 @@ for (n, m), sub in df.groupby(["n", "m"]):
 # ----------------------------------------------------------
 for (n, m), sub in df.groupby(["n", "m"]):
     sub = sub.sort_values("M").copy()
-
-    # HF quantities for comparison
-    sub["standard_error_hf_only"] = np.sqrt(sub["sample_variance_F"] / sub["m"])
-    sub["t_statistic_hf_only"] = stats.t.ppf(1.0 - sub["alpha"].iloc[0], df=m - 1)
-    sub["half_width_hf_only"] = sub["t_statistic_hf_only"] * sub["standard_error_hf_only"]
-    sub["ci_lower_hf_only"] = 0.0
-    sub["ci_upper_hf_only"] = sub["point_estimate_hf_only"] + sub["half_width_hf_only"]
+    sub = add_hf_only_interval_columns(sub)
 
     y_positions = np.arange(len(sub))
-    offset = 0.14
+    offset = 0.10
     cap_half_height = 0.08
-
-    min_point = min(
-        sub["point_estimate"].min(),
-        sub["point_estimate_hf_only"].min(),
-        true_gap,
-    )
-    max_upper = max(sub["ci_upper"].max(), sub["ci_upper_hf_only"].max())
-
-    x_span = max_upper - min_point
-    x_pad = 0.08 * x_span if x_span > 0 else 1.0
-    x_left = min_point - x_pad
-    x_right = max_upper + x_pad
+    x_left, x_right = compute_interval_axis_limits(sub, true_gap)
 
     fig, ax = plt.subplots(figsize=(10, 4 + 0.55 * len(sub)))
 
     for y, (_, row) in zip(y_positions, sub.iterrows()):
-        # HF-only interval
-        hf_left = max(row["ci_lower_hf_only"], x_left)
-        hf_right = row["ci_upper_hf_only"]
-
-        ax.hlines(
+        draw_horizontal_interval(
+            ax,
             y=y + offset,
-            xmin=hf_left,
-            xmax=hf_right,
-            color="black",
-            linestyle="-",
-            linewidth=2,
-            alpha=0.95,
-        )
-        if row["ci_lower_hf_only"] >= x_left:
-            ax.vlines(
-                x=row["ci_lower_hf_only"],
-                ymin=y + offset - cap_half_height,
-                ymax=y + offset + cap_half_height,
-                color="black",
-                linestyle="-",
-                linewidth=2,
-                alpha=0.95,
-            )
-        ax.vlines(
-            x=hf_right,
-            ymin=y + offset - cap_half_height,
-            ymax=y + offset + cap_half_height,
-            color="black",
-            linestyle="-",
-            linewidth=2,
-            alpha=0.95,
-        )
-        ax.plot(
-            row["point_estimate_hf_only"],
-            y + offset,
+            ci_lower=row["ci_lower_hf_only"],
+            ci_upper=row["ci_upper_hf_only"],
+            point_estimate=row["point_estimate_hf_only"],
+            x_left=x_left,
+            line_color="black",
+            line_style="-",
             marker="o",
-            color="black",
-            markersize=6,
+            marker_color="black",
+            marker_size=6,
+            alpha=0.95,
+            cap_half_height=cap_half_height,
         )
 
-        # ACV interval
-        acv_left = max(row["ci_lower"], x_left)
-        acv_right = row["ci_upper"]
-
-        ax.hlines(
+        draw_horizontal_interval(
+            ax,
             y=y - offset,
-            xmin=acv_left,
-            xmax=acv_right,
-            color="black",
-            linestyle="--",
-            linewidth=2,
-            alpha=0.95,
-        )
-        if row["ci_lower"] >= x_left:
-            ax.vlines(
-                x=row["ci_lower"],
-                ymin=y - offset - cap_half_height,
-                ymax=y - offset + cap_half_height,
-                color="black",
-                linestyle="--",
-                linewidth=2,
-                alpha=0.95,
-            )
-        ax.vlines(
-            x=acv_right,
-            ymin=y - offset - cap_half_height,
-            ymax=y - offset + cap_half_height,
-            color="black",
-            linestyle="--",
-            linewidth=2,
-            alpha=0.95,
-        )
-        ax.plot(
-            row["point_estimate"],
-            y - offset,
+            ci_lower=row["ci_lower"],
+            ci_upper=row["ci_upper"],
+            point_estimate=row["point_estimate"],
+            x_left=x_left,
+            line_color="black",
+            line_style="--",
             marker="s",
-            color="black",
-            markersize=5,
+            marker_color="black",
+            marker_size=5,
+            alpha=0.95,
+            cap_half_height=cap_half_height,
         )
 
-    ax.axvline(
-        true_gap,
-        color="black",
-        linestyle=":",
-        linewidth=1.5,
-    )
-
-    ax.set_xlim(left=x_left, right=x_right)
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels([rf"$M={int(M)}$" for M in sub["M"]])
-    ax.set_xlabel(r"Gap estimate / confidence interval")
-    ax.set_ylabel(r"Additional LF replications")
-    ax.set_title(
-        rf"HF-only vs ACV one-sided confidence intervals for fixed $n={n}$ and $m={m}$"
-    )
-    ax.grid(axis="x", alpha=0.3)
-
-    legend_handles = [
-        Line2D([0], [0], color="black", lw=2, linestyle="-", marker="o", markersize=6,
-               label=rf"HF-only interval and point estimator $\bar{{F}}_n^m(\hat{{x}})$"),
-        Line2D([0], [0], color="black", lw=2, linestyle="--", marker="s", markersize=5,
-               label=rf"ACV interval and point estimator $\bar{{F}}^{{\mathrm{{ACV}}}}(\hat{{x}},m,M)$"),
-        Line2D([0], [0], color="black", lw=1.5, linestyle=":",
-               label=rf"True optimality gap $\Delta_f(\hat{{x}})$"),
-    ]
-    ax.legend(
-        handles=legend_handles,
-        loc="center left",
-        bbox_to_anchor=(1.02, 0.5),
-        borderaxespad=0.0,
+    finalize_interval_plot(
+        ax,
+        true_gap=true_gap,
+        x_left=x_left,
+        x_right=x_right,
+        y_positions=y_positions,
+        ytick_labels=[rf"$M={int(M)}$" for M in sub["M"]],
+        xlabel=r"Gap estimate / confidence interval",
+        ylabel=r"Additional LF replications",
+        title=rf"HF-only vs ACV one-sided confidence intervals for fixed $n={n}$ and $m={m}$",
+        bw=True,
     )
 
     plt.tight_layout(rect=[0.10, 0, 0.82, 1])
@@ -1195,137 +1040,57 @@ for (n, m), sub in df.groupby(["n", "m"]):
 # ----------------------------------------------------------
 for (n, M), sub in df.groupby(["n", "M"]):
     sub = sub.sort_values("m").copy()
-
-    # HF quantities for comparison
-    sub["standard_error_hf_only"] = np.sqrt(sub["sample_variance_F"] / sub["m"])
-    sub["t_statistic_hf_only"] = stats.t.ppf(1.0 - sub["alpha"].iloc[0], df=m - 1)
-    sub["half_width_hf_only"] = sub["t_statistic_hf_only"] * sub["standard_error_hf_only"]
-    sub["ci_lower_hf_only"] = 0.0
-    sub["ci_upper_hf_only"] = sub["point_estimate_hf_only"] + sub["half_width_hf_only"]
+    sub = add_hf_only_interval_columns(sub)
 
     y_positions = np.arange(len(sub))
-    offset = 0.16
-    cap_half_height = 0.10
-
-    min_point = min(
-        sub["point_estimate"].min(),
-        sub["point_estimate_hf_only"].min(),
-        true_gap,
-    )
-    max_upper = max(sub["ci_upper"].max(), sub["ci_upper_hf_only"].max())
-
-    x_span = max_upper - min_point
-    x_pad = 0.08 * x_span if x_span > 0 else 1.0
-    x_left = min_point - x_pad
-    x_right = max_upper + x_pad
+    offset = 0.10
+    cap_half_height = 0.08
+    x_left, x_right = compute_interval_axis_limits(sub, true_gap)
 
     fig, ax = plt.subplots(figsize=(10, 4 + 0.55 * len(sub)))
 
     for y, (_, row) in zip(y_positions, sub.iterrows()):
-        # HF-only interval, clipped at visible left edge
-        hf_left = max(row["ci_lower_hf_only"], x_left)
-        hf_right = row["ci_upper_hf_only"]
-
-        ax.hlines(
+        draw_horizontal_interval(
+            ax,
             y=y + offset,
-            xmin=hf_left,
-            xmax=hf_right,
-            color="steelblue",
-            linewidth=2,
-            alpha=0.9,
-        )
-        if row["ci_lower_hf_only"] >= x_left:
-            ax.vlines(
-                x=row["ci_lower_hf_only"],
-                ymin=y + offset - cap_half_height,
-                ymax=y + offset + cap_half_height,
-                color="steelblue",
-                linewidth=2,
-                alpha=0.9,
-            )
-        ax.vlines(
-            x=hf_right,
-            ymin=y + offset - cap_half_height,
-            ymax=y + offset + cap_half_height,
-            color="steelblue",
-            linewidth=2,
-            alpha=0.9,
-        )
-        ax.plot(
-            row["point_estimate_hf_only"],
-            y + offset,
+            ci_lower=row["ci_lower_hf_only"],
+            ci_upper=row["ci_upper_hf_only"],
+            point_estimate=row["point_estimate_hf_only"],
+            x_left=x_left,
+            line_color="steelblue",
             marker="o",
-            color="navy",
-            markersize=6,
+            marker_color="navy",
+            marker_size=6,
+            alpha=0.9,
+            cap_half_height=cap_half_height,
         )
 
-        # ACV interval, clipped at visible left edge
-        acv_left = max(row["ci_lower"], x_left)
-        acv_right = row["ci_upper"]
-
-        ax.hlines(
+        draw_horizontal_interval(
+            ax,
             y=y - offset,
-            xmin=acv_left,
-            xmax=acv_right,
-            color="darkgreen",
-            linewidth=2,
-            alpha=0.9,
-        )
-        if row["ci_lower"] >= x_left:
-            ax.vlines(
-                x=row["ci_lower"],
-                ymin=y - offset - cap_half_height,
-                ymax=y - offset + cap_half_height,
-                color="darkgreen",
-                linewidth=2,
-                alpha=0.9,
-            )
-        ax.vlines(
-            x=acv_right,
-            ymin=y - offset - cap_half_height,
-            ymax=y - offset + cap_half_height,
-            color="darkgreen",
-            linewidth=2,
-            alpha=0.9,
-        )
-        ax.plot(
-            row["point_estimate"],
-            y - offset,
+            ci_lower=row["ci_lower"],
+            ci_upper=row["ci_upper"],
+            point_estimate=row["point_estimate"],
+            x_left=x_left,
+            line_color="darkgreen",
             marker="o",
-            color="green",
-            markersize=6,
+            marker_color="green",
+            marker_size=6,
+            alpha=0.9,
+            cap_half_height=cap_half_height,
         )
 
-    ax.axvline(
-        true_gap,
-        color="black",
-        linestyle="--",
-        linewidth=1.5,
-        label=rf"True optimality gap $\Delta_f(\hat{{x}})$",
-    )
-
-    ax.set_xlim(left=x_left, right=x_right)
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels([rf"$m={int(m)}$" for m in sub["m"]])
-    ax.set_xlabel(r"Gap estimate / confidence interval")
-    ax.set_ylabel(r"Number of paired replications")
-    ax.set_title(
-        rf"HF-only vs ACV one-sided confidence intervals for fixed $n={n}$ and $M={M}$"
-    )
-    ax.grid(axis="x", alpha=0.3)
-
-    legend_handles = [
-        Line2D([0], [0], color="steelblue", lw=2, label="HF-only confidence interval"),
-        Line2D([0], [0], marker="o", color="navy", lw=0, markersize=6, label=rf"HF-only point estimator $\bar{{F}}_n^m(\hat{{x}})$"),
-        Line2D([0], [0], color="darkgreen", lw=2, label="ACV confidence interval"),
-        Line2D([0], [0], marker="o", color="green", lw=0, markersize=6, label=rf"ACV point estimator $\bar{{F}}^{{\mathrm{{ACV}}}}(\hat{{x}},m,M)$"),
-        Line2D([0], [0], color="black", lw=1.5, linestyle="--", label=rf"True optimality gap $\Delta_f(\hat{{x}})$"),
-    ]
-    ax.legend(
-        handles=legend_handles,
-        loc="center left",
-        bbox_to_anchor=(1.02, 0.5),
-        borderaxespad=0.0,
+    finalize_interval_plot(
+        ax,
+        true_gap=true_gap,
+        x_left=x_left,
+        x_right=x_right,
+        y_positions=y_positions,
+        ytick_labels=[rf"$m={int(m)}$" for m in sub["m"]],
+        xlabel=r"Gap estimate / confidence interval",
+        ylabel=r"Number of paired replications",
+        title=rf"HF-only vs ACV one-sided confidence intervals for fixed $n={n}$ and $M={M}$",
+        bw=False,
     )
 
     plt.tight_layout(rect=[0.10, 0, 0.82, 1])
@@ -1339,145 +1104,62 @@ for (n, M), sub in df.groupby(["n", "M"]):
 # ----------------------------------------------------------
 for (n, M), sub in df.groupby(["n", "M"]):
     sub = sub.sort_values("m").copy()
-
-    # HF quantities for comparison
-    sub["standard_error_hf_only"] = np.sqrt(sub["sample_variance_F"] / sub["m"])
-    sub["t_statistic_hf_only"] = stats.t.ppf(1.0 - sub["alpha"].iloc[0], df=m - 1)
-    sub["half_width_hf_only"] = sub["t_statistic_hf_only"] * sub["standard_error_hf_only"]
-    sub["ci_lower_hf_only"] = 0.0
-    sub["ci_upper_hf_only"] = sub["point_estimate_hf_only"] + sub["half_width_hf_only"]
+    sub = add_hf_only_interval_columns(sub)
 
     y_positions = np.arange(len(sub))
-    offset = 0.14
+    offset = 0.10
     cap_half_height = 0.08
-
-    min_point = min(
-        sub["point_estimate"].min(),
-        sub["point_estimate_hf_only"].min(),
-        true_gap,
-    )
-    max_upper = max(sub["ci_upper"].max(), sub["ci_upper_hf_only"].max())
-
-    x_span = max_upper - min_point
-    x_pad = 0.08 * x_span if x_span > 0 else 1.0
-    x_left = min_point - x_pad
-    x_right = max_upper + x_pad
+    x_left, x_right = compute_interval_axis_limits(sub, true_gap)
 
     fig, ax = plt.subplots(figsize=(10, 4 + 0.55 * len(sub)))
 
     for y, (_, row) in zip(y_positions, sub.iterrows()):
-        # HF-only interval
-        hf_left = max(row["ci_lower_hf_only"], x_left)
-        hf_right = row["ci_upper_hf_only"]
-
-        ax.hlines(
+        draw_horizontal_interval(
+            ax,
             y=y + offset,
-            xmin=hf_left,
-            xmax=hf_right,
-            color="black",
-            linestyle="-",
-            linewidth=2,
-            alpha=0.95,
-        )
-        if row["ci_lower_hf_only"] >= x_left:
-            ax.vlines(
-                x=row["ci_lower_hf_only"],
-                ymin=y + offset - cap_half_height,
-                ymax=y + offset + cap_half_height,
-                color="black",
-                linestyle="-",
-                linewidth=2,
-                alpha=0.95,
-            )
-        ax.vlines(
-            x=hf_right,
-            ymin=y + offset - cap_half_height,
-            ymax=y + offset + cap_half_height,
-            color="black",
-            linestyle="-",
-            linewidth=2,
-            alpha=0.95,
-        )
-        ax.plot(
-            row["point_estimate_hf_only"],
-            y + offset,
+            ci_lower=row["ci_lower_hf_only"],
+            ci_upper=row["ci_upper_hf_only"],
+            point_estimate=row["point_estimate_hf_only"],
+            x_left=x_left,
+            line_color="black",
+            line_style="-",
             marker="o",
-            color="black",
-            markersize=6,
+            marker_color="black",
+            marker_size=6,
+            alpha=0.95,
+            cap_half_height=cap_half_height,
         )
 
-        # ACV interval
-        acv_left = max(row["ci_lower"], x_left)
-        acv_right = row["ci_upper"]
-
-        ax.hlines(
+        draw_horizontal_interval(
+            ax,
             y=y - offset,
-            xmin=acv_left,
-            xmax=acv_right,
-            color="black",
-            linestyle="--",
-            linewidth=2,
-            alpha=0.95,
-        )
-        if row["ci_lower"] >= x_left:
-            ax.vlines(
-                x=row["ci_lower"],
-                ymin=y - offset - cap_half_height,
-                ymax=y - offset + cap_half_height,
-                color="black",
-                linestyle="--",
-                linewidth=2,
-                alpha=0.95,
-            )
-        ax.vlines(
-            x=acv_right,
-            ymin=y - offset - cap_half_height,
-            ymax=y - offset + cap_half_height,
-            color="black",
-            linestyle="--",
-            linewidth=2,
-            alpha=0.95,
-        )
-        ax.plot(
-            row["point_estimate"],
-            y - offset,
+            ci_lower=row["ci_lower"],
+            ci_upper=row["ci_upper"],
+            point_estimate=row["point_estimate"],
+            x_left=x_left,
+            line_color="black",
+            line_style="--",
             marker="s",
-            color="black",
-            markersize=5,
+            marker_color="black",
+            marker_size=5,
+            alpha=0.95,
+            cap_half_height=cap_half_height,
         )
 
-    ax.axvline(
-        true_gap,
-        color="black",
-        linestyle=":",
-        linewidth=1.5,
-    )
-
-    ax.set_xlim(left=x_left, right=x_right)
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels([rf"$m={int(m)}$" for m in sub["m"]])
-    ax.set_xlabel(r"Gap estimate / confidence interval")
-    ax.set_ylabel(r"Number of paired replications")
-    ax.set_title(
-        rf"HF-only vs ACV one-sided confidence intervals for fixed $n={n}$ and $M={M}$"
-    )
-    ax.grid(axis="x", alpha=0.3)
-
-    legend_handles = [
-        Line2D([0], [0], color="black", lw=2, linestyle="-", marker="o", markersize=6,
-               label=rf"HF-only interval and point estimator $\bar{{F}}_n^m(\hat{{x}})$"),
-        Line2D([0], [0], color="black", lw=2, linestyle="--", marker="s", markersize=5,
-               label=rf"ACV interval and point estimator $\bar{{F}}^{{\mathrm{{ACV}}}}(\hat{{x}},m,M)$"),
-        Line2D([0], [0], color="black", lw=1.5, linestyle=":",
-               label=rf"True optimality gap $\Delta_f(\hat{{x}})$"),
-    ]
-    ax.legend(
-        handles=legend_handles,
-        loc="center left",
-        bbox_to_anchor=(1.02, 0.5),
-        borderaxespad=0.0,
+    finalize_interval_plot(
+        ax,
+        true_gap=true_gap,
+        x_left=x_left,
+        x_right=x_right,
+        y_positions=y_positions,
+        ytick_labels=[rf"$m={int(m)}$" for m in sub["m"]],
+        xlabel=r"Gap estimate / confidence interval",
+        ylabel=r"Number of paired replications",
+        title=rf"HF-only vs ACV one-sided confidence intervals for fixed $n={n}$ and $M={M}$",
+        bw=True,
     )
 
     plt.tight_layout(rect=[0.10, 0, 0.82, 1])
     plt.savefig(output_dir / f"bw_offset_confidence_intervals_fixed_n_{n}_M_{M}.png", dpi=200)
     plt.close()
+
