@@ -24,7 +24,7 @@ class FiniteScenarioPopulation:
       - the full list of scenario dictionaries,
       - the required scenario keys,
       - optional encode/decode logic for scenario vectors,
-      - optional fixed metadata that is required for the given problem instance. 
+      - optional fixed metadata that is required for the given problem instance.
         These fields are not part of the uncertain scenario vector, but they
         are required when rebuilding native SPAROW scenario dictionaries.
 
@@ -49,9 +49,7 @@ class FiniteScenarioPopulation:
         # These are non-random fields that are not encoded into the scenario
         # vector, but must be reattached when decoding vectors back into native
         # SPAROW scenario dictionaries.
-        self._fixed_metadata = (
-            {} if fixed_metadata is None else dict(fixed_metadata)
-        )
+        self._fixed_metadata = {} if fixed_metadata is None else dict(fixed_metadata)
 
         self.validate(self._scenarios)
 

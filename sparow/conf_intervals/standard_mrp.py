@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import stats
 
+
 class StandardMRP:
     """
     Standard Multiple Replications Procedure for estimating the upper bound on

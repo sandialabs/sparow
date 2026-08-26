@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import stats
 
+
 class ACVMRP:
     """
     Approximate Control Variate Multiple Replications Procedure (ACV-MRP).

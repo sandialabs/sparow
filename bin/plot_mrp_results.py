@@ -344,9 +344,26 @@ for m, sub in df.groupby("m"):
 
     # Add legend handles manually for interval and point estimate
     legend_handles = [
-        Line2D([0], [0], color="steelblue", lw=2, label="One-sided confidence interval"),
-        Line2D([0], [0], marker="o", color="navy", lw=0, markersize=7, label=rf"Point estimate $\bar{{F}}_n^m(\hat{{x}})$"),
-        Line2D([0], [0], color="black", lw=1.5, linestyle="--", label=rf"True optimality gap $\Delta_f(\hat{{x}})$"),
+        Line2D(
+            [0], [0], color="steelblue", lw=2, label="One-sided confidence interval"
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="navy",
+            lw=0,
+            markersize=7,
+            label=rf"Point estimate $\bar{{F}}_n^m(\hat{{x}})$",
+        ),
+        Line2D(
+            [0],
+            [0],
+            color="black",
+            lw=1.5,
+            linestyle="--",
+            label=rf"True optimality gap $\Delta_f(\hat{{x}})$",
+        ),
     ]
     ax.legend(handles=legend_handles, loc="best")
 
@@ -420,15 +437,30 @@ for n, sub in df.groupby("n"):
     ax.set_yticklabels([rf"$m={int(m)}$" for m in sub["m"]])
     ax.set_xlabel(r"Gap estimate / confidence interval")
     ax.set_ylabel(r"Number of replications")
-    ax.set_title(
-        rf"One-sided confidence intervals for fixed sample size $n={n}$"
-    )
+    ax.set_title(rf"One-sided confidence intervals for fixed sample size $n={n}$")
     ax.grid(axis="x", alpha=0.3)
 
     legend_handles = [
-        Line2D([0], [0], color="darkgreen", lw=2, label="One-sided confidence interval"),
-        Line2D([0], [0], marker="o", color="green", lw=0, markersize=7, label=rf"Point estimate $\bar{{F}}_n^m(\hat{{x}})$"),
-        Line2D([0], [0], color="black", lw=1.5, linestyle="--", label=rf"True optimality gap $\Delta_f(\hat{{x}})$"),
+        Line2D(
+            [0], [0], color="darkgreen", lw=2, label="One-sided confidence interval"
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="green",
+            lw=0,
+            markersize=7,
+            label=rf"Point estimate $\bar{{F}}_n^m(\hat{{x}})$",
+        ),
+        Line2D(
+            [0],
+            [0],
+            color="black",
+            lw=1.5,
+            linestyle="--",
+            label=rf"True optimality gap $\Delta_f(\hat{{x}})$",
+        ),
     ]
     ax.legend(handles=legend_handles, loc="best")
 

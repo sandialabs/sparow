@@ -50,19 +50,19 @@ from sparow.conf_intervals.experiment_helpers import (
     load_model_ensemble_for_uq,
     elapsed_seconds,
     run_standard_mrp,
-    run_acvmrp
+    run_acvmrp,
 )
 
 from sparow.conf_intervals.pyapprox_helpers import (
     run_pyapprox_pilot,
     allocate_pyapprox_budget,
-    hf_replications_for_same_budget
+    hf_replications_for_same_budget,
 )
-
 
 # =============================================================================
 # CLI parsing and related helpers
 # =============================================================================
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -125,7 +125,9 @@ def parse_args():
 def interpret_candidate_sampling_flags(args) -> bool:
     """Translate candidate sampling with vs without replacement flags into a boolean."""
     if args.candidate_with_replacement and args.candidate_without_replacement:
-        raise ValueError("Choose only one of --candidate-with-replacement or --candidate-without-replacement.")
+        raise ValueError(
+            "Choose only one of --candidate-with-replacement or --candidate-without-replacement."
+        )
     candidate_with_replacement = True
     if args.candidate_without_replacement:
         candidate_with_replacement = False
@@ -135,7 +137,9 @@ def interpret_candidate_sampling_flags(args) -> bool:
 def interpret_mrp_sampling_flags(args) -> bool:
     """Translate main sampling with vs without replacement flags into a boolean."""
     if args.mrp_with_replacement and args.mrp_without_replacement:
-        raise ValueError("Choose only one of --mrp-with-replacement or --mrp-without-replacement.")
+        raise ValueError(
+            "Choose only one of --mrp-with-replacement or --mrp-without-replacement."
+        )
     mrp_with_replacement = True
     if args.mrp_without_replacement:
         mrp_with_replacement = False
@@ -145,14 +149,18 @@ def interpret_mrp_sampling_flags(args) -> bool:
 def interpret_pilot_reuse_flags(args) -> bool:
     """Default behavior is to reuse pilot across macro-replications."""
     if args.reuse_pilot_across_macroreps and args.redo_pilot_per_macrorep:
-        raise ValueError("Choose only one of --reuse-pilot-across-macroreps or --redo-pilot-per-macrorep.")
+        raise ValueError(
+            "Choose only one of --reuse-pilot-across-macroreps or --redo-pilot-per-macrorep."
+        )
     if args.redo_pilot_per_macrorep:
         return False
     return True
 
+
 # ============================================================================
 # Helpers for running each macro-replication
 # ============================================================================
+
 
 def build_macro_seed(base_seed: int, n: int, budget_idx: int, macro_rep: int) -> int:
     """
@@ -216,7 +224,7 @@ def run_one_macrorep(
         count_pilot_cost_against_budget=count_pilot_cost_against_budget,
     )
 
-    # If no positive budget remains after optionally charging the pilot cost, 
+    # If no positive budget remains after optionally charging the pilot cost,
     # we set "allocation_feasible" to false and end the macro-replication.
     if not alloc["allocation_feasible"]:
         return {
@@ -230,7 +238,7 @@ def run_one_macrorep(
         }
 
     # These are the ACV-MRP counts implied by the multifidelity allocation:
-    # m = paired HF/LF replications, 
+    # m = paired HF/LF replications,
     # M = additional LF-only replications.
     m_paired = alloc["m_paired"]
     M_additional_lf = alloc["M_additional_lf"]
@@ -314,7 +322,7 @@ def run_one_macrorep(
         M=M_additional_lf,
         alpha=alpha,
         # specific seed for this macro-replication, along with offset to use distinct stream
-        seed=macro_seed + 1000000, 
+        seed=macro_seed + 1000000,
         with_replacement=main_with_replacement,
         solver_name=args.solver_name,
         solver_options=parse_solver_options(args.solver_options),
@@ -373,7 +381,7 @@ def run_one_macrorep(
         n=n,
         m=hf_paired_only_m,
         alpha=alpha,
-        # specific seed for this macro-replication, 
+        # specific seed for this macro-replication,
         # so same stream of scenario batches is sampled across ACVMRP and both HF-only baselines
         seed=macro_seed,
         with_replacement=main_with_replacement,
@@ -387,18 +395,24 @@ def run_one_macrorep(
     row.update(
         {
             "acv_point_estimate": float(acv_results["point_estimate"]),
-            "acv_point_estimate_hf_only_paired_reference": float(acv_results["point_estimate_hf_only"]),
+            "acv_point_estimate_hf_only_paired_reference": float(
+                acv_results["point_estimate_hf_only"]
+            ),
             "acv_ci_lower": float(acv_results["ci_lower"]),
             "acv_ci_upper": float(acv_results["ci_upper"]),
             "acv_half_width": float(acv_results["half_width"]),
             "acv_standard_error": float(acv_results["standard_error_acv"]),
             "acv_variance_estimator": float(acv_results["variance_acv_estimator"]),
             "acv_sample_variance_F": float(acv_results["sample_variance_F"]),
-            "acv_sample_variance_G_paired": float(acv_results["sample_variance_G_paired"]),
+            "acv_sample_variance_G_paired": float(
+                acv_results["sample_variance_G_paired"]
+            ),
             "acv_sample_covariance_FG": float(acv_results["sample_covariance_FG"]),
             "acv_alpha_hat": float(acv_results["control_variate_coefficient"]),
             "acv_rho_hat": float(acv_results["sample_correlation"]),
-            "acv_variance_reduction_factor": float(acv_results["variance_reduction_factor"]),
+            "acv_variance_reduction_factor": float(
+                acv_results["variance_reduction_factor"]
+            ),
         }
     )
 
@@ -422,7 +436,9 @@ def run_one_macrorep(
             "hf_paired_only_ci_lower": float(hf_paired_results["ci_lower"]),
             "hf_paired_only_ci_upper": float(hf_paired_results["ci_upper"]),
             "hf_paired_only_half_width": float(hf_paired_results["half_width"]),
-            "hf_paired_only_sample_variance": float(hf_paired_results["sample_variance"]),
+            "hf_paired_only_sample_variance": float(
+                hf_paired_results["sample_variance"]
+            ),
             "hf_paired_only_sample_std": float(hf_paired_results["sample_std"]),
             "hf_paired_only_t_statistic": float(hf_paired_results["t_statistic"]),
         }
@@ -437,20 +453,32 @@ def run_one_macrorep(
     else:
         row["acv_covers_true_gap"] = int(true_gap <= row["acv_ci_upper"])
         row["hf_budget_covers_true_gap"] = int(true_gap <= row["hf_budget_ci_upper"])
-        row["hf_paired_only_covers_true_gap"] = int(true_gap <= row["hf_paired_only_ci_upper"])
+        row["hf_paired_only_covers_true_gap"] = int(
+            true_gap <= row["hf_paired_only_ci_upper"]
+        )
 
     # Realized-improvement indicators track how often ACV gives a smaller
     # realized conf interval upper bound or point estimate than the chosen HF-only baseline.
-    row["acv_improves_over_hf_budget"] = int(row["acv_ci_upper"] < row["hf_budget_ci_upper"])
-    row["acv_improves_over_hf_paired_only"] = int(row["acv_ci_upper"] < row["hf_paired_only_ci_upper"])
-    row["acv_point_improves_over_hf_budget"] = int(row["acv_point_estimate"] < row["hf_budget_point_estimate"])
-    row["acv_point_improves_over_hf_paired_only"] = int(row["acv_point_estimate"] < row["hf_paired_only_point_estimate"])
+    row["acv_improves_over_hf_budget"] = int(
+        row["acv_ci_upper"] < row["hf_budget_ci_upper"]
+    )
+    row["acv_improves_over_hf_paired_only"] = int(
+        row["acv_ci_upper"] < row["hf_paired_only_ci_upper"]
+    )
+    row["acv_point_improves_over_hf_budget"] = int(
+        row["acv_point_estimate"] < row["hf_budget_point_estimate"]
+    )
+    row["acv_point_improves_over_hf_paired_only"] = int(
+        row["acv_point_estimate"] < row["hf_paired_only_point_estimate"]
+    )
 
     # Keep per-method timings for profiling.
     row["elapsed_acv_seconds"] = float(acv_elapsed)
     row["elapsed_hf_budget_seconds"] = float(hf_budget_elapsed)
     row["elapsed_hf_paired_only_seconds"] = float(hf_paired_elapsed)
-    row["elapsed_total_macrorep_seconds"] = float(acv_elapsed + hf_budget_elapsed + hf_paired_elapsed)
+    row["elapsed_total_macrorep_seconds"] = float(
+        acv_elapsed + hf_budget_elapsed + hf_paired_elapsed
+    )
 
     return row
 
@@ -477,7 +505,7 @@ def summarize_macrorep_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
     # Only look at experiments where enough budget was actually available to complete the experiment
     for row in rows:
-        if not row.get("allocation_feasible", False): 
+        if not row.get("allocation_feasible", False):
             continue
 
         # Use the tuple (n, budget) as the grouping key, so that all macro-reps
@@ -491,92 +519,162 @@ def summarize_macrorep_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     #   - (n, budget) is the parameter configuration,
     #   - subrows is the list of macro-replication rows for that configuration.
     # We sort by n first, then by budget
-    for (n, budget), subrows in sorted(grouped.items(), key=lambda x: (x[0][0], x[0][1])):
+    for (n, budget), subrows in sorted(
+        grouped.items(), key=lambda x: (x[0][0], x[0][1])
+    ):
         out = {
             "n": int(n),
             "budget": float(budget),
             "R": int(len(subrows)),
             "alpha": float(subrows[0]["alpha"]),
             "true_gap": float(subrows[0]["true_gap"]),
-            "estimated_hf_cost_mean": mean_or_nan([r["estimated_hf_cost"] for r in subrows]),
-            "estimated_lf_cost_mean": mean_or_nan([r["estimated_lf_cost"] for r in subrows]),
-            "pilot_cost_mean": mean_or_nan([r["estimated_pilot_cost"] for r in subrows]),
-            "remaining_budget_mean": mean_or_nan([r["remaining_budget"] for r in subrows]),
+            "estimated_hf_cost_mean": mean_or_nan(
+                [r["estimated_hf_cost"] for r in subrows]
+            ),
+            "estimated_lf_cost_mean": mean_or_nan(
+                [r["estimated_lf_cost"] for r in subrows]
+            ),
+            "pilot_cost_mean": mean_or_nan(
+                [r["estimated_pilot_cost"] for r in subrows]
+            ),
+            "remaining_budget_mean": mean_or_nan(
+                [r["remaining_budget"] for r in subrows]
+            ),
             "pilot_rho_hat_mean": mean_or_nan([r["pilot_rho_hat"] for r in subrows]),
-            "predicted_pyapprox_std_mean": mean_or_nan([r["predicted_pyapprox_std"] for r in subrows]),
+            "predicted_pyapprox_std_mean": mean_or_nan(
+                [r["predicted_pyapprox_std"] for r in subrows]
+            ),
             "m_paired_mean": mean_or_nan([r["m_paired"] for r in subrows]),
-            "M_additional_lf_mean": mean_or_nan([r["M_additional_lf"] for r in subrows]),
-            "hf_same_budget_m_mean": mean_or_nan([r["hf_same_budget_m"] for r in subrows]),
-            "hf_paired_only_m_mean": mean_or_nan([r["hf_paired_only_m"] for r in subrows]),
+            "M_additional_lf_mean": mean_or_nan(
+                [r["M_additional_lf"] for r in subrows]
+            ),
+            "hf_same_budget_m_mean": mean_or_nan(
+                [r["hf_same_budget_m"] for r in subrows]
+            ),
+            "hf_paired_only_m_mean": mean_or_nan(
+                [r["hf_paired_only_m"] for r in subrows]
+            ),
         }
 
         # Average point estimates and upper bounds
-        out["avg_acv_point_estimate"] = mean_or_nan([r["acv_point_estimate"] for r in subrows])
+        out["avg_acv_point_estimate"] = mean_or_nan(
+            [r["acv_point_estimate"] for r in subrows]
+        )
         out["avg_acv_ci_upper"] = mean_or_nan([r["acv_ci_upper"] for r in subrows])
 
-        out["avg_hf_budget_point_estimate"] = mean_or_nan([r["hf_budget_point_estimate"] for r in subrows])
-        out["avg_hf_budget_ci_upper"] = mean_or_nan([r["hf_budget_ci_upper"] for r in subrows])
+        out["avg_hf_budget_point_estimate"] = mean_or_nan(
+            [r["hf_budget_point_estimate"] for r in subrows]
+        )
+        out["avg_hf_budget_ci_upper"] = mean_or_nan(
+            [r["hf_budget_ci_upper"] for r in subrows]
+        )
 
-        out["avg_hf_paired_only_point_estimate"] = mean_or_nan([r["hf_paired_only_point_estimate"] for r in subrows])
-        out["avg_hf_paired_only_ci_upper"] = mean_or_nan([r["hf_paired_only_ci_upper"] for r in subrows])
+        out["avg_hf_paired_only_point_estimate"] = mean_or_nan(
+            [r["hf_paired_only_point_estimate"] for r in subrows]
+        )
+        out["avg_hf_paired_only_ci_upper"] = mean_or_nan(
+            [r["hf_paired_only_ci_upper"] for r in subrows]
+        )
 
         # Average uncertainty margins added to each point estimator (i.e. - interval "half width")
         out["avg_acv_half_width"] = mean_or_nan([r["acv_half_width"] for r in subrows])
-        out["avg_hf_budget_half_width"] = mean_or_nan([r["hf_budget_half_width"] for r in subrows])
-        out["avg_hf_paired_only_half_width"] = mean_or_nan([r["hf_paired_only_half_width"] for r in subrows])
+        out["avg_hf_budget_half_width"] = mean_or_nan(
+            [r["hf_budget_half_width"] for r in subrows]
+        )
+        out["avg_hf_paired_only_half_width"] = mean_or_nan(
+            [r["hf_paired_only_half_width"] for r in subrows]
+        )
 
         # Empirical coverage: the fraction of macro-reps whose upper bound
         # contains the true optimality gap benchmark.
-        acv_cov = [r["acv_covers_true_gap"] for r in subrows if not math.isnan(r["acv_covers_true_gap"])]
-        hf_budget_cov = [r["hf_budget_covers_true_gap"] for r in subrows if not math.isnan(r["hf_budget_covers_true_gap"])]
-        hf_paired_cov = [r["hf_paired_only_covers_true_gap"] for r in subrows if not math.isnan(r["hf_paired_only_covers_true_gap"])]
+        acv_cov = [
+            r["acv_covers_true_gap"]
+            for r in subrows
+            if not math.isnan(r["acv_covers_true_gap"])
+        ]
+        hf_budget_cov = [
+            r["hf_budget_covers_true_gap"]
+            for r in subrows
+            if not math.isnan(r["hf_budget_covers_true_gap"])
+        ]
+        hf_paired_cov = [
+            r["hf_paired_only_covers_true_gap"]
+            for r in subrows
+            if not math.isnan(r["hf_paired_only_covers_true_gap"])
+        ]
 
         out["empirical_coverage_acv"] = mean_or_nan(acv_cov)
         out["empirical_coverage_hf_budget"] = mean_or_nan(hf_budget_cov)
         out["empirical_coverage_hf_paired_only"] = mean_or_nan(hf_paired_cov)
 
         # Realized improvement probabilities
-        # How often ACV gives a smaller realized upper bound than each HF-only comparator 
-        out["prob_acv_improves_over_hf_budget"] = mean_or_nan([r["acv_improves_over_hf_budget"] for r in subrows])
-        out["prob_acv_improves_over_hf_paired_only"] = mean_or_nan([r["acv_improves_over_hf_paired_only"] for r in subrows])
+        # How often ACV gives a smaller realized upper bound than each HF-only comparator
+        out["prob_acv_improves_over_hf_budget"] = mean_or_nan(
+            [r["acv_improves_over_hf_budget"] for r in subrows]
+        )
+        out["prob_acv_improves_over_hf_paired_only"] = mean_or_nan(
+            [r["acv_improves_over_hf_paired_only"] for r in subrows]
+        )
 
         # Average correlation / coefficient
         out["avg_acv_rho_hat"] = mean_or_nan([r["acv_rho_hat"] for r in subrows])
         out["avg_acv_alpha_hat"] = mean_or_nan([r["acv_alpha_hat"] for r in subrows])
-        out["avg_acv_variance_reduction_factor"] = mean_or_nan([r["acv_variance_reduction_factor"] for r in subrows])
+        out["avg_acv_variance_reduction_factor"] = mean_or_nan(
+            [r["acv_variance_reduction_factor"] for r in subrows]
+        )
 
         # Empirical variances of point estimators across macro-replications
-        out["empirical_variance_acv_point"] = var_or_nan([r["acv_point_estimate"] for r in subrows])
-        out["empirical_variance_hf_budget_point"] = var_or_nan([r["hf_budget_point_estimate"] for r in subrows])
-        out["empirical_variance_hf_paired_only_point"] = var_or_nan([r["hf_paired_only_point_estimate"] for r in subrows])
+        out["empirical_variance_acv_point"] = var_or_nan(
+            [r["acv_point_estimate"] for r in subrows]
+        )
+        out["empirical_variance_hf_budget_point"] = var_or_nan(
+            [r["hf_budget_point_estimate"] for r in subrows]
+        )
+        out["empirical_variance_hf_paired_only_point"] = var_or_nan(
+            [r["hf_paired_only_point_estimate"] for r in subrows]
+        )
 
-        # Variance-ratio relative efficiency for the same-budget HF-only comparison, 
+        # Variance-ratio relative efficiency for the same-budget HF-only comparison,
         # with values > 1 indicating ACV is more efficient.
         if (
             not math.isnan(out["empirical_variance_acv_point"])
             and out["empirical_variance_acv_point"] > 0
             and not math.isnan(out["empirical_variance_hf_budget_point"])
         ):
-            out["relative_efficiency_hf_budget_over_acv"] = (out["empirical_variance_hf_budget_point"] / out["empirical_variance_acv_point"])
+            out["relative_efficiency_hf_budget_over_acv"] = (
+                out["empirical_variance_hf_budget_point"]
+                / out["empirical_variance_acv_point"]
+            )
         else:
             out["relative_efficiency_hf_budget_over_acv"] = float("nan")
 
-        # Variance-ratio relative efficiency for the paired HF-only comparison, 
+        # Variance-ratio relative efficiency for the paired HF-only comparison,
         # with values > 1 indicating ACV is more efficient.
         if (
             not math.isnan(out["empirical_variance_acv_point"])
             and out["empirical_variance_acv_point"] > 0
             and not math.isnan(out["empirical_variance_hf_paired_only_point"])
         ):
-            out["relative_efficiency_hf_paired_only_over_acv"] = (out["empirical_variance_hf_paired_only_point"] / out["empirical_variance_acv_point"])
+            out["relative_efficiency_hf_paired_only_over_acv"] = (
+                out["empirical_variance_hf_paired_only_point"]
+                / out["empirical_variance_acv_point"]
+            )
         else:
             out["relative_efficiency_hf_paired_only_over_acv"] = float("nan")
 
         # Average elapsed times for profiling.
-        out["avg_elapsed_acv_seconds"] = mean_or_nan([r["elapsed_acv_seconds"] for r in subrows])
-        out["avg_elapsed_hf_budget_seconds"] = mean_or_nan([r["elapsed_hf_budget_seconds"] for r in subrows])
-        out["avg_elapsed_hf_paired_only_seconds"] = mean_or_nan([r["elapsed_hf_paired_only_seconds"] for r in subrows])
-        out["avg_elapsed_total_macrorep_seconds"] = mean_or_nan([r["elapsed_total_macrorep_seconds"] for r in subrows])
+        out["avg_elapsed_acv_seconds"] = mean_or_nan(
+            [r["elapsed_acv_seconds"] for r in subrows]
+        )
+        out["avg_elapsed_hf_budget_seconds"] = mean_or_nan(
+            [r["elapsed_hf_budget_seconds"] for r in subrows]
+        )
+        out["avg_elapsed_hf_paired_only_seconds"] = mean_or_nan(
+            [r["elapsed_hf_paired_only_seconds"] for r in subrows]
+        )
+        out["avg_elapsed_total_macrorep_seconds"] = mean_or_nan(
+            [r["elapsed_total_macrorep_seconds"] for r in subrows]
+        )
 
         summary_rows.append(out)
 
@@ -590,7 +688,7 @@ def summarize_macrorep_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def main():
     args = parse_args()
-    total_start = time.time() # reset timer at start of run
+    total_start = time.time()  # reset timer at start of run
 
     # Parsing CLI settings
     solver_options = parse_solver_options(args.solver_options)
@@ -638,7 +736,7 @@ def main():
     # Build/load candidate xhat once
     # -------------------------------------------------------------------------
 
-    # Keep one fixed candidate solution across the whole sweep 
+    # Keep one fixed candidate solution across the whole sweep
     xhat, candidate_obj, xhat_path, candidate_elapsed = load_or_generate_candidate_xhat(
         args=args,
         candidate_with_replacement=candidate_with_replacement,
@@ -723,10 +821,14 @@ def main():
     # -------------------------------------------------------------------------
     # Main loops: first n, then budget, then macro-replication
     # -------------------------------------------------------------------------
-    # Outer loop over n: 
+    # Outer loop over n:
     # pilot covariance/cost estimates are specific to that batch size.
     for n in n_values:
-        log(f"=== Starting experiments for n={n} ===", t0=total_start, verbose=args.verbose)
+        log(
+            f"=== Starting experiments for n={n} ===",
+            t0=total_start,
+            verbose=args.verbose,
+        )
 
         # Reuse one pilot per n if requested. This avoids repeating the expensive
         # pilot phase for every budget and macro-replication.
@@ -737,9 +839,9 @@ def main():
                 batch_size=n,
                 solver_name=args.solver_name,
                 solver_options=solver_options,
-                # use a different pilot seed for each n; 
+                # use a different pilot seed for each n;
                 # the same pilot is then reused across all budgets and macro-reps for that n
-                seed=args.main_seed + 1000 * n, 
+                seed=args.main_seed + 1000 * n,
                 n_pilot=args.n_pilot,
                 hf_cost_delay_seconds=args.hf_cost_delay_seconds,
                 lf_cost_delay_seconds=args.lf_cost_delay_seconds,
@@ -829,14 +931,20 @@ def main():
             "Try larger budgets or smaller n / pilot size."
         )
 
-    # Aggregate the raw macro-rep rows into summary metrics 
+    # Aggregate the raw macro-rep rows into summary metrics
     summary_rows = summarize_macrorep_rows(feasible_macro_rows)
 
     write_csv(feasible_macro_rows, output_macro_csv)
     write_csv(summary_rows, output_summary_csv)
 
-    log(f"Wrote macro-replication CSV: {output_macro_csv}", t0=total_start, verbose=args.verbose)
-    log(f"Wrote summary CSV: {output_summary_csv}", t0=total_start, verbose=args.verbose)
+    log(
+        f"Wrote macro-replication CSV: {output_macro_csv}",
+        t0=total_start,
+        verbose=args.verbose,
+    )
+    log(
+        f"Wrote summary CSV: {output_summary_csv}", t0=total_start, verbose=args.verbose
+    )
 
     if args.save_debug_json:
         debug_obj["true_gap_results"] = true_gap_results
@@ -844,7 +952,9 @@ def main():
         debug_obj["num_macro_rows_feasible"] = len(feasible_macro_rows)
         debug_obj["elapsed_total_seconds"] = float(elapsed_seconds(total_start))
         write_debug_json(debug_obj, debug_json_file)
-        log(f"Wrote debug JSON: {debug_json_file}", t0=total_start, verbose=args.verbose)
+        log(
+            f"Wrote debug JSON: {debug_json_file}", t0=total_start, verbose=args.verbose
+        )
 
     log("Budgeted UQ experiments complete.", t0=total_start, verbose=True)
 
