@@ -91,15 +91,15 @@ class TestSP(object):
         M = sp2.create_subproblem("1")
 
         assert sp2.varcuid_to_int == {
-            pyo.ComponentUID("y"): 0,
-            pyo.ComponentUID("x"): 1,
+            pyo.ComponentUID("y"): 1,
+            pyo.ComponentUID("x"): 0,
         }
         assert list(sorted(sp2.int_to_FirstStageVar["1"].keys())) == [0, 1]
         assert sp2.shared_variables() == [0, 1]
-        assert sp2.get_objective_coef(0) == 0  # y
-        assert sp2.get_objective_coef(1) == 0.5  # x
-        assert sp2.get_variable_name(0) == "y"
-        assert sp2.get_variable_name(1) == "x"
+        assert sp2.get_objective_coef(0) == 0.5  # x
+        assert sp2.get_objective_coef(1) == 0  # y
+        assert sp2.get_variable_name(0) == "x"
+        assert sp2.get_variable_name(1) == "y"
 
     def test_simple3(self, sp3):
         M = sp3.create_subproblem("1")
@@ -123,7 +123,7 @@ class TestSP(object):
     def test_continuous2(self, sp2):
         M = sp2.create_subproblem("1")
         assert not sp2.continuous_fsv()
-        assert sp2._binary_or_integer_fsv == {0}
+        assert sp2._binary_or_integer_fsv == {1}
 
     def test_sp0_EF_noncompact(self, sp0):
         M = sp0.create_EF(compact_repn=False)
