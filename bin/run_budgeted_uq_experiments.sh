@@ -61,7 +61,7 @@ XHAT_FILE="../../sparow_examples/sparow_examples/uq_opf/candidate_xhat.npy"
 ALPHA=0.05
 
 # Base seed used for the main budgeted experiment workflow
-MAIN_SEED=54321
+MAIN_SEED=2468
 
 # Whether replication batches used in the main workflow are sampled with
 # replacement from the finite scenario population
