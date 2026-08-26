@@ -10,14 +10,10 @@ from sparow.conf_intervals.acv_mrp import (
     ACVMRP,
 )  # TODO: some tests for multifidelity UQ workflows
 from sparow.conf_intervals.scenario_sampler import ScenarioSampler
-from sparow.conf_intervals.cli import (
+from sparow.conf_intervals.experiment_helpers import (
     load_sp_model_for_uq,
     load_model_ensemble_for_uq,
     build_candidate_solution,
-    run_single_mrp_experiment,
-    run_mrp_grid_experiment,
-    run_single_acvmrp_experiment,
-    run_acvmrp_grid_experiment,
 )
 from sparow.conf_intervals.evaluate_true_optimality_gap import (
     TrueOptimalityGapEvaluator,
@@ -296,120 +292,3 @@ def test_mrp_run_reproducibility(advanced_model):
         results1["sampled_indices_by_replication"]
         == results2["sampled_indices_by_replication"]
     )
-
-
-# ===========================================================================
-# Reproducibility of grid experiments and single runs from sparow.ci.cli
-# ===========================================================================
-
-
-def test_grid_experiment_reproducibility_same_candidate_and_mrp_seed(tmp_path):
-    """
-    Running the grid experiment twice with the same candidate seed and MRP seed
-    should give identical xhat, true gap, and row-by-row grid results.
-    """
-    output_csv_1 = tmp_path / "results1.csv"
-    output_csv_2 = tmp_path / "results2.csv"
-    xhat_file_1 = tmp_path / "xhat1.npy"
-    xhat_file_2 = tmp_path / "xhat2.npy"
-
-    kwargs = dict(
-        model_module_name="sparow.sp.examples.farmers.MRPfarmers",
-        model_name="Advanced",
-        solver_name="highs",
-        candidate_scen_count=5,
-        candidate_seed=12345,
-        candidate_with_replacement=True,
-        alpha=0.05,
-        mrp_seed=678,
-        mrp_with_replacement=True,
-        m_values=[5, 10],
-        n_values=[200, 100],
-        use_existing_xhat=False,
-        use_integer=False,
-        solver_options=None,
-        verbose=False,
-    )
-
-    res1 = run_mrp_grid_experiment(
-        xhat_file=str(xhat_file_1),
-        output_csv=str(output_csv_1),
-        **kwargs,
-    )
-
-    res2 = run_mrp_grid_experiment(
-        xhat_file=str(xhat_file_2),
-        output_csv=str(output_csv_2),
-        **kwargs,
-    )
-
-    assert res1["xhat"] == res2["xhat"]
-    assert res1["candidate_ef_objective"] == res2["candidate_ef_objective"]
-    assert res1["true_optimal_value"] == res2["true_optimal_value"]
-    assert res1["candidate_true_objective"] == res2["candidate_true_objective"]
-    assert res1["true_gap"] == res2["true_gap"]
-    assert res1["rows"] == res2["rows"]
-
-
-def test_single_run_reproducibility_same_mrp_seed():
-    """
-    A single MRP run should be reproducible when the MRP seed is fixed.
-    """
-    candidate_model = get_sp_model_for_uq(
-        model_name="Advanced",
-        use_integer=False,
-        seed=12345,
-        with_replacement=True,
-    )
-    xhat, _ = build_candidate_solution(
-        model=candidate_model,
-        candidate_scen_count=5,
-        solver_name="highs",
-    )
-
-    model = get_sp_model_for_uq(
-        model_name="Advanced",
-        use_integer=False,
-        seed=678,
-        with_replacement=True,
-    )
-
-    res1 = run_single_mrp_experiment(
-        model=model,
-        xhat=xhat,
-        n=100,
-        m=10,
-        alpha=0.05,
-        seed=678,
-        with_replacement=True,
-        solver_name="highs",
-        solver_options=None,
-        verbose=False,
-    )
-
-    model2 = get_sp_model_for_uq(
-        model_name="Advanced",
-        use_integer=False,
-        seed=678,
-        with_replacement=True,
-    )
-
-    res2 = run_single_mrp_experiment(
-        model=model2,
-        xhat=xhat,
-        n=100,
-        m=10,
-        alpha=0.05,
-        seed=678,
-        with_replacement=True,
-        solver_name="highs",
-        solver_options=None,
-        verbose=False,
-    )
-
-    assert res1["point_estimate"] == res2["point_estimate"]
-    assert res1["sample_variance"] == res2["sample_variance"]
-    assert res1["sample_std"] == res2["sample_std"]
-    assert res1["half_width"] == res2["half_width"]
-    assert res1["ci_upper"] == res2["ci_upper"]
-    assert np.allclose(res1["replication_values"], res2["replication_values"])

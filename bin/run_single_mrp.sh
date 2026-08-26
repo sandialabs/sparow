@@ -1,38 +1,81 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# For a single parameter configuration, run single-fidelity standard MRP
+# Results are displayed in the terminal, not written to file, for quick checks
+
 # ==========================================================
 # User settings
 # ==========================================================
 
+# Python module that defines: get_sp_model_for_uq(...) 
 MODEL_MODULE="sparow_examples.farmers.MRPfarmers"
+
+# Optional model name passed into either get_sp_model_for_uq(...) or get_model_ensemble_for_uq(...)
 MODEL_NAME="Advanced"
+
+# Concrete low-fidelity model choice, if the example module supports different options for the LF model
 LF_MODEL_TYPE="classic"
+
+# Solver used by SPAROW for all Sample Average Approximation (SAA) solves and xhat evaluations
 SOLVER="gurobi_direct"
+
+# If true, print detailed progress/timing information to stdout/log
 VERBOSE="true"
 
-# Candidate-solution generation (if you don't want to use existing file)
-CANDIDATE_SCEN_COUNT=5
-CANDIDATE_SEED=12345
-CANDIDATE_WITH_REPLACEMENT="false"
+# -----------------------------------------------------------------------------
+# Candidate-solution generation
+# -----------------------------------------------------------------------------
 
-# If you want to use existing candidate solution, already written to file
+# If false, the script generates a new candidate xhat by solving one SAA on a
+# sampled scenario batch of size CANDIDATE_SCEN_COUNT using CANDIDATE_SEED.
+# If true, the script loads an existing xhat from XHAT_FILE.
 USE_EXISTING_XHAT="false"
 
-# MRP confidence interval settings
+# Number of sampled scenarios used to generate a new candidate xhat
+CANDIDATE_SCEN_COUNT=5
+
+# Seed used only for candidate-solution generation sampling
+CANDIDATE_SEED=12345
+
+# Whether candidate-generation sampling should be with replacement or without
+# replacement from the finite scenario population
+CANDIDATE_WITH_REPLACEMENT="false"
+
+# Path to candidate solution file (.npy dictionary). If USE_EXISTING_XHAT=false,
+# this file will be created.
+XHAT_FILE="farmer_candidate_xhat_cand${CANDIDATE_SCEN_COUNT}_seed${CANDIDATE_SEED}.npy"
+
+# -----------------------------------------------------------------------------
+# Main experiment controls
+# -----------------------------------------------------------------------------
+
+# Significance level; confidence level is 1 - ALPHA
 ALPHA=0.05
+
+# Base seed used for the main budgeted experiment workflow
 MRP_SEED=678
+
+# Whether replication batches used in the main workflow are sampled with
+# replacement from the finite scenario population
 MRP_WITH_REPLACEMENT="true"
 
-# Single-run settings
-XHAT_FILE="farmer_candidate_xhat_cand${CANDIDATE_SCEN_COUNT}_seed${CANDIDATE_SEED}.npy"
+# ------------------------------------------------------------------------------------
+# Single-run Settings (i.e. - single parameter configuration, not a parameter sweep)
+# ------------------------------------------------------------------------------------
+
+# Each replication-level estimator uses n iid sampled scenarios.
 N=500
+
+# Number of replications to run
 M=10
+
+# If true, compute the exact finite-population true gap once for benchmarking
 COMPUTE_TRUE_GAP="true"
 
-# ==========================================================
-# Convert replacement choice into CLI flag
-# ==========================================================
+# =============================================================================
+# Convert booleans into CLI flags
+# =============================================================================
 
 VERBOSE_FLAG=""
 if [ "${VERBOSE}" = "true" ]; then
@@ -92,7 +135,7 @@ echo "candidate_scen_count: ${CANDIDATE_SCEN_COUNT}"
 echo "n: ${N}"
 echo "m: ${M}"
 
-python -m sparow.conf_intervals.cli \
+python -m run_grid_experiments \
     --model-module "${MODEL_MODULE}" \
     --model-name "${MODEL_NAME}" \
     --lf-model-type "${LF_MODEL_TYPE}" \

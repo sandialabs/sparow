@@ -1,40 +1,84 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# For a single parameter configuration, run multifidelity ACV-MRP
+# Results are displayed in the terminal, not written to file, for quick checks
+
 # ==========================================================
 # User settings
 # ==========================================================
 
-MODEL_MODULE="sparow_examples.uq_opf.uq_opf"
+# Python module that defines: get_model_ensemble_for_uq(...)
+MODEL_MODULE="sparow_examples.uq_facilityloc.uq_discrete_facilityloc"
+
+# Optional model name passed into get_model_ensemble_for_uq(...)
 MODEL_NAME="HF"
-LF_MODEL_TYPE="dcopf"
-SOLVER="ipopt"
+
+# Concrete low-fidelity model choice, if the example module supports different options for the LF model
+LF_MODEL_TYPE=""
+
+# Solver used by SPAROW for all Sample Average Approximation (SAA) solves and xhat evaluations
+SOLVER="gurobi_direct"
+
+# If true, print detailed progress/timing information to stdout/log
 VERBOSE="true"
 
-# Candidate-solution generation (if you don't want to use existing file)
+# -----------------------------------------------------------------------------
+# Candidate-solution generation
+# -----------------------------------------------------------------------------
+
+# If false, the script generates a new candidate xhat by solving one SAA on a
+# sampled scenario batch of size CANDIDATE_SCEN_COUNT using CANDIDATE_SEED.
+# If true, the script loads an existing xhat from XHAT_FILE.
+USE_EXISTING_XHAT="true"
+
+# Number of sampled scenarios used to generate a new candidate xhat
 CANDIDATE_SCEN_COUNT=1
+
+# Seed used only for candidate-solution generation sampling
 CANDIDATE_SEED=123
+
+# Whether candidate-generation sampling should be with replacement or without
+# replacement from the finite scenario population
 CANDIDATE_WITH_REPLACEMENT="false"
 
-# If you want to use existing candidate solution, already written to file
-USE_EXISTING_XHAT="false"
+# Path to candidate solution file (.npy dictionary). If USE_EXISTING_XHAT=false,
+# this file will be created.
+XHAT_FILE="../../sparow_examples/sparow_examples/uq_facilityloc/manually_created_suboptimal_xhat.npy"
 
-# MRP confidence interval settings
+# -----------------------------------------------------------------------------
+# Main experiment controls
+# -----------------------------------------------------------------------------
+
+# Significance level; confidence level is 1 - ALPHA
 ALPHA=0.05
+
+# Base seed used for the main budgeted experiment workflow
 MRP_SEED=678
+
+# Whether replication batches used in the main workflow are sampled with
+# replacement from the finite scenario population
 MRP_WITH_REPLACEMENT="true"
 
-# Single-run settings
-XHAT_FILE="../../sparow_examples/sparow_examples/uq_opf/first_stage_candidate_xhat.npy"
-N=20
-M_PAIRED=5
-M_LF_ONLY=5
-COMPUTE_TRUE_GAP="true"
-ACV_MRP="true"
+# ------------------------------------------------------------------------------------
+# Single-run Settings (i.e. - single parameter configuration, not a parameter sweep)
+# ------------------------------------------------------------------------------------
 
-# ==========================================================
-# Convert replacement choice into CLI flag
-# ==========================================================
+# Each replication-level estimator uses n iid sampled scenarios.
+N=100 
+
+# Number of paired replications (HF and LF model evals on same sampled scenario batch)
+M_PAIRED=30 
+
+# Number of additional LF model replications
+M_LF_ONLY=10 
+
+# If true, compute the exact finite-population true gap once for benchmarking
+COMPUTE_TRUE_GAP="true" 
+
+# =============================================================================
+# Convert booleans into CLI flags
+# =============================================================================
 
 VERBOSE_FLAG=""
 if [ "${VERBOSE}" = "true" ]; then
@@ -86,18 +130,7 @@ else
     exit 1
 fi
 
-ACV_FLAG=""
-if [ "${ACV_MRP}" = "true" ]; then
-    ACV_FLAG="--acv-mrp"
-elif [ "${ACV_MRP}" = "false" ]; then
-    ACV_FLAG=""
-else
-    echo "Error: ACV_MRP must be 'true' or 'false'"
-    exit 1
-fi
-
 echo "=== Running single ACV-MRP experiment ==="
-echo "ACV-MRP flag: ${ACV_FLAG}"
 echo "Candidate sampling flag: ${CANDIDATE_FLAG}"
 echo "MRP sampling flag: ${MRP_FLAG}"
 echo "xhat file: ${XHAT_FILE}"
@@ -106,7 +139,7 @@ echo "n: ${N}"
 echo "m: ${M_PAIRED}"
 echo "M: ${M_LF_ONLY}"
 
-python -m sparow.conf_intervals.cli \
+python -m run_grid_experiments \
     --model-module "${MODEL_MODULE}" \
     --model-name "${MODEL_NAME}" \
     --lf-model-type "${LF_MODEL_TYPE}" \
@@ -124,6 +157,6 @@ python -m sparow.conf_intervals.cli \
     --m "${M_PAIRED}" \
     --M "${M_LF_ONLY}" \
     ${TRUE_GAP_FLAG} \
-    ${ACV_FLAG}
+    "--acv-mrp"
 
 echo "Single ACV-MRP experiment complete."

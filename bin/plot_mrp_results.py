@@ -28,7 +28,7 @@ output_dir = csv_path.parent / "plots"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 # ----------------------------------------------------------
-# Point estimator for Gap vs n
+# Point estimate for Gap vs n
 # ----------------------------------------------------------
 plt.figure()
 for m, sub in df.groupby("m"):
@@ -47,8 +47,8 @@ plt.axhline(
 )
 plt.grid()
 plt.xlabel(r"Sample size $n$")
-plt.ylabel(r"Point estimator $\bar{F}_n^m(\hat{x})$")
-plt.title(r"Point estimator $\bar{F}_n^m(\hat{x})$ versus sample size $n$")
+plt.ylabel(r"Point estimate $\bar{F}_n^m(\hat{x})$")
+plt.title(r"Point estimate $\bar{F}_n^m(\hat{x})$ versus sample size $n$")
 plt.legend()
 plt.tight_layout()
 plt.savefig(output_dir / "gap_estimate_vs_n.png", dpi=200)
@@ -71,7 +71,7 @@ plt.axhline(
 )
 plt.grid()
 plt.xlabel(r"Sample size $n$")
-plt.ylabel(r"Upper CI bound $\bar{F}_n^m(\hat{x}) + \epsilon_f$")
+plt.ylabel(r"Upper confidence bound $\bar{F}_n^m(\hat{x}) + \epsilon_f$")
 plt.title(r"Upper confidence bound $\bar{F}_n^m(\hat{x}) + \epsilon_f$ versus $n$")
 plt.legend()
 plt.tight_layout()
@@ -171,7 +171,7 @@ for m, sub in df.groupby("m"):
         sub["n"],
         sub["point_estimate"],
         marker="o",
-        label=rf"Point estimator $\bar{{F}}_n^m(\hat{{x}})$",
+        label=rf"Point estimate $\bar{{F}}_n^m(\hat{{x}})$",
     )
     plt.plot(
         sub["n"],
@@ -209,7 +209,7 @@ for m, sub in df.groupby("m"):
 
 # ----------------------------------------------------------
 # Absolute error (normalized by true gap)
-#     between point estimator and true optimality gap vs n
+#     between point estimate and true optimality gap vs n
 # ----------------------------------------------------------
 plt.figure()
 for m, sub in df.groupby("m"):
@@ -315,7 +315,7 @@ for m, sub in df.groupby("m"):
             alpha=0.9,
         )
 
-        # Point estimator stays at its actual value
+        # Point estimate stays at its actual value
         ax.plot(
             row["point_estimate"],
             y,
@@ -345,7 +345,7 @@ for m, sub in df.groupby("m"):
     # Add legend handles manually for interval and point estimate
     legend_handles = [
         Line2D([0], [0], color="steelblue", lw=2, label="One-sided confidence interval"),
-        Line2D([0], [0], marker="o", color="navy", lw=0, markersize=7, label=rf"Point estimator $\bar{{F}}_n^m(\hat{{x}})$"),
+        Line2D([0], [0], marker="o", color="navy", lw=0, markersize=7, label=rf"Point estimate $\bar{{F}}_n^m(\hat{{x}})$"),
         Line2D([0], [0], color="black", lw=1.5, linestyle="--", label=rf"True optimality gap $\Delta_f(\hat{{x}})$"),
     ]
     ax.legend(handles=legend_handles, loc="best")
@@ -398,7 +398,7 @@ for n, sub in df.groupby("n"):
             alpha=0.9,
         )
 
-        # Point estimator stays at its actual value
+        # Point estimate stays at its actual value
         ax.plot(
             row["point_estimate"],
             y,
@@ -427,7 +427,7 @@ for n, sub in df.groupby("n"):
 
     legend_handles = [
         Line2D([0], [0], color="darkgreen", lw=2, label="One-sided confidence interval"),
-        Line2D([0], [0], marker="o", color="green", lw=0, markersize=7, label=rf"Point estimator $\bar{{F}}_n^m(\hat{{x}})$"),
+        Line2D([0], [0], marker="o", color="green", lw=0, markersize=7, label=rf"Point estimate $\bar{{F}}_n^m(\hat{{x}})$"),
         Line2D([0], [0], color="black", lw=1.5, linestyle="--", label=rf"True optimality gap $\Delta_f(\hat{{x}})$"),
     ]
     ax.legend(handles=legend_handles, loc="best")

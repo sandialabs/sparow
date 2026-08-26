@@ -20,7 +20,8 @@ To make a new stochastic programming instance compatible with the confidence int
 
 - `get_sp_model_for_uq(...)` for **single-fidelity** workflows. Returns one model wrapper satisfying `StochasticProgramModelProtocol`, for use with StandardMRP and exact finite-population gap evaluation.
 
-- `get_model_ensemble_for_uq(...)` for **multifidelity** workflows. Returns one ensemble satisfying `ModelEnsembleProtocol`, for use with ACVMRP and PyApprox integration.
+- `get_model_ensemble_for_uq(...)` for **multifidelity** workflows. Returns one ensemble satisfying `ModelEnsembleProtocol`, for use with `ACVMRP` and PyApprox integration. The ensemble’s high-fidelity model can also be passed directly to `StandardMRP`, without separately defining `get_sp_model_for_uq(...)`.
+
 
 These should return objects compatible with the internal protocols defined in `protocols.py`.
 
