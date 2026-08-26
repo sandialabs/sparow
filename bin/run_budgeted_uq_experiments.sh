@@ -61,7 +61,7 @@ XHAT_FILE="../../sparow_examples/sparow_examples/uq_opf/candidate_xhat.npy"
 ALPHA=0.05
 
 # Base seed used for the main budgeted experiment workflow
-MAIN_SEED=678
+MAIN_SEED="${MAIN_SEED:-678}"
 
 # Whether replication batches used in the main workflow are sampled with
 # replacement from the finite scenario population
@@ -69,19 +69,19 @@ MRP_WITH_REPLACEMENT="true"
 
 # Number of macro-replications used to estimate empirical performance metrics
 # such as coverage, average upper bound, and realized improvement probability
-MACRO_REPLICATIONS=3
+MACRO_REPLICATIONS="${MACRO_REPLICATIONS:-3}"
 
 # List of replication batch sizes n to test. Each replication-level estimator
 # uses n iid sampled scenarios.
-N_VALUES="5"
+N_VALUES="${N_VALUES:-5,10}"
 
 # List of total wall-clock budgets to test. PyApprox uses these budgets to
 # recommend multifidelity allocations (m, M).
-BUDGET_VALUES="200,220"
+BUDGET_VALUES="${BUDGET_VALUES:-220,250}"
 
 # Number of shared pilot samples used to estimate covariance/correlation and
 # model costs before allocating the budget
-N_PILOT=10
+N_PILOT="${N_PILOT:-10}"
 
 # If true, the total budget includes the pilot-study cost.
 # If false, the pilot study is treated as outside the reported budget.
@@ -109,14 +109,20 @@ LF_COST_DELAY_SECONDS=0.0
 # Output files
 # -----------------------------------------------------------------------------
 
+# Ensure every independent run gets distinct filenames, then aggregate afterwards
+
+# Use safe strings so each parallel sub-sweep writes unique files.
+SAFE_N_VALUES="${N_VALUES//,/__}"
+SAFE_BUDGET_VALUES="${BUDGET_VALUES//,/__}"
+
 # Summary CSV aggregated over macro-replications
-OUTPUT_SUMMARY_CSV="budgeted_uq_summary.csv"
+OUTPUT_SUMMARY_CSV="${OUTPUT_SUMMARY_CSV:-budgeted_uq_summary__n_${SAFE_N_VALUES}__B_${SAFE_BUDGET_VALUES}.csv}"
 
 # Per-macro-replication CSV
-OUTPUT_MACRO_CSV="budgeted_uq_macrorep.csv"
+OUTPUT_MACRO_CSV="${OUTPUT_MACRO_CSV:-budgeted_uq_macrorep__n_${SAFE_N_VALUES}__B_${SAFE_BUDGET_VALUES}.csv}"
 
 # Optional debug JSON
-DEBUG_JSON_FILE="budgeted_uq_debug.json"
+DEBUG_JSON_FILE="${DEBUG_JSON_FILE:-budgeted_uq_debug__n_${SAFE_N_VALUES}__B_${SAFE_BUDGET_VALUES}.json}"
 
 # =============================================================================
 # Convert booleans into CLI flags
@@ -206,6 +212,9 @@ echo "Macro replications: ${MACRO_REPLICATIONS}"
 echo "n values: ${N_VALUES}"
 echo "Budget values: ${BUDGET_VALUES}"
 echo "Pilot samples: ${N_PILOT}"
+
+echo "Resolved OUTPUT_SUMMARY_CSV: ${OUTPUT_SUMMARY_CSV}"
+echo "Resolved OUTPUT_MACRO_CSV: ${OUTPUT_MACRO_CSV}"
 
 python -m run_budgeted_uq_experiments \
     --model-module "${MODEL_MODULE}" \
