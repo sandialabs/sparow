@@ -12,9 +12,9 @@ creates a collection of plots:
   - correlation / alpha diagnostics,
   - horizontal-interval plots with the true gap shown as a black dashed line.
 
-Usage
+Example Usage
 -----
-python plot_budgeted_uq_results.py path/to/combined_budgeted_uq_summary.csv
+python plot_budgeted_uq_results.py path/to/budgeted_uq_summary.csv
 """
 
 from __future__ import annotations
