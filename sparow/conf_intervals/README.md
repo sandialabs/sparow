@@ -66,7 +66,7 @@ results = mrp.run(xhat=xhat)
 print(results)
 ```
 
-## Minimal usage: ACV-MRP
+## Minimal usage: ACVMRP
 
 ```python
 from sparow.conf_intervals.options import UQOptions
@@ -158,7 +158,15 @@ In the standard MRP setup, the Monte Carlo error in the sample mean shrinks at t
 
 ## PyApprox Integration
 
-The codebase also includes a PyApprox [Jakeman (2023)] integration for using multifidelity allocation tools to suggest high-fidelity and low-fidelity sample counts, which can then be translated into ACV-MRP parameters. This helps allocate finite computational budget between high-fidelity model evaluations and low-fidelity model evaluations, such that we achieve maximum variance reduction for the optimality gap estimator within a pre-specified, finite computational budget. If you're interested in this, you will also need to install PyApprox, and note that, as of now, it requires Python >= 3.11: https://github.com/sandialabs/pyapprox/ 
+The codebase also includes a PyApprox [Jakeman (2023)] integration for using multifidelity allocation tools to suggest high-fidelity and low-fidelity sample counts, which can then be translated into ACV-MRP parameters. This helps allocate finite computational budget between high-fidelity model evaluations and low-fidelity model evaluations, such that we achieve maximum variance reduction for the optimality gap estimator within a pre-specified, finite computational budget. 
+
+If you're interested in this, you will also need to install PyApprox, and note that, as of now, it requires Python >= 3.11: https://github.com/sandialabs/pyapprox/ 
+
+Running the following two commands should be sufficient:
+```bash
+pip install pyapprox
+pip install pyapprox-benchmarks
+```
 
 ## References
 
