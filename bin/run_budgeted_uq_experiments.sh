@@ -22,7 +22,7 @@ MODEL_MODULE="sparow_examples.uq_opf.uq_opf"
 MODEL_NAME="HF"
 
 # Concrete low-fidelity model choice, if the example module supports different options for the LF model
-LF_MODEL_TYPE="dcopf"
+LF_MODEL_TYPE="copperplate"
 
 # Solver used by SPAROW for all Sample Average Approximation (SAA) solves and xhat evaluations
 SOLVER="ipopt"
@@ -61,7 +61,7 @@ XHAT_FILE="../../sparow_examples/sparow_examples/uq_opf/candidate_xhat.npy"
 ALPHA=0.05
 
 # Base seed used for the main budgeted experiment workflow
-MAIN_SEED=2468
+MAIN_SEED=678
 
 # Whether replication batches used in the main workflow are sampled with
 # replacement from the finite scenario population
@@ -69,15 +69,15 @@ MRP_WITH_REPLACEMENT="true"
 
 # Number of macro-replications used to estimate empirical performance metrics
 # such as coverage, average upper bound, and realized improvement probability
-MACRO_REPLICATIONS=3
+MACRO_REPLICATIONS=10
 
 # List of replication batch sizes n to test. Each replication-level estimator
 # uses n iid sampled scenarios.
-N_VALUES="5"
+N_VALUES="20,25,30"
 
 # List of total wall-clock budgets to test. PyApprox uses these budgets to
 # recommend multifidelity allocations (m, M).
-BUDGET_VALUES="200,220"
+BUDGET_VALUES="300,360,420"
 
 # Number of shared pilot samples used to estimate covariance/correlation and
 # model costs before allocating the budget
