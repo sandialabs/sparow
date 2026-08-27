@@ -3,6 +3,7 @@ Helpers for PyApprox integration with SPAROW confidence-interval code.
 These functions enable numerical experiments and parameter sweeps
 that consider computational budget.
 """
+
 import numpy as np
 import math
 import time
@@ -48,10 +49,10 @@ def run_pyapprox_pilot(
       1. estimate replication-level evaluation costs (wall-clock time) for each model,
       2. estimate correlation between the models' gap estimators
 
-    In this workflow, one PyApprox sample corresponds to one full scenario batch 
-    (i.e. - one replication in the MRP / ACV-MRP sense). 
-    
-    For each sampled batch (i.e. - each PyApprox sample), the high-fidelity 
+    In this workflow, one PyApprox sample corresponds to one full scenario batch
+    (i.e. - one replication in the MRP / ACV-MRP sense).
+
+    For each sampled batch (i.e. - each PyApprox sample), the high-fidelity
     and low-fidelity models return one scalar replication-level optimality-gap estimate.
 
     Parameters
@@ -141,7 +142,7 @@ def run_pyapprox_pilot(
     # of the replication-level outputs. PyApprox uses the pilot covariance of
     # these outputs to construct sample-allocation rules.
     stat = MultiOutputMean(models[0].nqoi(), bkd)
-    cov_pilot, = stat.compute_pilot_quantities(vals_pilot)
+    (cov_pilot,) = stat.compute_pilot_quantities(vals_pilot)
     stat.set_pilot_quantities(cov_pilot)
 
     # In the 2-model setting, this is the empirical analogue of \rho_{fg}.
@@ -200,12 +201,12 @@ def allocate_pyapprox_budget(
     Parameters
     ----------
     pilot_info : dict
-        Output of `run_pyapprox_pilot(...)`. Must contain the 
+        Output of `run_pyapprox_pilot(...)`. Must contain the
         estimated model costs and covariance information needed by PyApprox.
     total_budget : float
         Total available wall-clock budget for the experiment.
     n_pilot : int
-        Number of pilot replications previously used. Used only to compute the total 
+        Number of pilot replications previously used. Used only to compute the total
         pilot cost, if we want the pilot cost to be charged against the reported budget.
     count_pilot_cost_against_budget : bool
         If True, subtract the estimated pilot-study cost from `total_budget`
@@ -241,7 +242,11 @@ def allocate_pyapprox_budget(
 
     # Either charge the pilot cost against the total
     # budget or treat it as external setup cost.
-    remaining_budget = total_budget - estimated_pilot_cost if count_pilot_cost_against_budget else total_budget
+    remaining_budget = (
+        total_budget - estimated_pilot_cost
+        if count_pilot_cost_against_budget
+        else total_budget
+    )
 
     if remaining_budget <= 0:
         return {
@@ -331,7 +336,7 @@ def hf_replications_for_same_budget(
     total_budget : float
         Total wall-clock budget available for the experiment.
     n_pilot : int
-        Number of pilot replications previously used. Used only to compute the total 
+        Number of pilot replications previously used. Used only to compute the total
         pilot cost, if we want the pilot cost to be charged against the reported budget.
     count_pilot_cost_against_budget : bool
         If True, subtract the estimated pilot-study cost from `total_budget`
@@ -373,7 +378,11 @@ def hf_replications_for_same_budget(
 
     # Either charge the pilot cost against the total
     # budget or treat it as external setup cost.
-    usable_budget = total_budget - estimated_pilot_cost if count_pilot_cost_against_budget else total_budget
+    usable_budget = (
+        total_budget - estimated_pilot_cost
+        if count_pilot_cost_against_budget
+        else total_budget
+    )
 
     hf_cost = float(costs_np[0])
 
@@ -406,10 +415,14 @@ def hf_replications_for_same_budget(
     mc_fitted = MCAllocator(mc_est).allocate(usable_budget)
 
     # PyApprox returns the fitted number of HF samples as a length-1 array.
-    hf_pyapprox_count = int(np.asarray(mc_fitted.nsamples_per_model()).astype(int).flatten()[0])
+    hf_pyapprox_count = int(
+        np.asarray(mc_fitted.nsamples_per_model()).astype(int).flatten()[0]
+    )
 
     hf_predicted_mc_var = float(mc_fitted.covariance()[0, 0])
-    hf_predicted_mc_std = math.sqrt(hf_predicted_mc_var) if hf_predicted_mc_var >= 0 else float("nan")
+    hf_predicted_mc_std = (
+        math.sqrt(hf_predicted_mc_var) if hf_predicted_mc_var >= 0 else float("nan")
+    )
 
     if verbose:
         log(

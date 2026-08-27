@@ -101,6 +101,7 @@ def parse_args():
 # Core MRP runners
 # ================================================================================
 
+
 def run_mrp_grid_experiment(
     model_module_name,
     model_name,
@@ -133,7 +134,7 @@ def run_mrp_grid_experiment(
     n_small < n_large  ==>  sample(n_small) is a subset of sample(n_large)
     """
     solver_options = parse_solver_options(solver_options)
-    t0 = time.time() # reset timer at start of function
+    t0 = time.time()  # reset timer at start of function
 
     # Model used for MRP replications
     model = load_sp_model_for_uq(
@@ -302,7 +303,7 @@ def run_acvmrp_grid_experiment(
     Run a full ACV-MRP grid experiment over (m, n, M) for one fixed candidate xhat.
     """
     solver_options = parse_solver_options(solver_options)
-    t0 = time.time() # reset timer at start of function
+    t0 = time.time()  # reset timer at start of function
 
     ensemble = load_model_ensemble_for_uq(
         model_module_name=model_module_name,
@@ -340,8 +341,8 @@ def run_acvmrp_grid_experiment(
         t0=t0,
     )
     if verbose:
-       print(f"xhat: {xhat}")
-       print(f"Candidate EF objective: {candidate_ef_objective}")
+        print(f"xhat: {xhat}")
+        print(f"Candidate EF objective: {candidate_ef_objective}")
 
     # ------------------------------------------------------
     # Exact true gap
@@ -473,8 +474,7 @@ def main():
     # Parse command-line arguments
     # ----------------------------------------------------------------------
     args = parse_args()
-    t0 = time.time() # reset timer at start of the run
-
+    t0 = time.time()  # reset timer at start of the run
 
     if args.verbose:
         print("Parsed CLI arguments:")
@@ -485,7 +485,9 @@ def main():
     # Interpret candidate-generation sampling flags
     # ----------------------------------------------------------------------
     if args.candidate_with_replacement and args.candidate_without_replacement:
-        raise ValueError("Choose only one of --candidate-with-replacement or --candidate-without-replacement.")
+        raise ValueError(
+            "Choose only one of --candidate-with-replacement or --candidate-without-replacement."
+        )
 
     candidate_with_replacement = True
     if args.candidate_without_replacement:
@@ -495,7 +497,9 @@ def main():
     # Interpret replication sampling flags
     # ----------------------------------------------------------------------
     if args.mrp_with_replacement and args.mrp_without_replacement:
-        raise ValueError("Choose only one of --mrp-with-replacement or --mrp-without-replacement.")
+        raise ValueError(
+            "Choose only one of --mrp-with-replacement or --mrp-without-replacement."
+        )
 
     mrp_with_replacement = True
     if args.mrp_without_replacement:
@@ -510,9 +514,13 @@ def main():
         # Validate required grid-experiment arguments
         # --------------------------------------------------
         if args.candidate_scen_count is None:
-            raise ValueError("--candidate-scen-count is required in --grid-experiment mode.")
+            raise ValueError(
+                "--candidate-scen-count is required in --grid-experiment mode."
+            )
         if args.m_values is None or args.n_values is None:
-            raise ValueError("--m-values and --n-values are required in --grid-experiment mode.")
+            raise ValueError(
+                "--m-values and --n-values are required in --grid-experiment mode."
+            )
         if args.output_csv is None:
             raise ValueError("--output-csv is required in --grid-experiment mode.")
 

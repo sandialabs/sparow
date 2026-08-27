@@ -38,11 +38,10 @@ from sparow.conf_intervals.plotting_helpers import (
     finalize_interval_plot,
     make_standard_figure,
     make_interval_figure,
-
     COLOR_ACV,
     COLOR_HF_BUDGET,
     COLOR_HF_PAIRED,
-    COLOR_TRUE
+    COLOR_TRUE,
 )
 
 csv_path = Path(sys.argv[1]).resolve()
@@ -113,7 +112,9 @@ for n, sub in df.groupby("n"):
         ylabel="Empirical coverage probability",
         title=rf"Empirical coverage versus budget for fixed replication batch size $n={n}$ ($R={R}$ macro-replications)",
     )
-    fig.savefig(output_dir / f"coverage_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"coverage_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight"
+    )
     plt.close(fig)
 
     # -------------------------------------------------------------------------
@@ -155,7 +156,9 @@ for n, sub in df.groupby("n"):
         ylabel="Average one-sided upper confidence bound",
         title=rf"Average upper confidence bound versus budget for fixed $n={n}$ ($R={R}$ macro-replications)",
     )
-    fig.savefig(output_dir / f"avg_ci_upper_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"avg_ci_upper_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight"
+    )
     plt.close(fig)
 
     # -------------------------------------------------------------------------
@@ -197,7 +200,11 @@ for n, sub in df.groupby("n"):
         ylabel="Average point estimate",
         title=rf"Average point estimate versus budget for fixed $n={n}$ ($R={R}$ macro-replications)",
     )
-    fig.savefig(output_dir / f"avg_point_estimate_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"avg_point_estimate_vs_budget_n_{n}.png",
+        dpi=200,
+        bbox_inches="tight",
+    )
     plt.close(fig)
 
     # -------------------------------------------------------------------------
@@ -233,7 +240,11 @@ for n, sub in df.groupby("n"):
         ylabel="Average one-sided margin of error",
         title=rf"Average margin of error versus budget for fixed $n={n}$ ($R={R}$ macro-replications)",
     )
-    fig.savefig(output_dir / f"avg_margin_of_error_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"avg_margin_of_error_vs_budget_n_{n}.png",
+        dpi=200,
+        bbox_inches="tight",
+    )
     plt.close(fig)
 
     # -------------------------------------------------------------------------
@@ -262,7 +273,11 @@ for n, sub in df.groupby("n"):
         ylabel="Probability of realized improvement",
         title=rf"Probability Multifidelity yields a smaller realized upper bound, fixed $n={n}$ ($R={R}$ macro-replications)",
     )
-    fig.savefig(output_dir / f"prob_improvement_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"prob_improvement_vs_budget_n_{n}.png",
+        dpi=200,
+        bbox_inches="tight",
+    )
     plt.close(fig)
 
     # -------------------------------------------------------------------------
@@ -292,7 +307,11 @@ for n, sub in df.groupby("n"):
         ylabel="Empirical variance ratio",
         title=rf"Empirical relative efficiency versus budget for fixed $n={n}$ ($R={R}$ macro-replications)",
     )
-    fig.savefig(output_dir / f"relative_efficiency_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"relative_efficiency_vs_budget_n_{n}.png",
+        dpi=200,
+        bbox_inches="tight",
+    )
     plt.close(fig)
 
     # -------------------------------------------------------------------------
@@ -328,7 +347,11 @@ for n, sub in df.groupby("n"):
         ylabel="Empirical variance across macro-replications",
         title=rf"Empirical variance of point estimates versus budget for fixed $n={n}$ ($R={R}$ macro-replications)",
     )
-    fig.savefig(output_dir / f"empirical_variance_point_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"empirical_variance_point_vs_budget_n_{n}.png",
+        dpi=200,
+        bbox_inches="tight",
+    )
     plt.close(fig)
 
     # -------------------------------------------------------------------------
@@ -365,7 +388,11 @@ for n, sub in df.groupby("n"):
         ylabel="Average replication count",
         title=rf"Budget-aware allocation counts versus budget for fixed $n={n}$ ($R={R}$ macro-replications)",
     )
-    fig.savefig(output_dir / f"allocation_counts_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"allocation_counts_vs_budget_n_{n}.png",
+        dpi=200,
+        bbox_inches="tight",
+    )
     plt.close(fig)
 
     # -------------------------------------------------------------------------
@@ -394,7 +421,9 @@ for n, sub in df.groupby("n"):
         ylabel="Estimated correlation",
         title=rf"Estimated HF/LF correlation versus budget for fixed $n={n}$ ($R={R}$ macro-replications)",
     )
-    fig.savefig(output_dir / f"correlation_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"correlation_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight"
+    )
     plt.close(fig)
 
     # -------------------------------------------------------------------------
@@ -416,7 +445,9 @@ for n, sub in df.groupby("n"):
         ylabel="Average estimated control-variate coefficient",
         title=rf"Average estimated control-variate coefficient versus budget for fixed $n={n}$ ($R={R}$ macro-replications)",
     )
-    fig.savefig(output_dir / f"alpha_hat_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"alpha_hat_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight"
+    )
     plt.close(fig)
 
     # -------------------------------------------------------------------------
@@ -438,7 +469,11 @@ for n, sub in df.groupby("n"):
         ylabel="Predicted standard deviation",
         title=rf"PyApprox-predicted estimator standard deviation versus budget for fixed $n={n}$ ($R={R}$ macro-replications)",
     )
-    fig.savefig(output_dir / f"predicted_pyapprox_std_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"predicted_pyapprox_std_vs_budget_n_{n}.png",
+        dpi=200,
+        bbox_inches="tight",
+    )
     plt.close(fig)
 
     # -------------------------------------------------------------------------
@@ -474,7 +509,11 @@ for n, sub in df.groupby("n"):
         ylabel="Average elapsed runtime (seconds)",
         title=rf"Observed runtime profiling versus budget for fixed $n={n}$ ($R={R}$ macro-replications)",
     )
-    fig.savefig(output_dir / f"elapsed_runtime_vs_budget_n_{n}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"elapsed_runtime_vs_budget_n_{n}.png",
+        dpi=200,
+        bbox_inches="tight",
+    )
     plt.close(fig)
 
 
@@ -523,7 +562,11 @@ for budget, sub in df.groupby("budget"):
         ylabel="Average point estimate",
         title=rf"Average point estimate versus replication batch size $n$ for fixed budget={budget} ($R={R}$ macro-replications)",
     )
-    fig.savefig(output_dir / f"avg_point_estimate_vs_n_budget_{budget}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"avg_point_estimate_vs_n_budget_{budget}.png",
+        dpi=200,
+        bbox_inches="tight",
+    )
     plt.close(fig)
 
     # Upper bound versus n
@@ -563,7 +606,11 @@ for budget, sub in df.groupby("budget"):
         ylabel="Average upper confidence bound",
         title=rf"Average upper confidence bound versus replication batch size $n$ for fixed budget={budget} ($R={R}$ macro-replications)",
     )
-    fig.savefig(output_dir / f"avg_ci_upper_vs_n_budget_{budget}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"avg_ci_upper_vs_n_budget_{budget}.png",
+        dpi=200,
+        bbox_inches="tight",
+    )
     plt.close(fig)
 
     # Coverage versus n
@@ -603,7 +650,9 @@ for budget, sub in df.groupby("budget"):
         ylabel="Empirical coverage probability",
         title=rf"Empirical coverage versus replication batch size $n$ for fixed budget={budget} ($R={R}$ macro-replications)",
     )
-    fig.savefig(output_dir / f"coverage_vs_n_budget_{budget}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"coverage_vs_n_budget_{budget}.png", dpi=200, bbox_inches="tight"
+    )
     plt.close(fig)
 
 
@@ -665,14 +714,46 @@ for n, sub in df.groupby("n"):
         )
 
     legend_handles = [
-        Line2D([0], [0], color=COLOR_HF_BUDGET, lw=2, label="HF-only same-total-budget average confidence interval"),
-        Line2D([0], [0], marker="o", color=COLOR_HF_BUDGET, lw=0, markersize=6,
-               label=r"HF-only same-total-budget average point estimate"),
-        Line2D([0], [0], color=COLOR_ACV, lw=2, label="Multifidelity average confidence interval"),
-        Line2D([0], [0], marker="o", color=COLOR_ACV, lw=0, markersize=6,
-               label=r"Multifidelity average point estimate"),
-        Line2D([0], [0], color=COLOR_TRUE, lw=1.5, linestyle="--",
-               label=rf"True optimality gap $\Delta_f(\hat{{x}})$"),
+        Line2D(
+            [0],
+            [0],
+            color=COLOR_HF_BUDGET,
+            lw=2,
+            label="HF-only same-total-budget average confidence interval",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color=COLOR_HF_BUDGET,
+            lw=0,
+            markersize=6,
+            label=r"HF-only same-total-budget average point estimate",
+        ),
+        Line2D(
+            [0],
+            [0],
+            color=COLOR_ACV,
+            lw=2,
+            label="Multifidelity average confidence interval",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color=COLOR_ACV,
+            lw=0,
+            markersize=6,
+            label=r"Multifidelity average point estimate",
+        ),
+        Line2D(
+            [0],
+            [0],
+            color=COLOR_TRUE,
+            lw=1.5,
+            linestyle="--",
+            label=rf"True optimality gap $\Delta_f(\hat{{x}})$",
+        ),
     ]
 
     finalize_interval_plot(
@@ -688,7 +769,11 @@ for n, sub in df.groupby("n"):
         title=rf"Same-total-budget comparison of average one-sided confidence intervals for fixed $n={n}$ ($R={R}$ macro-replications)",
         legend_handles=legend_handles,
     )
-    fig.savefig(output_dir / f"avg_intervals_same_budget_compare_fixed_n_{n}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"avg_intervals_same_budget_compare_fixed_n_{n}.png",
+        dpi=200,
+        bbox_inches="tight",
+    )
     plt.close(fig)
 
     # -------------------------------------------------------------------------
@@ -735,14 +820,46 @@ for n, sub in df.groupby("n"):
         )
 
     legend_handles = [
-        Line2D([0], [0], color=COLOR_HF_PAIRED, lw=2, label=r"HF-only average confidence interval using the same paired count $m$"),
-        Line2D([0], [0], marker="o", color=COLOR_HF_PAIRED, lw=0, markersize=6,
-               label=r"HF-only average point estimate using the same paired count $m$"),
-        Line2D([0], [0], color=COLOR_ACV, lw=2, label="Multifidelity average confidence interval"),
-        Line2D([0], [0], marker="o", color=COLOR_ACV, lw=0, markersize=6,
-               label=r"Multifidelity average point estimate"),
-        Line2D([0], [0], color=COLOR_TRUE, lw=1.5, linestyle="--",
-               label=rf"True optimality gap $\Delta_f(\hat{{x}})$"),
+        Line2D(
+            [0],
+            [0],
+            color=COLOR_HF_PAIRED,
+            lw=2,
+            label=r"HF-only average confidence interval using the same paired count $m$",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color=COLOR_HF_PAIRED,
+            lw=0,
+            markersize=6,
+            label=r"HF-only average point estimate using the same paired count $m$",
+        ),
+        Line2D(
+            [0],
+            [0],
+            color=COLOR_ACV,
+            lw=2,
+            label="Multifidelity average confidence interval",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color=COLOR_ACV,
+            lw=0,
+            markersize=6,
+            label=r"Multifidelity average point estimate",
+        ),
+        Line2D(
+            [0],
+            [0],
+            color=COLOR_TRUE,
+            lw=1.5,
+            linestyle="--",
+            label=rf"True optimality gap $\Delta_f(\hat{{x}})$",
+        ),
     ]
 
     finalize_interval_plot(
@@ -758,7 +875,11 @@ for n, sub in df.groupby("n"):
         title=rf"Paired-count comparison of average one-sided confidence intervals for fixed $n={n}$ ($R={R}$ macro-replications)",
         legend_handles=legend_handles,
     )
-    fig.savefig(output_dir / f"avg_intervals_paired_compare_fixed_n_{n}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"avg_intervals_paired_compare_fixed_n_{n}.png",
+        dpi=200,
+        bbox_inches="tight",
+    )
     plt.close(fig)
 
 
@@ -812,14 +933,46 @@ for budget, sub in df.groupby("budget"):
         )
 
     legend_handles = [
-        Line2D([0], [0], color=COLOR_HF_BUDGET, lw=2, label="HF-only same-total-budget average confidence interval"),
-        Line2D([0], [0], marker="o", color=COLOR_HF_BUDGET, lw=0, markersize=6,
-               label=r"HF-only same-total-budget average point estimate"),
-        Line2D([0], [0], color=COLOR_ACV, lw=2, label="Multifidelity average confidence interval"),
-        Line2D([0], [0], marker="o", color=COLOR_ACV, lw=0, markersize=6,
-               label=r"Multifidelity average point estimate"),
-        Line2D([0], [0], color=COLOR_TRUE, lw=1.5, linestyle="--",
-               label=rf"True optimality gap $\Delta_f(\hat{{x}})$"),
+        Line2D(
+            [0],
+            [0],
+            color=COLOR_HF_BUDGET,
+            lw=2,
+            label="HF-only same-total-budget average confidence interval",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color=COLOR_HF_BUDGET,
+            lw=0,
+            markersize=6,
+            label=r"HF-only same-total-budget average point estimate",
+        ),
+        Line2D(
+            [0],
+            [0],
+            color=COLOR_ACV,
+            lw=2,
+            label="Multifidelity average confidence interval",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color=COLOR_ACV,
+            lw=0,
+            markersize=6,
+            label=r"Multifidelity average point estimate",
+        ),
+        Line2D(
+            [0],
+            [0],
+            color=COLOR_TRUE,
+            lw=1.5,
+            linestyle="--",
+            label=rf"True optimality gap $\Delta_f(\hat{{x}})$",
+        ),
     ]
 
     finalize_interval_plot(
@@ -835,7 +988,11 @@ for budget, sub in df.groupby("budget"):
         title=rf"Same-total-budget comparison of average one-sided confidence intervals for fixed budget={budget} ($R={R}$ macro-replications)",
         legend_handles=legend_handles,
     )
-    fig.savefig(output_dir / f"avg_intervals_same_budget_compare_fixed_budget_{budget}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"avg_intervals_same_budget_compare_fixed_budget_{budget}.png",
+        dpi=200,
+        bbox_inches="tight",
+    )
     plt.close(fig)
 
 

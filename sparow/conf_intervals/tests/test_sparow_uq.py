@@ -8,7 +8,9 @@ from sparow.conf_intervals.acv_mrp import ACVMRP
 from sparow.conf_intervals.scenario_sampler import ScenarioSampler
 from sparow.conf_intervals.experiment_helpers import build_candidate_solution
 
-from sparow.conf_intervals.pyapprox_interface import convert_pyapprox_allocation_to_acvmrp_params
+from sparow.conf_intervals.pyapprox_interface import (
+    convert_pyapprox_allocation_to_acvmrp_params,
+)
 
 from sparow.conf_intervals.pyapprox_helpers import (
     run_pyapprox_pilot,
@@ -16,7 +18,9 @@ from sparow.conf_intervals.pyapprox_helpers import (
 )
 
 from sparow.sp.examples.farmers.MRPfarmers import get_sp_model_for_uq
-from sparow.sp.examples.facilityloc.uq_discrete_facilityloc import get_model_ensemble_for_uq
+from sparow.sp.examples.facilityloc.uq_discrete_facilityloc import (
+    get_model_ensemble_for_uq,
+)
 
 # ============================================================================
 # Shared Test Data & Fixtures
@@ -68,6 +72,7 @@ def basic_scenarios(basic_model):
     basic_model.scenario_population().validate(scenarios)
     return scenarios
 
+
 XHAT_DISCRETE_FACILITYLOC = {
     "x[0]": 0.0,
     "x[1]": 0.0,
@@ -76,6 +81,7 @@ XHAT_DISCRETE_FACILITYLOC = {
     "x[4]": 1.0,
     "x[5]": 1.0,
 }
+
 
 @pytest.fixture
 def facilityloc_ensemble():
@@ -105,6 +111,7 @@ def lf_model(facilityloc_ensemble):
     Low-fidelity facility-location model wrapper.
     """
     return facilityloc_ensemble.low_fidelity_model()
+
 
 # ============================================================================
 # Candidate-solution generation
@@ -327,6 +334,7 @@ def test_mrp_run_reproducibility(advanced_model):
         == results2["sampled_indices_by_replication"]
     )
 
+
 # =============================================================================
 # Tests for multifidelity model/ensemble construction
 # =============================================================================
@@ -350,9 +358,11 @@ def test_facilityloc_ensemble_construction(facilityloc_ensemble, hf_model, lf_mo
     assert len(hf_scenarios) == len(lf_scenarios)
     assert len(hf_scenarios) > 0
 
+
 # =============================================================================
 # Tests for PyApprox pilot / allocation helpers
 # =============================================================================
+
 
 def test_convert_pyapprox_allocation_to_acvmrp_params():
     """
@@ -365,7 +375,9 @@ def test_convert_pyapprox_allocation_to_acvmrp_params():
     assert M == 12
 
 
-def test_run_pyapprox_pilot_is_reproducible_and_cost_delay_is_reflected(facilityloc_ensemble):
+def test_run_pyapprox_pilot_is_reproducible_and_cost_delay_is_reflected(
+    facilityloc_ensemble,
+):
     """
     Run the same pilot study twice with the same seed and settings, and check:
       1. the estimated pilot covariance matrix is reproducible,
@@ -483,6 +495,7 @@ def test_allocate_pyapprox_budget_respects_budget(facilityloc_ensemble):
 # =============================================================================
 # Tests for ACVMRP output structure
 # =============================================================================
+
 
 def test_acvmrp_run_returns_expected_fields(facilityloc_ensemble):
     """

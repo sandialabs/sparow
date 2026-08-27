@@ -32,9 +32,11 @@ def parse_int_list(s):
     """This is for processing comma-separated lists of integers from the command line, e.g. "1,2,3" -> [1, 2, 3]"""
     return [int(x.strip()) for x in s.split(",") if x.strip()]
 
+
 def parse_float_list(s):
     """Parse a comma-separated list of floats."""
     return [float(x.strip()) for x in s.split(",") if x.strip()]
+
 
 def safe_float(value: Any) -> float:
     try:
@@ -151,6 +153,7 @@ def place_output_in_run_dir(run_dir, filename):
         return p
     return run_dir / p.name
 
+
 # =============================================================================
 # CSV / JSON writing
 # =============================================================================
@@ -200,9 +203,11 @@ def log(msg: str, t0: Optional[float] = None, verbose: bool = True) -> None:
     else:
         print(f"[elapsed {(elapsed_seconds(t0)):.2f}s] {msg}")
 
+
 # ============================================================================
 # Helpers for stochastic programming instances in SPAROW
 # ============================================================================
+
 
 def parse_solver_options(solver_options_raw):
     """
@@ -287,7 +292,11 @@ def load_or_generate_candidate_xhat(
     Load an existing candidate xhat or generate a new one.
     The candidate is kept fixed across the entire parameter sweep.
     """
-    xhat_path = str(place_output_in_run_dir(run_dir, args.xhat_file)) if not args.use_existing_xhat else args.xhat_file
+    xhat_path = (
+        str(place_output_in_run_dir(run_dir, args.xhat_file))
+        if not args.use_existing_xhat
+        else args.xhat_file
+    )
 
     if args.use_existing_xhat:
         if not os.path.exists(xhat_path):
@@ -347,6 +356,7 @@ def build_candidate_helper_args(
     Build the minimal args-like object expected by
     load_or_generate_candidate_xhat(...).
     """
+
     class _Args:
         pass
 
@@ -362,7 +372,9 @@ def build_candidate_helper_args(
     return args
 
 
-def compute_true_gap_with_timer(model, xhat, solver_name, solver_options, verbose=False, t0=None):
+def compute_true_gap_with_timer(
+    model, xhat, solver_name, solver_options, verbose=False, t0=None
+):
     """
     Helper for computing the exact finite-population true gap at the start of grid experiments
     or a parameter sweep, with timer.
@@ -481,10 +493,12 @@ def load_model_ensemble_for_uq(
 
     return ensemble
 
+
 # =============================================================================
-# Experiment runners 
+# Experiment runners
 # These are the building blocks for grid experiments & parameter sweeps
 # =============================================================================
+
 
 def run_standard_mrp(
     *,
@@ -500,7 +514,7 @@ def run_standard_mrp(
     verbose: bool,
 ):
     """
-    Run standard MRP once with specified parameters for the given model and candidate 
+    Run standard MRP once with specified parameters for the given model and candidate
     first-stage solution, xhat.
     """
     options = UQOptions(
@@ -532,7 +546,7 @@ def run_acvmrp(
     verbose: bool,
 ):
     """
-    Run ACV-MRP once with specified parameters for the given model ensemble and candidate 
+    Run ACV-MRP once with specified parameters for the given model ensemble and candidate
     first-stage solution, xhat.
     """
     options = UQOptions(
@@ -552,4 +566,3 @@ def run_acvmrp(
         options=options,
     )
     return acv.run(xhat=xhat)
-

@@ -12,7 +12,7 @@ COLOR_TRUE = "black"
 
 
 # =============================================================================
-# Shared plotting helpers for numerical experiments 
+# Shared plotting helpers for numerical experiments
 # =============================================================================
 
 
@@ -26,22 +26,14 @@ def wrap_ylabel(text: str) -> str:
     Insert line breaks in long y-axis labels so they do not crowd the title area.
     """
     replacements = {
-        "Average estimated control-variate coefficient":
-            "Average estimated\ncontrol-variate coefficient",
-        "Average one-sided upper confidence bound":
-            "Average one-sided\nupper confidence bound",
-        "Average upper confidence bound":
-            "Average upper\nconfidence bound",
-        "Average one-sided margin of error":
-            "Average one-sided\nmargin of error",
-        "Average elapsed runtime (seconds)":
-            "Average elapsed\nruntime (seconds)",
-        "Empirical variance across macro-replications":
-            "Empirical variance across\nmacro-replications",
-        "Probability of realized improvement":
-            "Probability of\nrealized improvement",
-        "Average point estimate / average upper confidence bound":
-            "Average point estimate /\naverage upper confidence bound",
+        "Average estimated control-variate coefficient": "Average estimated\ncontrol-variate coefficient",
+        "Average one-sided upper confidence bound": "Average one-sided\nupper confidence bound",
+        "Average upper confidence bound": "Average upper\nconfidence bound",
+        "Average one-sided margin of error": "Average one-sided\nmargin of error",
+        "Average elapsed runtime (seconds)": "Average elapsed\nruntime (seconds)",
+        "Empirical variance across macro-replications": "Empirical variance across\nmacro-replications",
+        "Probability of realized improvement": "Probability of\nrealized improvement",
+        "Average point estimate / average upper confidence bound": "Average point estimate /\naverage upper confidence bound",
     }
     return replacements.get(text, text)
 
@@ -238,6 +230,3 @@ def make_interval_figure(nrows_like: int):
     """
     height = max(10.5, 8.8 + 1.05 * nrows_like)
     return plt.subplots(figsize=(12.0, height))
-
-
-
