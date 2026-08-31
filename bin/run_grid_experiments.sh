@@ -1,49 +1,105 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# This script runs grid-based numerical experiments (parameter sweeps) for either single-fidelity
+# standard MRP or multifidelity ACV-MRP, depending on the ACV_MRP setting.
+# This script automatically writes results to CSV files, and also automatically generate plots using 
+# the appropriate scripts in sparow/bin
+
+# NOTE: this script does NOT use macro-replications, so each parameter configuration produces just one
+# realized point estimate and one realized confidence interval, rather than an empirical distribution 
+# of outcomes across repeated seeds.
+# This matters because a 95% confidence level is a repeated-sampling statement:
+# over many repeated runs, about 95 out of 100 intervals are expected to contain
+# the true population quantity, so macro-replications are useful for checking this behavior in practice.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # ==========================================================
 # User settings
 # ==========================================================
 
-MODEL_MODULE="sparow_examples.farmers.MRPfarmers"
-MODEL_NAME="Advanced"
-LF_MODEL_TYPE="classic"
-SOLVER="gurobi_direct"
-VERBOSE="true"
-ACV_MRP="false" # Specify whether to run ACV-MRP or standard MRP. If true, will run ACV-MRP.
+# Python module that defines either: get_sp_model_for_uq(...) or get_model_ensemble_for_uq(...)
+MODEL_MODULE="sparow_examples.uq_opf.uq_opf"
 
-# Candidate-solution generation (if you don't want to use existing file)
-CANDIDATE_SCEN_COUNT=5
-CANDIDATE_SEED=12345
+# Specify whether to run ACV-MRP or standard MRP. If true, will run ACV-MRP.
+ACV_MRP="true" 
+
+# Optional model name passed into either get_sp_model_for_uq(...) or get_model_ensemble_for_uq(...)
+MODEL_NAME="HF"
+
+# Concrete low-fidelity model choice, if the example module supports different options for the LF model
+LF_MODEL_TYPE="dcopf"
+
+# Solver used by SPAROW for all Sample Average Approximation (SAA) solves and xhat evaluations
+SOLVER="ipopt"
+
+# If true, print detailed progress/timing information to stdout/log
+VERBOSE="true"
+
+# -----------------------------------------------------------------------------
+# Candidate-solution generation
+# -----------------------------------------------------------------------------
+
+# If false, the script generates a new candidate xhat by solving one SAA on a
+# sampled scenario batch of size CANDIDATE_SCEN_COUNT using CANDIDATE_SEED.
+# If true, the script loads an existing xhat from XHAT_FILE.
+USE_EXISTING_XHAT="true"
+
+# Number of sampled scenarios used to generate a new candidate xhat
+CANDIDATE_SCEN_COUNT=1
+
+# Seed used only for candidate-solution generation sampling
+CANDIDATE_SEED=999
+
+# Whether candidate-generation sampling should be with replacement or without
+# replacement from the finite scenario population
 CANDIDATE_WITH_REPLACEMENT="false"
 
-# If you want to use existing candidate solution, already written to file
-USE_EXISTING_XHAT="false"
+# Path to candidate solution file (.npy dictionary). If USE_EXISTING_XHAT=false,
+# this file will be created.
+XHAT_FILE="${SCRIPT_DIR}/../../sparow_examples/sparow_examples/uq_opf/candidate_xhat.npy"
 
-# Confidence interval settings
+# -----------------------------------------------------------------------------
+# Main experiment controls
+# -----------------------------------------------------------------------------
+
+# Significance level; confidence level is 1 - ALPHA
 ALPHA=0.05
-MRP_SEED=678
+
+# Base seed used for the main budgeted experiment workflow
+MRP_SEED=54321
+
+# Whether replication batches used in the main workflow are sampled with
+# replacement from the finite scenario population
 MRP_WITH_REPLACEMENT="true"
 
-# Grid of m and n values, optionally M values
-M_VALUES="10,20,30"
-N_VALUES="300,200,100"
-ACV_M_VALUES=""
+# List of replication batch sizes n to test. Each replication-level estimator
+# uses n iid sampled scenarios.
+N_VALUES="2,3"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Number of paired replications (HF and LF model evals on same sampled scenario batch)
+# In single-fidelity experiments, this is just number of HF model replications)
+M_VALUES="2,3"
 
-# Filepaths - should be in same folder as the script where your problem instance is defined
-XHAT_FILE="farmer_candidate_xhat_cand${CANDIDATE_SCEN_COUNT}_seed${CANDIDATE_SEED}.npy"
+# OPTIONAL: for multifidelity experiments, number of additional LF model replications
+ACV_M_VALUES="2,3"
+
+# -----------------------------------------------------------------------------
+# Output files
+# -----------------------------------------------------------------------------
+
+# These files should be in same folder as the script where your problem instance is defined
 RESULTS_CSV="grid_results.csv" # this file gets automatically written to correct folder
-CLI_LOG="${SCRIPT_DIR}/../../sparow_examples/sparow_examples/farmers/cli_run.log"
+CLI_LOG="${SCRIPT_DIR}/../../sparow_examples/sparow_examples/uq_opf/experiment_run.log"
 
 # Filepaths for scripts containing plotting functionality
 PLOT_SCRIPT_STANDARD="${SCRIPT_DIR}/plot_mrp_results.py"
 PLOT_SCRIPT_ACV="${SCRIPT_DIR}/plot_acvmrp_results.py"
 
-# ==========================================================
-# Convert replacement choices into CLI flags
-# ==========================================================
+# =============================================================================
+# Convert booleans into CLI flags
+# =============================================================================
 
 VERBOSE_FLAG=""
 if [ "${VERBOSE}" = "true" ]; then
@@ -106,7 +162,7 @@ echo "Use existing xhat flag: ${USE_EXISTING_XHAT_FLAG}"
 # .... but may change this in future refactor
 
 if [ "${ACV_MRP}" = "true" ]; then
-    python -m sparow.conf_intervals.cli \
+    python -m run_grid_experiments \
         --grid-experiment \
         --acv-mrp \
         --model-module "${MODEL_MODULE}" \
@@ -136,7 +192,7 @@ if [ "${ACV_MRP}" = "true" ]; then
     python "${PLOT_SCRIPT_ACV}" "${ACTUAL_RESULTS_CSV}"
     echo "ACVMRP plots created."
 else 
-    python -m sparow.conf_intervals.cli \
+    python -m run_grid_experiments \
         --grid-experiment \
         --model-module "${MODEL_MODULE}" \
         --model-name "${MODEL_NAME}" \

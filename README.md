@@ -17,7 +17,7 @@ programming.
 Sparow requires the installation of or-topas, which can be installed using **pip** as follows:
 
 ```bash
-git clone git@github.com:or-fusion/or_topas.git
+git clone git@github.com:sandialabs/or_topas.git
 cd or_topas
 pip install -e .
 cd ..
@@ -26,13 +26,13 @@ cd ..
 Developers should install Sparow using **pip** as follows:
 
 ```bash
-git clone git@github.com:or-fusion/sparow.git
+git clone git@github.com:sandialabs/sparow.git
 cd sparow
 pip install -e .
 cd ..
 ```
 
-There are some shell scripts and plotting code located in `sparow/bin` that can be used for running numerical experiments with the Uncertainty Quantification (UQ) workflows. In these scripts, you can change the file paths to use your own custom stochastic programming models (see the `README.md` in `sparow/conf_intervals` for more details). If you want to run these optional plotting scripts that generate figures from results stored in CSV format, install the plotting dependencies:
+There are some shell scripts and plotting code located in `bin` that can be used for running numerical experiments with the Uncertainty Quantification (UQ) workflows. In these scripts, you can change the file paths to use your own custom stochastic programming models (see the `README.md` in `sparow/conf_intervals` for more details). If you want to run these optional plotting scripts that generate figures from results stored in CSV format, then install the plotting dependencies:
 
 ```bash
 cd sparow

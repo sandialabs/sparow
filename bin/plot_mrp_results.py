@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import textwrap
 
 csv_path = Path(sys.argv[1]).resolve()
@@ -27,7 +28,7 @@ output_dir = csv_path.parent / "plots"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 # ----------------------------------------------------------
-# Point estimator for Gap vs n
+# Point estimate for Gap vs n
 # ----------------------------------------------------------
 plt.figure()
 for m, sub in df.groupby("m"):
@@ -46,8 +47,8 @@ plt.axhline(
 )
 plt.grid()
 plt.xlabel(r"Sample size $n$")
-plt.ylabel(r"Point estimator $\bar{F}_n^m(\hat{x})$")
-plt.title(r"Point estimator $\bar{F}_n^m(\hat{x})$ versus sample size $n$")
+plt.ylabel(r"Point estimate $\bar{F}_n^m(\hat{x})$")
+plt.title(r"Point estimate $\bar{F}_n^m(\hat{x})$ versus sample size $n$")
 plt.legend()
 plt.tight_layout()
 plt.savefig(output_dir / "gap_estimate_vs_n.png", dpi=200)
@@ -70,7 +71,7 @@ plt.axhline(
 )
 plt.grid()
 plt.xlabel(r"Sample size $n$")
-plt.ylabel(r"Upper CI bound $\bar{F}_n^m(\hat{x}) + \epsilon_f$")
+plt.ylabel(r"Upper confidence bound $\bar{F}_n^m(\hat{x}) + \epsilon_f$")
 plt.title(r"Upper confidence bound $\bar{F}_n^m(\hat{x}) + \epsilon_f$ versus $n$")
 plt.legend()
 plt.tight_layout()
@@ -170,7 +171,7 @@ for m, sub in df.groupby("m"):
         sub["n"],
         sub["point_estimate"],
         marker="o",
-        label=rf"Point estimator $\bar{{F}}_n^m(\hat{{x}})$",
+        label=rf"Point estimate $\bar{{F}}_n^m(\hat{{x}})$",
     )
     plt.plot(
         sub["n"],
@@ -208,7 +209,7 @@ for m, sub in df.groupby("m"):
 
 # ----------------------------------------------------------
 # Absolute error (normalized by true gap)
-#     between point estimator and true optimality gap vs n
+#     between point estimate and true optimality gap vs n
 # ----------------------------------------------------------
 plt.figure()
 for m, sub in df.groupby("m"):
@@ -269,3 +270,200 @@ fig.text(0.5, 0.02, wrapped_caption, ha="center", va="bottom", fontsize=9)
 
 fig.savefig(output_dir / "cv_like_vs_n_percent.png", dpi=200, bbox_inches="tight")
 plt.close(fig)
+
+# ----------------------------------------------------------
+# For fixed m, show corresponding one-sided confidence intervals
+# as horizontal segments for each n
+# ----------------------------------------------------------
+for m, sub in df.groupby("m"):
+    sub = sub.sort_values("n").copy()
+
+    # Use n values as y-axis labels, stacked vertically
+    y_positions = np.arange(len(sub))
+
+    fig, ax = plt.subplots(figsize=(8, 4 + 0.5 * len(sub)))
+
+    # Draw horizontal one-sided intervals [ci_lower, ci_upper]
+    # This makes interval tightening easier to see.
+    for y, (_, row) in zip(y_positions, sub.iterrows()):
+        # Main interval line
+        ax.hlines(
+            y=y,
+            xmin=row["ci_lower"],
+            xmax=row["ci_upper"],
+            color="steelblue",
+            linewidth=2,
+            alpha=0.9,
+        )
+
+        # Small vertical caps at each end of the interval
+        cap_half_height = 0.15
+        ax.vlines(
+            x=row["ci_lower"],
+            ymin=y - cap_half_height,
+            ymax=y + cap_half_height,
+            color="steelblue",
+            linewidth=2,
+            alpha=0.9,
+        )
+        ax.vlines(
+            x=row["ci_upper"],
+            ymin=y - cap_half_height,
+            ymax=y + cap_half_height,
+            color="steelblue",
+            linewidth=2,
+            alpha=0.9,
+        )
+
+        # Point estimate stays at its actual value
+        ax.plot(
+            row["point_estimate"],
+            y,
+            marker="o",
+            color="navy",
+            markersize=7,
+        )
+
+    # Reference line for the true optimality gap
+    ax.axvline(
+        true_gap,
+        color="black",
+        linestyle="--",
+        linewidth=1.5,
+        label=rf"True optimality gap $\Delta_f(\hat{{x}})$",
+    )
+
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels([rf"$n={int(n)}$" for n in sub["n"]])
+    ax.set_xlabel(r"Gap estimate / confidence interval")
+    ax.set_ylabel(r"Sample size")
+    ax.set_title(
+        rf"One-sided confidence intervals for fixed number of replications $m={m}$"
+    )
+    ax.grid(axis="x", alpha=0.3)
+
+    # Add legend handles manually for interval and point estimate
+    legend_handles = [
+        Line2D(
+            [0], [0], color="steelblue", lw=2, label="One-sided confidence interval"
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="navy",
+            lw=0,
+            markersize=7,
+            label=rf"Point estimate $\bar{{F}}_n^m(\hat{{x}})$",
+        ),
+        Line2D(
+            [0],
+            [0],
+            color="black",
+            lw=1.5,
+            linestyle="--",
+            label=rf"True optimality gap $\Delta_f(\hat{{x}})$",
+        ),
+    ]
+    ax.legend(handles=legend_handles, loc="best")
+
+    plt.tight_layout()
+    plt.savefig(output_dir / f"confidence_intervals_fixed_m_{m}.png", dpi=200)
+    plt.close()
+
+# ----------------------------------------------------------
+# For fixed n, show corresponding one-sided confidence intervals
+# as horizontal segments for each m
+# ----------------------------------------------------------
+for n, sub in df.groupby("n"):
+    sub = sub.sort_values("m").copy()
+
+    # Use m values as y-axis labels, stacked vertically
+    y_positions = np.arange(len(sub))
+
+    fig, ax = plt.subplots(figsize=(8, 4 + 0.5 * len(sub)))
+
+    # Draw horizontal one-sided intervals [ci_lower, ci_upper]
+    # This makes interval tightening easier to see.
+    for y, (_, row) in zip(y_positions, sub.iterrows()):
+        # Main interval line
+        ax.hlines(
+            y=y,
+            xmin=row["ci_lower"],
+            xmax=row["ci_upper"],
+            color="darkgreen",
+            linewidth=2,
+            alpha=0.9,
+        )
+
+        # Small vertical caps at each end of the interval
+        cap_half_height = 0.12
+        ax.vlines(
+            x=row["ci_lower"],
+            ymin=y - cap_half_height,
+            ymax=y + cap_half_height,
+            color="darkgreen",
+            linewidth=2,
+            alpha=0.9,
+        )
+        ax.vlines(
+            x=row["ci_upper"],
+            ymin=y - cap_half_height,
+            ymax=y + cap_half_height,
+            color="darkgreen",
+            linewidth=2,
+            alpha=0.9,
+        )
+
+        # Point estimate stays at its actual value
+        ax.plot(
+            row["point_estimate"],
+            y,
+            marker="o",
+            color="green",
+            markersize=7,
+        )
+
+    # Reference line for the true optimality gap
+    ax.axvline(
+        true_gap,
+        color="black",
+        linestyle="--",
+        linewidth=1.5,
+        label=rf"True optimality gap $\Delta_f(\hat{{x}})$",
+    )
+
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels([rf"$m={int(m)}$" for m in sub["m"]])
+    ax.set_xlabel(r"Gap estimate / confidence interval")
+    ax.set_ylabel(r"Number of replications")
+    ax.set_title(rf"One-sided confidence intervals for fixed sample size $n={n}$")
+    ax.grid(axis="x", alpha=0.3)
+
+    legend_handles = [
+        Line2D(
+            [0], [0], color="darkgreen", lw=2, label="One-sided confidence interval"
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="green",
+            lw=0,
+            markersize=7,
+            label=rf"Point estimate $\bar{{F}}_n^m(\hat{{x}})$",
+        ),
+        Line2D(
+            [0],
+            [0],
+            color="black",
+            lw=1.5,
+            linestyle="--",
+            label=rf"True optimality gap $\Delta_f(\hat{{x}})$",
+        ),
+    ]
+    ax.legend(handles=legend_handles, loc="best")
+
+    plt.tight_layout()
+    plt.savefig(output_dir / f"confidence_intervals_fixed_n_{n}.png", dpi=200)
+    plt.close()

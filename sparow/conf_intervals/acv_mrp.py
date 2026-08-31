@@ -1,8 +1,6 @@
 import numpy as np
 from scipy import stats
 
-from .scenario_sampler import ScenarioSampler
-
 
 class ACVMRP:
     """
@@ -224,7 +222,7 @@ class ACVMRP:
         ci_upper = max(0.0, F_acv + half_width)
 
         # Compute variance reduction factor for comparison
-        # This is the benefit provided by the additional M low-fidelity reps
+        # This is the benefit of spending additional computation of m + M further LF model evals
         variance_reduction = s_F_sq / var_acv if var_acv > 0 else float("inf")
 
         return {
