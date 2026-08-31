@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name="sparow"
 version="1.0.1"
-dependencies = ["Pyomo", "munch", "mpi-sppy", "or-topas", "pytest", "pytest-cov", "scikit-learn", "rich", "parameterized", "numpy>=2.2.6"]
+dependencies = ["Pyomo", "munch", "mpi-sppy", "or-topas", "pytest", "pytest-cov", "scikit-learn", "rich", "parameterized", "pyapprox", "numpy>=2.2.6"]
 readme = {file = "README.md", content-type = "text/markdown"}
 description="Stochastic Programming And Related Optimization Workflows"
 classifiers=[
