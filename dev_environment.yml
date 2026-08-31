@@ -9,7 +9,6 @@ dependencies:
   - numpy
   - parameterized
   - pip 
-  - pyapprox
   - pyomo
   - pytest
   - pytest-cov
@@ -19,3 +18,4 @@ dependencies:
   - pip:
     - highspy
     - mpi-sppy
+    - pyapprox
