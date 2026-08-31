@@ -32,7 +32,7 @@ pip install -e .
 cd ..
 ```
 
-There are some shell scripts and plotting code located in `bin` that can be used for running numerical experiments with the Uncertainty Quantification (UQ) workflows. In these scripts, you can change the file paths to use your own custom stochastic programming models (see the `README.md` in `sparow/conf_intervals` for more details). If you want to run these optional plotting scripts that generate figures from results stored in CSV format, tehn install the plotting dependencies:
+There are some shell scripts and plotting code located in `bin` that can be used for running numerical experiments with the Uncertainty Quantification (UQ) workflows. In these scripts, you can change the file paths to use your own custom stochastic programming models (see the `README.md` in `sparow/conf_intervals` for more details). If you want to run these optional plotting scripts that generate figures from results stored in CSV format, then install the plotting dependencies:
 
 ```bash
 cd sparow
