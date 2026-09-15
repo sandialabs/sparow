@@ -23,7 +23,10 @@ class FiniteScenarioPopulation:
     This object stores:
       - the full list of scenario dictionaries,
       - the required scenario keys,
-      - and optional encode/decode logic for scenario vectors.
+      - optional encode/decode logic for scenario vectors,
+      - optional fixed metadata that is required for the given problem instance.
+        These fields are not part of the uncertain scenario vector, but they
+        are required when rebuilding native SPAROW scenario dictionaries.
 
     It is designed to be reusable across different stochastic programs.
     """
@@ -33,6 +36,7 @@ class FiniteScenarioPopulation:
         scenarios: List[Dict[str, Any]],
         required_scenario_keys: Optional[List[str]] = None,
         scenario_vector_keys: Optional[List[str]] = None,
+        fixed_metadata: Optional[Dict[str, Any]] = None,
     ):
         self._scenarios = scenarios
         self._required_scenario_keys = (
@@ -41,6 +45,11 @@ class FiniteScenarioPopulation:
         self._scenario_vector_keys = (
             [] if scenario_vector_keys is None else list(scenario_vector_keys)
         )
+
+        # These are non-random fields that are not encoded into the scenario
+        # vector, but must be reattached when decoding vectors back into native
+        # SPAROW scenario dictionaries.
+        self._fixed_metadata = {} if fixed_metadata is None else dict(fixed_metadata)
 
         self.validate(self._scenarios)
 
@@ -56,6 +65,15 @@ class FiniteScenarioPopulation:
         This is usually the string name identifier foruncertain problem data.
         """
         return self._required_scenario_keys
+
+    def fixed_metadata(self) -> Dict[str, Any]:
+        """
+        Return the fixed metadata to be restored on decode.
+
+        These fields are not part of the uncertain scenario vector, but they
+        are required when rebuilding native SPAROW scenario dictionaries.
+        """
+        return dict(self._fixed_metadata)
 
     def validate(self, scenarios: Optional[List[Dict[str, Any]]] = None) -> None:
         """
@@ -120,11 +138,19 @@ class FiniteScenarioPopulation:
     ) -> Dict[str, Any]:
         """
         Convert a flat vector back into a scenario dictionary.
+
         Note that this will contain the ID field, but not the Probability field.
-        Batch-construction logic assigns the probability weight later
+        Batch-construction logic assigns the probability weight later.
+
+        So the decoded scenario contains:
+          - the supplied scenario ID,
+          - the uncertain fields reconstructed from the vector,
+          - any fixed metadata needed by the specific problem instance/ application.
         """
         ref = self._scenarios[0]
-        out = {"ID": scenario_id}
+
+        out = dict(self._fixed_metadata)
+        out["ID"] = scenario_id
 
         cursor = 0
         for key in self.scenario_vector_keys():

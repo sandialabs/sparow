@@ -1,8 +1,6 @@
 import numpy as np
 from scipy import stats
 
-# TODO: This is specific to minimization problems... Need to adapt to model sense
-
 
 class StandardMRP:
     """

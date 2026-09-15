@@ -93,7 +93,7 @@ class SparowPoolManager(PoolManager, VariableInfo, ObjectiveInfo):
         name: str | None = None,
         policy: PoolPolicy = PoolPolicy.keep_best,
         as_solution: Callable[..., Any] | None = None,
-        **kwds: Any
+        **kwds: Any,
     ) -> Any:
         """
         Add a pool to the manager.

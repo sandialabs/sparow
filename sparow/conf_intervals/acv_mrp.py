@@ -1,8 +1,6 @@
 import numpy as np
 from scipy import stats
 
-from .scenario_sampler import ScenarioSampler
-
 
 class ACVMRP:
     """
@@ -223,13 +221,17 @@ class ACVMRP:
         ci_lower = 0.0  # we know the optimality gap is non-negative
         ci_upper = max(0.0, F_acv + half_width)
 
+        # HF-only estimator variance at the same paired replication count m.
+        var_hf_only = s_F_sq / opts.m
+
         # Compute variance reduction factor for comparison
-        # This is the benefit provided by the additional M low-fidelity reps
-        variance_reduction = s_F_sq / var_acv if var_acv > 0 else float("inf")
+        # This is the benefit of spending additional computation of m + M further LF model evals
+        variance_reduction = var_hf_only / var_acv if var_acv > 0 else float("inf")
 
         return {
             "point_estimate": F_acv,
             "point_estimate_hf_only": F_bar,  # For comparison
+            "variance_hf_only_estimator": float(var_hf_only),  # For comparison
             "ci_lower": ci_lower,
             "ci_upper": ci_upper,
             "half_width": half_width,

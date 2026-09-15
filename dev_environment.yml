@@ -18,3 +18,5 @@ dependencies:
   - pip:
     - highspy
     - mpi-sppy
+    - pyapprox
+    - pyapprox-benchmarks

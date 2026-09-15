@@ -1,5 +1,5 @@
 """
-PyApprox integration for SPAROW confidence-interval models.
+PyApprox integration for SPAROW confidence-interval code.
 
 This module provides:
   - a PyApprox-compatible wrapper for one replication-level gap model,
