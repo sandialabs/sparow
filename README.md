@@ -1,3 +1,9 @@
+# ARCHIVED
+
+This repository of SPAROW has been archived.  See [https://github.com/or-fusion/sparow](https://github.com/or-fusion/sparow) for the repository under active development.
+
+-------------------------------
+
 [![Pytest Tests](https://github.com/sandialabs/sparow/actions/workflows/pytest.yml/badge.svg?branch=main)](https://github.com/sandialabs/sparow/actions/workflows/pytest.yml?query=branch%3Amain)
 [![codecov](https://codecov.io/gh/sandialabs/sparow/branch/main/graph/badge.svg)](https://codecov.io/gh/sandialabs/sparow)
 [![Documentation Status](https://readthedocs.org/projects/sparow/badge/?version=latest)](http://sparow.readthedocs.org/en/latest/)
